@@ -1,0 +1,118 @@
+/*
+ * TradeUB — design tokens
+ * Única font de veritat de colors, tipografia, espais, radis i ombres.
+ * Per canviar l'estil de tota l'app, canvia-ho aquí (i res més).
+ * Documentació i regles d'ús: .claude/skills/tradeub-ui/SKILL.md
+ */
+:root {
+  /* Color primari (accions principals, links, focus) */
+  --tub-primary: #09af83;
+  --tub-primary-hover: #07936e;
+  --tub-primary-soft: #e6f7f0;
+  --tub-primary-contrast: #ffffff;
+  --tub-gradient-primary: linear-gradient(180deg, #12bd8f 0%, #09af83 60%, #079c74 100%);
+  --tub-shadow-primary:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 1px 2px rgba(7, 147, 110, 0.3),
+    0 8px 20px -8px rgba(9, 175, 131, 0.55);
+  --tub-shadow-primary-hover:
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    0 2px 4px rgba(7, 147, 110, 0.3),
+    0 12px 28px -8px rgba(9, 175, 131, 0.6);
+  --tub-ring: rgba(9, 175, 131, 0.22);
+  --tub-selection: rgba(9, 175, 131, 0.25);
+
+  /* Marca (panells foscos) */
+  --tub-navy: #0b1b34;
+  --tub-navy-2: #12305a;
+  --tub-navy-3: #1b3f73;
+  --tub-gradient-brand:
+    radial-gradient(circle at 85% 10%, rgba(9, 175, 131, 0.28), transparent 45%),
+    radial-gradient(circle at 10% 90%, rgba(27, 63, 115, 0.6), transparent 50%),
+    linear-gradient(160deg, var(--tub-navy) 0%, var(--tub-navy-2) 100%);
+
+  /* Verd semàntic: pujades, èxit (independent del primari) */
+  --tub-green: #10b981;
+  --tub-green-dark: #059669;
+  --tub-green-light: #34d399;
+  --tub-green-soft: #ecfdf5;
+
+  /* Text */
+  --tub-text: #111a2e;
+  --tub-text-2: #334155;
+  --tub-text-muted: #64748b;
+  --tub-text-placeholder: #94a3b8;
+  --tub-text-on-dark: #ffffff;
+  --tub-text-on-dark-muted: #cbd5e1;
+  --tub-text-on-dark-faint: #94a3b8;
+
+  /* Superfícies */
+  --tub-bg: #f5f7fb;
+  --tub-surface: #ffffff;
+  --tub-surface-hover: #f8fafc;
+  --tub-surface-2: #f1f5f9;
+  --tub-border: #e2e8f0;
+  --tub-border-strong: #cbd5e1;
+  --tub-border-on-dark: rgba(255, 255, 255, 0.12);
+  --tub-surface-on-dark: rgba(255, 255, 255, 0.06);
+
+  /* Estats */
+  --tub-danger: #dc2626;
+  --tub-danger-text: #b91c1c;
+  --tub-danger-bg: #fef2f2;
+  --tub-danger-border: #fecaca;
+  --tub-ring-danger: rgba(220, 38, 38, 0.16);
+  --tub-success-text: #047857;
+  --tub-success-bg: #ecfdf5;
+  --tub-success-border: #a7f3d0;
+  --tub-info-text: #1d4ed8;
+  --tub-info-bg: #eff6ff;
+  --tub-info-border: #bfdbfe;
+  --tub-warning-text: #b45309;
+  --tub-warning-bg: #fffbeb;
+  --tub-warning-border: #fde68a;
+
+  /* Tipografia */
+  --tub-font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --tub-font-display: var(--tub-font);
+  --tub-font-numeric: inherit;
+  --tub-font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --tub-display-weight: 700;
+  --tub-text-xs: 0.8rem;
+  --tub-text-sm: 0.875rem;
+  --tub-text-md: 0.95rem;
+  --tub-text-lg: 1.2rem;
+  --tub-text-xl: 1.6rem;
+  --tub-text-2xl: 2.4rem;
+  --tub-tracking-tight: -0.02em;
+  --tub-tracking-wide: 0.06em;
+
+  /* Espais */
+  --tub-space-1: 0.25rem;
+  --tub-space-2: 0.5rem;
+  --tub-space-3: 0.75rem;
+  --tub-space-4: 1rem;
+  --tub-space-5: 1.5rem;
+  --tub-space-6: 2rem;
+  --tub-space-7: 2.5rem;
+  --tub-space-8: 3.5rem;
+
+  /* Radis */
+  --tub-radius-sm: 8px;
+  --tub-radius-md: 12px;
+  --tub-radius-lg: 16px;
+  --tub-radius-xl: 22px;
+  --tub-radius-pill: 999px;
+
+  /* Ombres (en capes, suaus) */
+  --tub-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05), 0 1px 1px rgba(15, 23, 42, 0.03);
+  --tub-shadow-md: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px -8px rgba(15, 23, 42, 0.12);
+  --tub-shadow-card:
+    0 0 0 1px rgba(15, 23, 42, 0.04),
+    0 2px 4px rgba(15, 23, 42, 0.03),
+    0 20px 48px -16px rgba(15, 23, 42, 0.16);
+
+  /* Moviment */
+  --tub-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --tub-duration: 0.18s;
+}
