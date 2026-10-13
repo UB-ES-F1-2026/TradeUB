@@ -1,17 +1,46 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
 import RegisterView from '../views/RegisterView.vue'
 
 const routes = [
     {
         path: '/',
-        name: 'home',
-        component: HomeView
+        redirect: '/actius'
+    },
+    {
+        path: '/actius',
+        name: 'actius',
+        component: () => import('../views/ActiusView.vue')
+    },
+    {
+        path: '/cartera',
+        name: 'cartera',
+        component: () => import('../views/CarteraView.vue')
+    },
+    {
+        path: '/historial',
+        name: 'historial',
+        component: () => import('../views/HistorialView.vue')
+    },
+    {
+        path: '/bustia',
+        name: 'bustia',
+        component: () => import('../views/BustiaView.vue')
+    },
+    {
+        path: '/compte-efectiu',
+        name: 'compte-efectiu',
+        component: () => import('../views/CompteEfectiuView.vue')
+    },
+    {
+        path: '/perfil',
+        name: 'perfil',
+        component: () => import('../views/PerfilView.vue')
     },
     {
         path: '/register',
         name: 'register',
-        component: RegisterView
+        component: RegisterView,
+        meta: { hideNav: true }
     },
     {
         path: '/ui',
