@@ -42,6 +42,19 @@ export const useAuthStore = defineStore('auth', () => {
         user.value = null;
         session.value = null;
     };
+        const requestPasswordReset = async (email) => {
+        // Ignorem l'error a propòsit: l'avís a l'usuari és sempre genèric
+        await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: `${window.location.origin}/reset-password`,
+        });
+    };
 
-    return { user, session, initAuth, register, resend, login, logout };
+    const updatePassword = async (newPassword) => {
+        const { error } = await supabase.auth.updateUser({ password: newPassword });
+        if (error) throw error;
+        // Tanquem la sessió de recuperació i netegem l'estat local
+        await logout();
+    };
+
+    return { user, session, initAuth, register, resend, login, logout, requestPasswordReset, updatePassword };
 });
