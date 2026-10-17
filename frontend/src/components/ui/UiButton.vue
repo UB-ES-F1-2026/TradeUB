@@ -16,7 +16,11 @@ defineProps({
     :class="[`ui-btn--${variant}`, `ui-btn--${size}`, { 'ui-btn--block': block }]"
     :disabled="disabled || loading"
   >
-    <span v-if="loading" class="ui-btn__spinner" aria-hidden="true"></span>
+    <span
+      v-if="loading"
+      class="ui-btn__spinner"
+      aria-hidden="true"
+    />
     <span class="ui-btn__label"><slot /></span>
   </button>
 </template>

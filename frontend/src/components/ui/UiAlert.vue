@@ -5,14 +5,52 @@ defineProps({
 </script>
 
 <template>
-  <div class="ui-alert" :class="`ui-alert--${variant}`" role="alert">
-    <span class="ui-alert__icon" aria-hidden="true">
-      <svg v-if="variant === 'success'" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 10.5l3.2 3L15 7" /></svg>
-      <svg v-else-if="variant === 'error'" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l8 8M14 6l-8 8" /></svg>
-      <svg v-else-if="variant === 'warning'" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M10 5v6M10 14.5v.5" /></svg>
-      <svg v-else viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M10 9v6M10 5.5v.5" /></svg>
+  <div
+    class="ui-alert"
+    :class="`ui-alert--${variant}`"
+    role="alert"
+  >
+    <span
+      class="ui-alert__icon"
+      aria-hidden="true"
+    >
+      <svg
+        v-if="variant === 'success'"
+        viewBox="0 0 20 20"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      ><path d="M5 10.5l3.2 3L15 7" /></svg>
+      <svg
+        v-else-if="variant === 'error'"
+        viewBox="0 0 20 20"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.2"
+        stroke-linecap="round"
+      ><path d="M6 6l8 8M14 6l-8 8" /></svg>
+      <svg
+        v-else-if="variant === 'warning'"
+        viewBox="0 0 20 20"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.2"
+        stroke-linecap="round"
+      ><path d="M10 5v6M10 14.5v.5" /></svg>
+      <svg
+        v-else
+        viewBox="0 0 20 20"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.2"
+        stroke-linecap="round"
+      ><path d="M10 9v6M10 5.5v.5" /></svg>
     </span>
-    <p class="ui-alert__body"><slot /></p>
+    <p class="ui-alert__body">
+      <slot />
+    </p>
   </div>
 </template>
 

@@ -7,14 +7,31 @@ defineProps({
 </script>
 
 <template>
-  <RouterLink :to="to" class="ui-logo" :class="`ui-logo--${size}`" aria-label="TradeUB">
+  <RouterLink
+    :to="to"
+    class="ui-logo"
+    :class="`ui-logo--${size}`"
+    aria-label="TradeUB"
+  >
     <!-- Logotip oficial (public/brand). La versió blanca s'activa dins de .tub-on-dark (regla a base.css) -->
     <template v-if="markOnly">
-      <img class="ui-logo__img" src="/brand/mark.svg" alt="" />
+      <img
+        class="ui-logo__img"
+        src="/brand/mark.svg"
+        alt=""
+      >
     </template>
     <template v-else>
-      <img class="ui-logo__img ui-logo__img--light" src="/brand/logo.svg" alt="" />
-      <img class="ui-logo__img ui-logo__img--dark" src="/brand/logo-white.svg" alt="" />
+      <img
+        class="ui-logo__img ui-logo__img--light"
+        src="/brand/logo.svg"
+        alt=""
+      >
+      <img
+        class="ui-logo__img ui-logo__img--dark"
+        src="/brand/logo-white.svg"
+        alt=""
+      >
     </template>
   </RouterLink>
 </template>
