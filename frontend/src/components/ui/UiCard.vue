@@ -6,7 +6,10 @@ defineProps({
 </script>
 
 <template>
-  <div class="ui-card" :class="[`ui-card--${variant}`, `ui-card--pad-${padding}`]">
+  <div
+    class="ui-card"
+    :class="[`ui-card--${variant}`, `ui-card--pad-${padding}`]"
+  >
     <slot />
   </div>
 </template>
