@@ -17,6 +17,14 @@ security = HTTPBearer()
 jwks_client = PyJWKClient(f"{SUPABASE_URL}/auth/v1/.well-known/jwks.json")
 
 
+def get_access_token(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+) -> str:
+    """Valida el token i el retorna per a crides autenticades a Supabase."""
+    get_current_user(credentials)
+    return credentials.credentials
+
+
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ) -> dict:
