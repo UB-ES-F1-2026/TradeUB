@@ -20,9 +20,15 @@ watch(() => route.path, () => { open.value = false })
 </script>
 
 <template>
-  <header class="navbar" :class="{ 'navbar--open': open }">
+  <header
+    class="navbar"
+    :class="{ 'navbar--open': open }"
+  >
     <div class="navbar__inner">
-      <UiLogo to="/actius" size="sm" />
+      <UiLogo
+        to="/actius"
+        size="sm"
+      />
       <button
         type="button"
         class="navbar__toggle"
@@ -31,13 +37,33 @@ watch(() => route.path, () => { open.value = false })
         :aria-label="open ? 'Tancar el menú' : 'Obrir el menú'"
         @click="open = !open"
       >
-        <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
-          <path v-if="open" d="M6 6l12 12M18 6L6 18" />
-          <path v-else d="M4 7h16M4 12h16M4 17h16" />
+        <svg
+          viewBox="0 0 24 24"
+          width="24"
+          height="24"
+          aria-hidden="true"
+        >
+          <path
+            v-if="open"
+            d="M6 6l12 12M18 6L6 18"
+          />
+          <path
+            v-else
+            d="M4 7h16M4 12h16M4 17h16"
+          />
         </svg>
       </button>
-      <nav id="navbar-links" class="navbar__links" aria-label="Navegació principal">
-        <RouterLink v-for="link in links" :key="link.to" :to="link.to" class="navbar__link">
+      <nav
+        id="navbar-links"
+        class="navbar__links"
+        aria-label="Navegació principal"
+      >
+        <RouterLink
+          v-for="link in links"
+          :key="link.to"
+          :to="link.to"
+          class="navbar__link"
+        >
           {{ link.label }}
         </RouterLink>
       </nav>

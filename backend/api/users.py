@@ -1,5 +1,6 @@
-from core.config import supabase
 from fastapi import APIRouter, Depends, HTTPException
+
+from core.config import supabase
 
 from .deps import get_current_user
 
