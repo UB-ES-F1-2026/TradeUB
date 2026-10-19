@@ -1,0 +1,3 @@
+[tool.ruff.lint]
+# Ingesta de dependències a FastAPI (Depends) i captura d'excepcions
+ignore = ["B008", "BLE001"]

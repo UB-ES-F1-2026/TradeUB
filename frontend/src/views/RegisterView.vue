@@ -111,7 +111,7 @@ onBeforeUnmount(() => clearInterval(timer))
       <UiLogo />
 
       <div class="brand-body">
-        <h1>Comença a invertir<br />amb diners simulats.</h1>
+        <h1>Comença a invertir<br>amb diners simulats.</h1>
         <p class="lead">
           Practica amb accions i ETFs sense risc. Una plataforma pensada per
           aprendre a invertir pas a pas.
@@ -123,19 +123,43 @@ onBeforeUnmount(() => clearInterval(timer))
           <li><span class="tick">✓</span> Dades protegides amb verificació</li>
         </ul>
 
-        <UiCard variant="glass" padding="md" class="chart-card" aria-hidden="true">
+        <UiCard
+          variant="glass"
+          padding="md"
+          class="chart-card"
+          aria-hidden="true"
+        >
           <div class="chart-head">
             <div>
               <span class="chart-label">Cartera simulada</span>
               <strong class="chart-value tabular">10.482,35 €</strong>
             </div>
-            <UiBadge variant="on-dark">+4,82 %</UiBadge>
+            <UiBadge variant="on-dark">
+              +4,82 %
+            </UiBadge>
           </div>
-          <svg viewBox="0 0 300 80" preserveAspectRatio="none">
+          <svg
+            viewBox="0 0 300 80"
+            preserveAspectRatio="none"
+          >
             <defs>
-              <linearGradient id="fill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" class="chart-stop" stop-opacity="0.35" />
-                <stop offset="100%" class="chart-stop" stop-opacity="0" />
+              <linearGradient
+                id="fill"
+                x1="0"
+                y1="0"
+                x2="0"
+                y2="1"
+              >
+                <stop
+                  offset="0%"
+                  class="chart-stop"
+                  stop-opacity="0.35"
+                />
+                <stop
+                  offset="100%"
+                  class="chart-stop"
+                  stop-opacity="0"
+                />
               </linearGradient>
             </defs>
             <path
@@ -154,35 +178,65 @@ onBeforeUnmount(() => clearInterval(timer))
         </UiCard>
       </div>
 
-      <p class="brand-foot"></p>
+      <p class="brand-foot" />
     </aside>
 
     <!-- Panell del formulari -->
     <main class="panel">
       <UiCard class="card">
         <!-- Estat: correu enviat -->
-        <section v-if="sent" class="success">
-          <div class="success-icon">✉</div>
+        <section
+          v-if="sent"
+          class="success"
+        >
+          <div class="success-icon">
+            ✉
+          </div>
           <h2>Revisa el teu correu</h2>
           <p class="muted">
             Hem enviat un enllaç de verificació a
-            <strong>{{ normalizedEmail }}</strong
-            >. Fes clic a l'enllaç per activar el teu compte.
+            <strong>{{ normalizedEmail }}</strong>. Fes clic a l'enllaç per activar el teu compte.
           </p>
 
-          <UiAlert v-if="info" variant="success">{{ info }}</UiAlert>
-          <UiAlert v-if="error" variant="error">{{ error }}</UiAlert>
+          <UiAlert
+            v-if="info"
+            variant="success"
+          >
+            {{ info }}
+          </UiAlert>
+          <UiAlert
+            v-if="error"
+            variant="error"
+          >
+            {{ error }}
+          </UiAlert>
 
-          <UiButton variant="secondary" block :disabled="cooldown > 0" @click="resend">
+          <UiButton
+            variant="secondary"
+            block
+            :disabled="cooldown > 0"
+            @click="resend"
+          >
             {{ cooldown > 0 ? `Reenviar correu (${cooldown} s)` : 'Reenviar correu' }}
           </UiButton>
-          <RouterLink to="/" class="back">Tornar a l'inici</RouterLink>
+          <RouterLink
+            to="/"
+            class="back"
+          >
+            Tornar a l'inici
+          </RouterLink>
         </section>
 
         <!-- Estat: formulari -->
-        <form v-else novalidate @submit.prevent="handleSubmit">
+        <form
+          v-else
+          novalidate
+          @submit.prevent="handleSubmit"
+        >
           <h2>Crea el teu compte</h2>
-          <p class="muted">Només et portarà un minut.</p>
+          <p class="muted">
+            Només et portarà un minut.
+          </p>
 
           <UiInput
             v-model="email"
@@ -212,12 +266,20 @@ onBeforeUnmount(() => clearInterval(timer))
             :error="errors.password"
           >
             <template #trailing>
-              <UiButton variant="ghost" size="sm" @click="showPassword = !showPassword">
+              <UiButton
+                variant="ghost"
+                size="sm"
+                @click="showPassword = !showPassword"
+              >
                 {{ showPassword ? 'Amagar' : 'Mostrar' }}
               </UiButton>
             </template>
             <ul class="rules">
-              <li v-for="r in rules" :key="r.label" :class="{ ok: r.ok }">
+              <li
+                v-for="r in rules"
+                :key="r.label"
+                :class="{ ok: r.ok }"
+              >
                 <span>{{ r.ok ? '✓' : '•' }}</span> {{ r.label }}
               </li>
             </ul>
@@ -232,15 +294,27 @@ onBeforeUnmount(() => clearInterval(timer))
             :error="errors.passwordConfirm"
           />
 
-          <UiAlert v-if="error" variant="error">{{ error }}</UiAlert>
+          <UiAlert
+            v-if="error"
+            variant="error"
+          >
+            {{ error }}
+          </UiAlert>
 
-          <UiButton type="submit" size="lg" block :loading="loading">
+          <UiButton
+            type="submit"
+            size="lg"
+            block
+            :loading="loading"
+          >
             {{ loading ? 'Creant el compte…' : 'Crear compte' }}
           </UiButton>
 
           <p class="login-hint">
             Ja tens compte?
-            <RouterLink to="/login">Inicia sessió</RouterLink>
+            <RouterLink to="/login">
+              Inicia sessió
+            </RouterLink>
           </p>
         </form>
       </UiCard>

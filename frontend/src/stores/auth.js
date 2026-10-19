@@ -1,10 +1,13 @@
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { supabase } from '../services/supabase';
 
 export const useAuthStore = defineStore('auth', () => {
     const user = ref(null);
     const session = ref(null);
+
+    // Hi ha una sessió activa (el router ho fa servir per protegir les rutes privades)
+    const isAuthenticated = computed(() => !!session.value);
 
     // Comprova si ja hi ha una sessió activa en carregar la pàgina
     const initAuth = async () => {
@@ -56,5 +59,5 @@ export const useAuthStore = defineStore('auth', () => {
         await logout();
     };
 
-    return { user, session, initAuth, register, resend, login, logout, requestPasswordReset, updatePassword };
+    return { user, session, isAuthenticated, initAuth, register, resend, login, logout, requestPasswordReset, updatePassword };
 });
