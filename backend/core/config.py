@@ -2,7 +2,7 @@ import os
 from urllib.parse import urlparse
 
 from dotenv import load_dotenv
-from supabase import Client, create_client
+from supabase import Client, ClientOptions, create_client
 
 load_dotenv()
 
@@ -31,3 +31,25 @@ if (
 
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+
+def create_user_client(access_token: str) -> Client:
+    """Crea un client de Supabase que actua en nom de l'usuari del token.
+
+    Aquest client envia el JWT del usuari per tal que el RLS funcioni correctament.
+
+    Args:
+        access_token: JWT de l'usuari autenticat.
+
+    Returns:
+        Client de Supabase amb el JWT de l'usuari.
+    """
+    return create_client(
+        SUPABASE_URL,
+        SUPABASE_KEY,
+        options=ClientOptions(
+            headers={"Authorization": f"Bearer {access_token}"},
+            auto_refresh_token=False,
+            persist_session=False,
+        ),
+    )

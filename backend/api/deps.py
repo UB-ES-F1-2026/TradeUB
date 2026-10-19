@@ -8,8 +8,9 @@ import jwt
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt import ExpiredSignatureError, InvalidTokenError, PyJWKClient, PyJWKClientError
+from supabase import Client
 
-from core.config import SUPABASE_URL
+from core.config import SUPABASE_URL, create_user_client
 
 security = HTTPBearer()
 
@@ -61,3 +62,20 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         ) from e
     return claims
+
+
+def get_user_client(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    _claims: dict = Depends(get_current_user),
+) -> Client:
+    """Retorna un client de Supabase lligat al token validat de la petició.
+
+    Args:
+        credentials: credencials Bearer extretes per HTTPBearer.
+        _claims: dependencia d'ordre que garanteix que el token s'ha validat.
+
+    Returns:
+        Client de Supabase amb el JWT de l'usuari.
+    """
+    token = credentials.credentials
+    return create_user_client(token)
