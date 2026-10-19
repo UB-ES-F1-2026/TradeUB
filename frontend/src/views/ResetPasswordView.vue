@@ -34,6 +34,25 @@ const errors = computed(() => ({
       : '',
 }))
 
+// Tradueix els errors de Supabase Auth a missatges en català
+function errorMessage(err) {
+  switch (err?.code) {
+    case 'same_password':
+      return "La contrasenya nova ha de ser diferent de l'anterior."
+    case 'weak_password':
+      return 'La contrasenya és massa feble. Tria una altra.'
+    case 'over_request_rate_limit':
+      return 'Massa intents seguits. Espera uns minuts i torna-ho a provar.'
+  }
+  if (err?.name === 'AuthSessionMissingError') {
+    return "L'enllaç de recuperació no és vàlid. Sol·licita'n un de nou."
+  }
+  if (err?.name === 'AuthRetryableFetchError') {
+    return "No s'ha pogut connectar amb el servidor. Comprova la connexió."
+  }
+  return "No s'ha pogut canviar la contrasenya. Torna-ho a provar."
+}
+
 async function handleSubmit() {
   submitted.value = true
   error.value = ''
@@ -44,7 +63,7 @@ async function handleSubmit() {
     await authStore.updatePassword(password.value)
     router.push('/login')
   } catch (err) {
-    error.value = err.message
+    error.value = errorMessage(err)
   } finally {
     loading.value = false
   }

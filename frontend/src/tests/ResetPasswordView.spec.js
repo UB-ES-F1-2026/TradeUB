@@ -63,4 +63,30 @@ describe('ResetPasswordView', () => {
     expect(supabase.auth.signOut).toHaveBeenCalled()
     expect(push).toHaveBeenCalledWith('/login')
   })
+
+  it("mostra l'error de Supabase traduït al català", async () => {
+    supabase.auth.updateUser.mockResolvedValue({
+      error: { code: 'same_password', message: 'New password should be different from the old password.' },
+    })
+    const wrapper = mountView()
+    const [pass, confirm] = wrapper.findAll('input')
+    await pass.setValue('abcdefg1')
+    await confirm.setValue('abcdefg1')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    expect(wrapper.text()).toContain("La contrasenya nova ha de ser diferent de l'anterior.")
+    expect(wrapper.text()).not.toContain('New password')
+    expect(push).not.toHaveBeenCalled()
+  })
+
+  it("mostra un missatge genèric si l'error és desconegut", async () => {
+    supabase.auth.updateUser.mockResolvedValue({ error: { message: 'Something went wrong' } })
+    const wrapper = mountView()
+    const [pass, confirm] = wrapper.findAll('input')
+    await pass.setValue('abcdefg1')
+    await confirm.setValue('abcdefg1')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    expect(wrapper.text()).toContain("No s'ha pogut canviar la contrasenya. Torna-ho a provar.")
+  })
 })

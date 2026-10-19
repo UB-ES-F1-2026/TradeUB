@@ -47,13 +47,15 @@ const routes = [
         name: 'styleguide',
         component: () => import('../views/StyleguideView.vue')
     },
-    {   path: '/forgot-password', 
+    {   path: '/forgot-password',
         name: 'forgot-password',
-        component: () => import('../views/ForgotPasswordView.vue') 
+        component: () => import('../views/ForgotPasswordView.vue'),
+        meta: { hideNav: true, guestOnly: true }
     },
-    {   path: '/reset-password', 
+    {   path: '/reset-password',
         name: 'reset-password',
-        component: () => import('../views/ResetPasswordView.vue') 
+        component: () => import('../views/ResetPasswordView.vue'),
+        meta: { hideNav: true }
     }
 
 ]
