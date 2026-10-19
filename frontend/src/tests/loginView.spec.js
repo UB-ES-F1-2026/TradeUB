@@ -1,8 +1,11 @@
-// @vitest-environment happy-dom
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createRouter, createMemoryHistory } from 'vue-router'
+
+vi.mock('../components/ui/UiLogo.vue', () => ({
+  default: { template: '<div />' },
+}))
 
 // Supabase fals: cap crida de xarxa ni variables d'entorn
 vi.mock('../services/supabase', () => ({
