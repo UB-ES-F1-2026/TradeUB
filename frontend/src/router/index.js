@@ -49,7 +49,7 @@ const routes = [
         path: '/login',
         name: 'login',
         component: () => import('../views/LoginView.vue'),
-        meta: { guestOnly: true }
+        meta: { hideNav: true, guestOnly: true }
     },
     {
         path: '/register',
