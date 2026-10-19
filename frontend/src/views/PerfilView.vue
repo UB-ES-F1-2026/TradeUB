@@ -146,7 +146,7 @@ async function handleLogout() {
     <UiCard class="page__card">
       <div class="page__settings">
         <div>
-          <h2 class="page__section-title">Ajustes</h2>
+          <h2 class="page__section-title">Configuració</h2>
           <p class="page__muted">Seguretat, aparença i més</p>
         </div>
         <UiBadge variant="neutral">Pròximament</UiBadge>
