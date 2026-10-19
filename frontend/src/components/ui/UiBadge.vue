@@ -5,7 +5,10 @@ defineProps({
 </script>
 
 <template>
-  <span class="ui-badge tabular" :class="`ui-badge--${variant}`"><slot /></span>
+  <span
+    class="ui-badge tabular"
+    :class="`ui-badge--${variant}`"
+  ><slot /></span>
 </template>
 
 <style scoped>

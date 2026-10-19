@@ -5,11 +5,12 @@ amb la clau pública publicada al JWKS del projecte (ES256).
 """
 
 import jwt
-from core.config import SUPABASE_URL, create_user_client
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt import ExpiredSignatureError, InvalidTokenError, PyJWKClient, PyJWKClientError
 from supabase import Client
+
+from core.config import SUPABASE_URL, create_user_client
 
 security = HTTPBearer()
 

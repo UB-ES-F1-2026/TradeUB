@@ -22,13 +22,28 @@ const groups = [
     </header>
 
     <section class="sg__section">
-      <p class="eyebrow">01</p>
+      <p class="eyebrow">
+        01
+      </p>
       <h2>Colors</h2>
-      <div v-for="g in groups" :key="g.name" class="sg__group">
-        <p class="sg__group-name">{{ g.name }}</p>
+      <div
+        v-for="g in groups"
+        :key="g.name"
+        class="sg__group"
+      >
+        <p class="sg__group-name">
+          {{ g.name }}
+        </p>
         <div class="sg__swatches">
-          <div v-for="t in g.tokens" :key="t" class="sg__swatch">
-            <span class="sg__chip" :style="{ background: `var(--tub-${t})` }"></span>
+          <div
+            v-for="t in g.tokens"
+            :key="t"
+            class="sg__swatch"
+          >
+            <span
+              class="sg__chip"
+              :style="{ background: `var(--tub-${t})` }"
+            />
             <code>--tub-{{ t }}</code>
           </div>
         </div>
@@ -36,101 +51,221 @@ const groups = [
     </section>
 
     <section class="sg__section">
-      <p class="eyebrow">02</p>
+      <p class="eyebrow">
+        02
+      </p>
       <h2>Tipografia</h2>
       <div class="sg__type">
-        <h1 class="sg__h1">Comença a invertir amb diners simulats.</h1>
-        <p class="sg__lead">Titulars amb <code>--tub-font-display</code>, cos amb <code>--tub-font</code>, preus amb <code>.tabular</code>.</p>
-        <p class="tabular sg__num">10.482,35 € <UiBadge variant="success">+4,82 %</UiBadge></p>
+        <h1 class="sg__h1">
+          Comença a invertir amb diners simulats.
+        </h1>
+        <p class="sg__lead">
+          Titulars amb <code>--tub-font-display</code>, cos amb <code>--tub-font</code>, preus amb <code>.tabular</code>.
+        </p>
+        <p class="tabular sg__num">
+          10.482,35 € <UiBadge variant="success">
+            +4,82 %
+          </UiBadge>
+        </p>
       </div>
     </section>
 
     <section class="sg__section">
-      <p class="eyebrow">03</p>
+      <p class="eyebrow">
+        03
+      </p>
       <h2>Botons</h2>
       <div class="sg__row">
         <UiButton>Primary</UiButton>
-        <UiButton variant="secondary">Secondary</UiButton>
-        <UiButton variant="ghost">Ghost</UiButton>
-        <UiButton loading>Carregant</UiButton>
-        <UiButton disabled>Disabled</UiButton>
+        <UiButton variant="secondary">
+          Secondary
+        </UiButton>
+        <UiButton variant="ghost">
+          Ghost
+        </UiButton>
+        <UiButton loading>
+          Carregant
+        </UiButton>
+        <UiButton disabled>
+          Disabled
+        </UiButton>
       </div>
       <div class="sg__row">
-        <UiButton size="sm">Petit</UiButton>
-        <UiButton size="md">Mitjà</UiButton>
-        <UiButton size="lg">Gran</UiButton>
+        <UiButton size="sm">
+          Petit
+        </UiButton>
+        <UiButton size="md">
+          Mitjà
+        </UiButton>
+        <UiButton size="lg">
+          Gran
+        </UiButton>
       </div>
     </section>
 
     <section class="sg__section">
-      <p class="eyebrow">04</p>
+      <p class="eyebrow">
+        04
+      </p>
       <h2>Badges</h2>
       <div class="sg__row">
         <UiBadge>Neutral</UiBadge>
-        <UiBadge variant="success">+4,82 %</UiBadge>
-        <UiBadge variant="danger">−1,20 %</UiBadge>
-        <UiBadge variant="info">ETF</UiBadge>
+        <UiBadge variant="success">
+          +4,82 %
+        </UiBadge>
+        <UiBadge variant="danger">
+          −1,20 %
+        </UiBadge>
+        <UiBadge variant="info">
+          ETF
+        </UiBadge>
       </div>
     </section>
 
     <section class="sg__section">
-      <p class="eyebrow">05</p>
+      <p class="eyebrow">
+        05
+      </p>
       <h2>Formulari</h2>
       <UiCard class="sg__card">
-        <h3 class="sg__card-title">Crea el teu compte</h3>
-        <p class="sg__card-sub">Només et portarà un minut.</p>
-        <UiInput v-model="text" label="Correu electrònic" type="email" placeholder="nom@exemple.com" hint="Fes servir el correu de la UB." />
-        <UiInput v-model="bad" label="Contrasenya" error="La contrasenya no compleix els requisits.">
-          <template #trailing><UiButton variant="ghost" size="sm">Mostrar</UiButton></template>
+        <h3 class="sg__card-title">
+          Crea el teu compte
+        </h3>
+        <p class="sg__card-sub">
+          Només et portarà un minut.
+        </p>
+        <UiInput
+          v-model="text"
+          label="Correu electrònic"
+          type="email"
+          placeholder="nom@exemple.com"
+          hint="Fes servir el correu de la UB."
+        />
+        <UiInput
+          v-model="bad"
+          label="Contrasenya"
+          error="La contrasenya no compleix els requisits."
+        >
+          <template #trailing>
+            <UiButton
+              variant="ghost"
+              size="sm"
+            >
+              Mostrar
+            </UiButton>
+          </template>
         </UiInput>
-        <UiButton type="submit" size="lg" block>Crear compte</UiButton>
+        <UiButton
+          type="submit"
+          size="lg"
+          block
+        >
+          Crear compte
+        </UiButton>
       </UiCard>
     </section>
 
     <section class="sg__section">
-      <p class="eyebrow">06</p>
+      <p class="eyebrow">
+        06
+      </p>
       <h2>Alertes</h2>
       <div class="sg__alerts">
-        <UiAlert variant="info">Hem enviat un enllaç de verificació al teu correu.</UiAlert>
-        <UiAlert variant="success">Correu reenviat. Revisa també la carpeta de correu brossa.</UiAlert>
-        <UiAlert variant="warning">La sessió caducarà d'aquí a 5 minuts.</UiAlert>
-        <UiAlert variant="error">Aquest correu ja està registrat.</UiAlert>
+        <UiAlert variant="info">
+          Hem enviat un enllaç de verificació al teu correu.
+        </UiAlert>
+        <UiAlert variant="success">
+          Correu reenviat. Revisa també la carpeta de correu brossa.
+        </UiAlert>
+        <UiAlert variant="warning">
+          La sessió caducarà d'aquí a 5 minuts.
+        </UiAlert>
+        <UiAlert variant="error">
+          Aquest correu ja està registrat.
+        </UiAlert>
       </div>
     </section>
 
     <section class="sg__section">
-      <p class="eyebrow">07</p>
+      <p class="eyebrow">
+        07
+      </p>
       <h2>Panell de marca</h2>
       <div class="sg__brand tub-on-dark">
         <UiLogo />
-        <h3 class="sg__brand-title">Practica amb accions i ETFs<br />sense risc.</h3>
+        <h3 class="sg__brand-title">
+          Practica amb accions i ETFs<br>sense risc.
+        </h3>
         <div class="sg__row">
-          <UiBadge variant="on-dark">+4,82 %</UiBadge>
-          <UiBadge variant="danger">−1,20 %</UiBadge>
+          <UiBadge variant="on-dark">
+            +4,82 %
+          </UiBadge>
+          <UiBadge variant="danger">
+            −1,20 %
+          </UiBadge>
         </div>
-        <p class="sg__brand-lead">Fons <code>--tub-gradient-brand</code>, text <code>--tub-text-on-dark*</code>, cards <code>variant="glass"</code>.</p>
-        <UiCard variant="glass" padding="md" class="sg__glass">
+        <p class="sg__brand-lead">
+          Fons <code>--tub-gradient-brand</code>, text <code>--tub-text-on-dark*</code>, cards <code>variant="glass"</code>.
+        </p>
+        <UiCard
+          variant="glass"
+          padding="md"
+          class="sg__glass"
+        >
           <div class="sg__glass-head">
             <div>
               <span class="sg__glass-label">Cartera simulada</span>
               <strong class="tabular sg__glass-value">10.482,35 €</strong>
             </div>
-            <UiBadge variant="on-dark">+4,82 %</UiBadge>
+            <UiBadge variant="on-dark">
+              +4,82 %
+            </UiBadge>
           </div>
-          <svg viewBox="0 0 300 80" preserveAspectRatio="none" class="sg__chart" aria-hidden="true">
+          <svg
+            viewBox="0 0 300 80"
+            preserveAspectRatio="none"
+            class="sg__chart"
+            aria-hidden="true"
+          >
             <defs>
-              <linearGradient id="sg-fill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#34d399" stop-opacity="0.35" />
-                <stop offset="100%" stop-color="#34d399" stop-opacity="0" />
+              <linearGradient
+                id="sg-fill"
+                x1="0"
+                y1="0"
+                x2="0"
+                y2="1"
+              >
+                <stop
+                  offset="0%"
+                  stop-color="#34d399"
+                  stop-opacity="0.35"
+                />
+                <stop
+                  offset="100%"
+                  stop-color="#34d399"
+                  stop-opacity="0"
+                />
               </linearGradient>
             </defs>
-            <path d="M0 62 L30 56 L60 60 L90 44 L120 48 L150 34 L180 40 L210 24 L240 28 L270 12 L300 16 L300 80 L0 80 Z" fill="url(#sg-fill)" />
-            <path d="M0 62 L30 56 L60 60 L90 44 L120 48 L150 34 L180 40 L210 24 L240 28 L270 12 L300 16" fill="none" stroke="#34d399" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
+            <path
+              d="M0 62 L30 56 L60 60 L90 44 L120 48 L150 34 L180 40 L210 24 L240 28 L270 12 L300 16 L300 80 L0 80 Z"
+              fill="url(#sg-fill)"
+            />
+            <path
+              d="M0 62 L30 56 L60 60 L90 44 L120 48 L150 34 L180 40 L210 24 L240 28 L270 12 L300 16"
+              fill="none"
+              stroke="#34d399"
+              stroke-width="2.5"
+              stroke-linejoin="round"
+              stroke-linecap="round"
+            />
           </svg>
         </UiCard>
         <div class="sg__row">
           <UiButton>Comença ara</UiButton>
-          <UiButton variant="dark">Saber-ne més</UiButton>
+          <UiButton variant="dark">
+            Saber-ne més
+          </UiButton>
         </div>
       </div>
     </section>

@@ -15,8 +15,15 @@ const id = useId()
 </script>
 
 <template>
-  <div class="ui-field" :class="{ 'ui-field--invalid': error }">
-    <label v-if="label" :for="id" class="ui-field__label">{{ label }}</label>
+  <div
+    class="ui-field"
+    :class="{ 'ui-field--invalid': error }"
+  >
+    <label
+      v-if="label"
+      :for="id"
+      class="ui-field__label"
+    >{{ label }}</label>
     <div class="ui-field__wrap">
       <input
         :id="id"
@@ -27,13 +34,22 @@ const id = useId()
         class="ui-field__input"
         :class="{ 'ui-field__input--trailing': $slots.trailing }"
         v-bind="$attrs"
-      />
-      <div v-if="$slots.trailing" class="ui-field__trailing">
+      >
+      <div
+        v-if="$slots.trailing"
+        class="ui-field__trailing"
+      >
         <slot name="trailing" />
       </div>
     </div>
-    <small v-if="error" class="ui-field__error">{{ error }}</small>
-    <small v-else-if="hint" class="ui-field__hint">{{ hint }}</small>
+    <small
+      v-if="error"
+      class="ui-field__error"
+    >{{ error }}</small>
+    <small
+      v-else-if="hint"
+      class="ui-field__hint"
+    >{{ hint }}</small>
     <slot />
   </div>
 </template>
