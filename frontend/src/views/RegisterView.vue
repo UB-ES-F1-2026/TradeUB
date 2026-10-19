@@ -2,6 +2,7 @@
 import { ref, computed, onBeforeUnmount } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { UiButton, UiInput, UiCard, UiAlert, UiBadge, UiLogo } from '../components/ui'
+import { getPasswordRules, isPasswordValid } from '../utils/passwordRules'
 
 const authStore = useAuthStore()
 
@@ -27,11 +28,8 @@ const emailsMatch = computed(
   () => emailConfirm.value.trim().toLowerCase() === normalizedEmail.value
 )
 
-const rules = computed(() => [
-  { label: 'Mínim 8 caràcters', ok: password.value.length >= 8 },
-  { label: 'Almenys un número', ok: /\d/.test(password.value) },
-])
-const passwordValid = computed(() => rules.value.every((r) => r.ok))
+const rules = computed(() => getPasswordRules(password.value))
+const passwordValid = computed(() => isPasswordValid(password.value))
 const passwordsMatch = computed(() => password.value === passwordConfirm.value)
 
 const errors = computed(() => ({
