@@ -46,7 +46,18 @@ const routes = [
         path: '/ui',
         name: 'styleguide',
         component: () => import('../views/StyleguideView.vue')
+    },
+    {   path: '/forgot-password',
+        name: 'forgot-password',
+        component: () => import('../views/ForgotPasswordView.vue'),
+        meta: { hideNav: true, guestOnly: true }
+    },
+    {   path: '/reset-password',
+        name: 'reset-password',
+        component: () => import('../views/ResetPasswordView.vue'),
+        meta: { hideNav: true }
     }
+
 ]
 
 const router = createRouter({
