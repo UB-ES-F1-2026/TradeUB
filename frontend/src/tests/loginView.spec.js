@@ -31,6 +31,7 @@ function makeRouter() {
       { path: '/login', name: 'login', component: LoginView },
       { path: '/register', name: 'register', component: { render: () => null } },
       { path: '/actius', name: 'actius', component: { render: () => null } },
+      { path: '/forgot-password', name: 'forgot-password', component: { render: () => null } },
     ],
   })
 }
@@ -78,6 +79,13 @@ describe('LoginView', () => {
       password: 'contrasenya1',
     })
     expect(router.currentRoute.value.path).toBe('/actius')
+  })
+
+  it('enllaça a la recuperació de contrasenya', async () => {
+    const { wrapper } = await mountLogin()
+
+    const link = wrapper.findAll('a').find((a) => a.text() === 'Has oblidat la contrasenya?')
+    expect(link?.attributes('href')).toBe('/forgot-password')
   })
 
   it('mostra un missatge en català si les credencials són incorrectes', async () => {
