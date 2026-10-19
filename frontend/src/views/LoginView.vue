@@ -76,8 +76,12 @@ async function handleSubmit() {
       <div class="login__brand-inner">
         <UiLogo size="lg" />
         <div class="login__brand-text">
-          <h2 class="login__brand-title">Benvingut de nou.</h2>
-          <p class="login__lead">La teva cartera i els teus actius t'esperen.</p>
+          <h2 class="login__brand-title">
+            Benvingut de nou.
+          </h2>
+          <p class="login__lead">
+            La teva cartera i els teus actius t'esperen.
+          </p>
         </div>
         <ul class="login__perks">
           <li><span class="login__tick">✓</span> Cartera i historial al dia</li>
@@ -93,13 +97,25 @@ async function handleSubmit() {
           <UiLogo />
         </div>
 
-        <form novalidate @submit.prevent="handleSubmit">
+        <form
+          novalidate
+          @submit.prevent="handleSubmit"
+        >
           <header class="login__head">
-            <h1 class="login__title">Inicia sessió</h1>
-            <p class="login__subtitle">Accedeix al teu compte.</p>
+            <h1 class="login__title">
+              Inicia sessió
+            </h1>
+            <p class="login__subtitle">
+              Accedeix al teu compte.
+            </p>
           </header>
 
-          <UiAlert v-if="error" variant="error">{{ error }}</UiAlert>
+          <UiAlert
+            v-if="error"
+            variant="error"
+          >
+            {{ error }}
+          </UiAlert>
 
           <UiInput
             v-model="email"
@@ -129,14 +145,22 @@ async function handleSubmit() {
             </template>
           </UiInput>
 
-          <UiButton type="submit" size="lg" block :loading="loading" class="login__submit">
+          <UiButton
+            type="submit"
+            size="lg"
+            block
+            :loading="loading"
+            class="login__submit"
+          >
             Inicia sessió
           </UiButton>
         </form>
 
         <p class="login__footer">
           No tens compte?
-          <RouterLink :to="{ name: 'register' }">Registra't</RouterLink>
+          <RouterLink :to="{ name: 'register' }">
+            Registra't
+          </RouterLink>
         </p>
       </div>
     </section>

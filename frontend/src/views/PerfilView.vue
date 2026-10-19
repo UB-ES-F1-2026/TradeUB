@@ -69,7 +69,9 @@ async function handleLogout() {
     <header class="page__head">
       <div class="page__head-main">
         <span class="eyebrow">Compte</span>
-        <h1 class="page__title">{{ fullName }}</h1>
+        <h1 class="page__title">
+          {{ fullName }}
+        </h1>
       </div>
       <div class="page__status">
         <UiBadge :variant="verificat ? 'success' : 'neutral'">
@@ -108,7 +110,9 @@ async function handleLogout() {
     </div>
 
     <UiCard class="page__card">
-      <h2 class="page__section-title">Dades personals</h2>
+      <h2 class="page__section-title">
+        Dades personals
+      </h2>
       <dl class="page__data">
         <div
           v-for="row in personalRows"
@@ -122,11 +126,15 @@ async function handleLogout() {
     </UiCard>
 
     <UiCard class="page__card">
-      <h2 class="page__section-title">Compte</h2>
+      <h2 class="page__section-title">
+        Compte
+      </h2>
       <dl class="page__data">
         <div class="page__row">
           <dt>Correu electrònic</dt>
-          <dd class="tabular">{{ email }}</dd>
+          <dd class="tabular">
+            {{ email }}
+          </dd>
         </div>
         <div class="page__row">
           <dt>Compte creat</dt>
@@ -138,7 +146,9 @@ async function handleLogout() {
         </div>
         <div class="page__row">
           <dt>Identificador</dt>
-          <dd class="tabular page__id">{{ userId }}</dd>
+          <dd class="tabular page__id">
+            {{ userId }}
+          </dd>
         </div>
       </dl>
     </UiCard>
@@ -146,18 +156,28 @@ async function handleLogout() {
     <UiCard class="page__card">
       <div class="page__settings">
         <div>
-          <h2 class="page__section-title">Configuració</h2>
-          <p class="page__muted">Seguretat, aparença i més</p>
+          <h2 class="page__section-title">
+            Configuració
+          </h2>
+          <p class="page__muted">
+            Seguretat, aparença i més
+          </p>
         </div>
-        <UiBadge variant="neutral">Pròximament</UiBadge>
+        <UiBadge variant="neutral">
+          Pròximament
+        </UiBadge>
       </div>
     </UiCard>
 
     <UiCard class="page__card">
       <div class="page__session">
         <div>
-          <h2 class="page__section-title">Sessió</h2>
-          <p class="page__muted">Tanca la sessió en aquest dispositiu.</p>
+          <h2 class="page__section-title">
+            Sessió
+          </h2>
+          <p class="page__muted">
+            Tanca la sessió en aquest dispositiu.
+          </p>
         </div>
         <UiButton
           variant="secondary"
