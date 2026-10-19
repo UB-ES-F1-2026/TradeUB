@@ -29,6 +29,17 @@ python -m ruff check --fix .
 pytest
 ```
 
+### API de doble factor (2FA)
+
+La configuració de 2FA utilitza el MFA TOTP de Supabase:
+
+1. Amb el JWT de la sessió, el frontend fa `POST /api/v1/users/2fa/enroll`.
+2. El backend retorna `factor_id` i una URI `otpauth://`. El frontend la converteix en un codi QR perquè l'usuari la pugui escanejar amb la seva aplicació d'autenticació.
+3. El frontend envia el codi de sis dígits i `factor_id` a `POST /api/v1/users/2fa/verify`.
+4. Si el codi no és correcte, l'API retorna `400` amb el missatge `El codi d'autenticació és incorrecte`.
+
+El JWT s'ha d'enviar com `Authorization: Bearer <token>`. Supabase conserva el factor i el secret TOTP; el backend no els desa localment.
+
 
 ## Frontend (Vue 3 / Vite)
 
@@ -80,3 +91,22 @@ Cal comprovar el següent:
 * Els tests del frontend passen amb `npm test`.
 
 **Important:** Cal executar les ordres de cada secció dins del directori corresponent (`/backend` o `/frontend`).
+
+## Treball amb agents de codi
+
+Les instruccions i plantilles del projecte per treballar amb agents de codi són a:
+
+- [`AGENTS.md`](AGENTS.md): normes generals de codi, arquitectura, seguretat i
+  validació.
+- [`.github/copilot-instructions.md`](.github/copilot-instructions.md):
+  instruccions que VS Code aplica al xat i al mode Agent.
+- [`.github/skills/`](.github/skills/): procediments reutilitzables de
+  validació i sistema visual.
+- [`.github/agents/`](.github/agents/): perfils de backend, frontend i revisió.
+- [`docs/agents/`](docs/agents/): especificació de tasques, matriu de
+  delegació, Definition of Done, revisió, seguiment, Sprint Review,
+  retrospectiva, Sprint 0 i registre acumulatiu.
+
+Abans d'acceptar canvis generats per un agent, revisa sempre el diff i executa
+les validacions indicades a `AGENTS.md`. No comparteixis claus d'API ni dades
+reals al repositori o en una petició a un agent.
