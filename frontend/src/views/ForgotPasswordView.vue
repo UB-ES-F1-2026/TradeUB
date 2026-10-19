@@ -41,12 +41,23 @@ async function handleSubmit() {
         <UiAlert variant="success">
           Si el correu existeix al nostre sistema, rebràs un enllaç de recuperació
         </UiAlert>
-        <RouterLink to="/login" class="back">Tornar a iniciar sessió</RouterLink>
+        <RouterLink
+          to="/login"
+          class="back"
+        >
+          Tornar a iniciar sessió
+        </RouterLink>
       </section>
 
-      <form v-else novalidate @submit.prevent="handleSubmit">
+      <form
+        v-else
+        novalidate
+        @submit.prevent="handleSubmit"
+      >
         <h2>Has oblidat la contrasenya?</h2>
-        <p class="muted">Introdueix el teu correu i t'enviarem un enllaç per restablir-la.</p>
+        <p class="muted">
+          Introdueix el teu correu i t'enviarem un enllaç per restablir-la.
+        </p>
 
         <UiInput
           v-model="email"
@@ -57,11 +68,21 @@ async function handleSubmit() {
           :error="emailError"
         />
 
-        <UiButton type="submit" size="lg" block :loading="loading">
+        <UiButton
+          type="submit"
+          size="lg"
+          block
+          :loading="loading"
+        >
           {{ loading ? 'Enviant…' : 'Enviar enllaç' }}
         </UiButton>
 
-        <RouterLink to="/login" class="back">Tornar a iniciar sessió</RouterLink>
+        <RouterLink
+          to="/login"
+          class="back"
+        >
+          Tornar a iniciar sessió
+        </RouterLink>
       </form>
     </UiCard>
   </main>

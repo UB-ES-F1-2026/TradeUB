@@ -78,12 +78,23 @@ async function handleSubmit() {
         <UiAlert variant="error">
           L'enllaç de recuperació ha caducat o ja s'ha utilitzat
         </UiAlert>
-        <RouterLink to="/forgot-password" class="back">Sol·licitar un enllaç nou</RouterLink>
+        <RouterLink
+          to="/forgot-password"
+          class="back"
+        >
+          Sol·licitar un enllaç nou
+        </RouterLink>
       </section>
 
-      <form v-else novalidate @submit.prevent="handleSubmit">
+      <form
+        v-else
+        novalidate
+        @submit.prevent="handleSubmit"
+      >
         <h2>Nova contrasenya</h2>
-        <p class="muted">Tria una contrasenya nova per al teu compte.</p>
+        <p class="muted">
+          Tria una contrasenya nova per al teu compte.
+        </p>
 
         <UiInput
           v-model="password"
@@ -94,12 +105,20 @@ async function handleSubmit() {
           :error="errors.password"
         >
           <template #trailing>
-            <UiButton variant="ghost" size="sm" @click="showPassword = !showPassword">
+            <UiButton
+              variant="ghost"
+              size="sm"
+              @click="showPassword = !showPassword"
+            >
               {{ showPassword ? 'Amagar' : 'Mostrar' }}
             </UiButton>
           </template>
           <ul class="rules">
-            <li v-for="r in rules" :key="r.label" :class="{ ok: r.ok }">
+            <li
+              v-for="r in rules"
+              :key="r.label"
+              :class="{ ok: r.ok }"
+            >
               <span>{{ r.ok ? '✓' : '•' }}</span> {{ r.label }}
             </li>
           </ul>
@@ -114,9 +133,19 @@ async function handleSubmit() {
           :error="errors.passwordConfirm"
         />
 
-        <UiAlert v-if="error" variant="error">{{ error }}</UiAlert>
+        <UiAlert
+          v-if="error"
+          variant="error"
+        >
+          {{ error }}
+        </UiAlert>
 
-        <UiButton type="submit" size="lg" block :loading="loading">
+        <UiButton
+          type="submit"
+          size="lg"
+          block
+          :loading="loading"
+        >
           {{ loading ? 'Desant…' : 'Canviar contrasenya' }}
         </UiButton>
       </form>
