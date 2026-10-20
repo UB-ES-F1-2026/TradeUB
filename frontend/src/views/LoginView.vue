@@ -145,6 +145,12 @@ async function handleSubmit() {
             </template>
           </UiInput>
 
+          <p class="login__forgot">
+            <RouterLink :to="{ name: 'forgot-password' }">
+              Has oblidat la contrasenya?
+            </RouterLink>
+          </p>
+
           <UiButton
             type="submit"
             size="lg"
@@ -241,6 +247,10 @@ async function handleSubmit() {
 }
 .login__subtitle {
   color: var(--tub-text-muted);
+}
+.login__forgot {
+  text-align: right;
+  font-size: var(--tub-text-sm);
 }
 .login__submit {
   margin-top: var(--tub-space-2);
