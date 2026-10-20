@@ -2,6 +2,19 @@
 
 Document auxiliar de la branca `feature/US1.4-2FA-Activacio-Verificacio`. Recull les decisions preses en implementar la verificació en dos passos (TOTP) al frontend i què caldria canviar si al final el backend exposa els endpoints que descriu el README.
 
+## Resum
+
+La configuració i la verificació de TOTP es fan directament amb
+`supabase.auth.mfa` des de l'store d'autenticació del frontend. Supabase
+conserva el factor i el secret TOTP; el backend no els desa ni exposa
+endpoints propis d'enrolament o verificació.
+
+Les rutes protegides del backend validen la signatura del JWT i exigeixen que
+la seva claim `aal` sigui `aal2`. Per tant, el frontend només ha de cridar
+l'API després que `supabase.auth.mfa.challengeAndVerify()` hagi completat el
+segon pas. Una sessió `aal1` rep `403` amb el missatge
+`Cal completar la verificació en dos passos`.
+
 ## Com funciona
 
 1. **Activació** (secció "Verificació en dos passos" del perfil, `components/TwoFactorCard.vue`): `mfa.enroll({ factorType: 'totp' })` retorna un QR (SVG en data URI) i el secret. L'usuari l'escaneja amb una aplicació d'autenticació i confirma el primer codi amb `mfa.challengeAndVerify()`.

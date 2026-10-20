@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api import mfa, users
+from api import users
 
 app = FastAPI(title="TradeUB API")
 
@@ -16,4 +16,3 @@ app.add_middleware(
 
 # Registrem les rutes
 app.include_router(users.router, prefix="/api/v1/users", tags=["Users"])
-app.include_router(mfa.router, prefix="/api/v1/users/2fa", tags=["2FA"])

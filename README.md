@@ -28,17 +28,13 @@ python -m ruff check --fix .
 ```bash
 pytest
 ```
+Si falla: `.\.venv\Scripts\python.exe -m pytest`
 
-### API de doble factor (2FA)
-
-La configuració de 2FA utilitza el MFA TOTP de Supabase:
-
-1. Amb el JWT de la sessió, el frontend fa `POST /api/v1/users/2fa/enroll`.
-2. El backend retorna `factor_id` i una URI `otpauth://`. El frontend la converteix en un codi QR perquè l'usuari la pugui escanejar amb la seva aplicació d'autenticació.
-3. El frontend envia el codi de sis dígits i `factor_id` a `POST /api/v1/users/2fa/verify`.
-4. Si el codi no és correcte, l'API retorna `400` amb el missatge `El codi d'autenticació és incorrecte`.
-
-El JWT s'ha d'enviar com `Authorization: Bearer <token>`. Supabase conserva el factor i el secret TOTP; el backend no els desa localment.
+**Validar manualment, per desplegar el backend**:
+```bash
+uvicorn main:app --reload
+```
+Si falla: `python -m uvicorn main:app --reload`
 
 
 ## Frontend (Vue 3 / Vite)
@@ -78,6 +74,10 @@ npm run build
 npm test
 ```
 
+**Validar manualment, per desplegar el frontend**:
+```bash
+npm run dev
+```
 
 ## Abans de fer `git push`
 
@@ -108,5 +108,4 @@ Les instruccions i plantilles del projecte per treballar amb agents de codi són
   retrospectiva, Sprint 0 i registre acumulatiu.
 
 Abans d'acceptar canvis generats per un agent, revisa sempre el diff i executa
-les validacions indicades a `AGENTS.md`. No comparteixis claus d'API ni dades
-reals al repositori o en una petició a un agent.
+les validacions indicades a `AGENTS.md`. 

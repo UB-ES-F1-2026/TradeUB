@@ -1,7 +1,8 @@
-"""Dependencies d'autenticacio compartides per tots els endpoints protegits.
+"""Dependencies d'autenticació compartides per tots els endpoints protegits.
 
 Valida localment el JWT emès per Supabase Auth verificant-ne la signatura
-amb la clau pública publicada al JWKS del projecte (ES256).
+amb la clau pública publicada al JWKS del projecte (ES256) i exigeix
+autenticació de nivell aal2.
 """
 
 import jwt
@@ -17,21 +18,15 @@ security = HTTPBearer()
 jwks_client = PyJWKClient(f"{SUPABASE_URL}/auth/v1/.well-known/jwks.json")
 
 
-def get_access_token(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-) -> str:
-    """Valida el token i el retorna per a crides autenticades a Supabase."""
-    get_current_user(credentials)
-    return credentials.credentials
-
-
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ) -> dict:
     """Valida el JWT de la capçalera i retorna els claims del token.
 
     Verifica la signatura ES256 amb la clau pública del JWKS de Supabase,
-    i comprova audience, issuer i caducitat.
+    comprova audience, issuer i caducitat, i rebutja sessions que encara
+    estiguin a aal1. El frontend eleva la sessió a aal2 directament amb
+    ``supabase.auth.mfa.challengeAndVerify()`` abans d'accedir a l'API.
 
     Args:
         credentials: credencials Bearer extretes per HTTPBearer.
@@ -41,7 +36,8 @@ def get_current_user(
 
     Raises:
         HTTPException:
-          401 si el token és invàlid o caducat, 503 si no es pot validar amb el JWKS.
+          401 si el token és invàlid o caducat, 403 si falta aal2, i 503 si
+          no es pot validar amb el JWKS.
     """
     token = credentials.credentials
     try:
@@ -69,6 +65,12 @@ def get_current_user(
             detail="Token invàlid",
             headers={"WWW-Authenticate": "Bearer"},
         ) from e
+    if claims.get("aal") != "aal2":
+        raise HTTPException(
+            status_code=403,
+            detail="Cal completar la verificació en dos passos",
+        )
+
     return claims
 
 

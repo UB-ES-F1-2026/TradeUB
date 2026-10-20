@@ -77,4 +77,4 @@ jobs:
         run: npm run build
 
       - name: Executar tests unitaris del frontend
-        run: npm test --if-present
+        run: npm test -- src/tests
