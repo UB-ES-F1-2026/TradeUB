@@ -79,6 +79,20 @@ describe('ResetPasswordView', () => {
     expect(push).not.toHaveBeenCalled()
   })
 
+  it('amb la 2FA activa i sense el codi, explica què cal fer', async () => {
+    supabase.auth.updateUser.mockResolvedValue({
+      error: { code: 'insufficient_aal', message: 'AAL2 session is required to update email or password when MFA is enabled.' },
+    })
+    const wrapper = mountView()
+    const [pass, confirm] = wrapper.findAll('input')
+    await pass.setValue('abcdefg1')
+    await confirm.setValue('abcdefg1')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    expect(wrapper.text()).toContain('Tens activada la verificació en dos passos')
+    expect(push).not.toHaveBeenCalled()
+  })
+
   it("mostra un missatge genèric si l'error és desconegut", async () => {
     supabase.auth.updateUser.mockResolvedValue({ error: { message: 'Something went wrong' } })
     const wrapper = mountView()

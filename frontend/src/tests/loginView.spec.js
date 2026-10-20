@@ -32,6 +32,7 @@ function makeRouter() {
       { path: '/register', name: 'register', component: { render: () => null } },
       { path: '/actius', name: 'actius', component: { render: () => null } },
       { path: '/forgot-password', name: 'forgot-password', component: { render: () => null } },
+      { path: '/mfa', name: 'mfa', component: { render: () => null } },
     ],
   })
 }
@@ -79,6 +80,21 @@ describe('LoginView', () => {
       password: 'contrasenya1',
     })
     expect(router.currentRoute.value.path).toBe('/actius')
+  })
+
+  it("amb la 2FA activa demana el codi abans d'entrar", async () => {
+    // Token aal1 (només contrasenya) d'un usuari amb un factor TOTP verificat
+    const payload = btoa(JSON.stringify({ sub: 'u1', aal: 'aal1' }))
+    const mfaUser = { ...user, factors: [{ id: 'f1', factor_type: 'totp', status: 'verified' }] }
+    const mfaSession = { access_token: `header.${payload}.signatura`, user: mfaUser }
+    supabase.auth.signInWithPassword.mockResolvedValue({ data: { user: mfaUser, session: mfaSession }, error: null })
+    const { wrapper, router } = await mountLogin()
+
+    await fill(wrapper, 'nom@exemple.com', 'contrasenya1')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(router.currentRoute.value.fullPath).toBe('/mfa?redirect=/actius')
   })
 
   it('enllaça a la recuperació de contrasenya', async () => {
