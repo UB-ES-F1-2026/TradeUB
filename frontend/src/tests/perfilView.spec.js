@@ -43,7 +43,8 @@ async function mountPerfil() {
   const router = makeRouter()
   router.push('/perfil')
   await router.isReady()
-  const wrapper = mount(PerfilView, { global: { plugins: [router] } })
+  // La secció de 2FA té els seus propis tests (twoFactorCard.spec.js)
+  const wrapper = mount(PerfilView, { global: { plugins: [router], stubs: { TwoFactorCard: true } } })
   return { wrapper, router }
 }
 

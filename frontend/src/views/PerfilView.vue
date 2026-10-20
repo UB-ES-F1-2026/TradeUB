@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { UiAlert, UiBadge, UiButton, UiCard } from '../components/ui'
+import TwoFactorCard from '../components/TwoFactorCard.vue'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -152,6 +153,8 @@ async function handleLogout() {
         </div>
       </dl>
     </UiCard>
+
+    <TwoFactorCard />
 
     <UiCard class="page__card">
       <div class="page__settings">
