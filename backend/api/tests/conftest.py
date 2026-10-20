@@ -73,7 +73,7 @@ def fake_jwks(monkeypatch, signing_key):
 
 @pytest.fixture
 def make_token(signing_key, fake_jwks):
-    """Fabrica de JWT signats en local, per defecte valids i amb ES256.
+    """Fabrica de JWT signats en local, per defecte valids, aal2 i amb ES256.
 
     Returns:
         Funcio que accepta **claims per sobreescriure els valors per defecte.
@@ -89,6 +89,7 @@ def make_token(signing_key, fake_jwks):
             "sub": "123e4567-e89b-42d3-a456-426614174000",
             "email": "test@example.com",
             "role": "authenticated",
+            "aal": "aal2",
             "aud": "authenticated",
             "iss": f"{SUPABASE_URL}/auth/v1",
             "iat": now,
