@@ -1,0 +1,91 @@
+/* Reset mínim i estils globals. Tot el que és color/mida surt de tokens.css. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--tub-font);
+  color: var(--tub-text);
+  background: var(--tub-bg);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+#app {
+  width: 100%;
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-family: var(--tub-font-display);
+  line-height: 1.15;
+  font-weight: var(--tub-display-weight);
+  letter-spacing: var(--tub-tracking-tight);
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--tub-primary-hover);
+  font-weight: 600;
+  text-decoration: none;
+  transition: color var(--tub-duration) var(--tub-ease);
+}
+a:hover {
+  color: var(--tub-primary);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  letter-spacing: inherit;
+}
+
+::selection {
+  background: var(--tub-selection);
+}
+
+/* Números alineats (preus, percentatges) */
+.tabular {
+  font-family: var(--tub-font-numeric);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Etiqueta petita en majúscules (seccions, metadades) */
+.eyebrow {
+  font-size: var(--tub-text-xs);
+  font-weight: 600;
+  letter-spacing: var(--tub-tracking-wide);
+  text-transform: uppercase;
+  color: var(--tub-text-muted);
+}
+
+/* Context "sobre fons fosc" (panells de marca): text clar i, si cal, primari invertit */
+.tub-on-dark {
+  color: var(--tub-text-on-dark);
+}
+
+/* UiLogo: variant segons context (no pot anar al scoped del component) */
+.tub-on-dark .ui-logo .ui-logo__img--light {
+  display: none;
+}
+.tub-on-dark .ui-logo .ui-logo__img--dark {
+  display: block;
+}
