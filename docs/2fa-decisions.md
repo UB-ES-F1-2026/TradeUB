@@ -9,11 +9,11 @@ La configuració i la verificació de TOTP es fan directament amb
 conserva el factor i el secret TOTP; el backend no els desa ni exposa
 endpoints propis d'enrolament o verificació.
 
-Les rutes protegides del backend validen la signatura del JWT i exigeixen que
-la seva claim `aal` sigui `aal2`. Per tant, el frontend només ha de cridar
-l'API després que `supabase.auth.mfa.challengeAndVerify()` hagi completat el
-segon pas. Una sessió `aal1` rep `403` amb el missatge
-`Cal completar la verificació en dos passos`.
+Les rutes protegides del backend validen la signatura del JWT. Si l'usuari té
+un factor MFA verificat, exigeixen que la claim `aal` sigui `aal2`; un usuari
+que encara estigui a `aal1` rep `403` amb el missatge
+`Cal completar la verificació en dos passos`. Els usuaris sense MFA activa
+poden accedir amb una sessió `aal1`.
 
 ## Com funciona
 
