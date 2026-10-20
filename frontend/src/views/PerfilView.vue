@@ -204,7 +204,8 @@ async function handleLogout() {
 .page {
   display: grid;
   gap: var(--tub-space-5);
-  max-width: 720px;
+  width: min(100%, 960px);
+  margin-inline: auto;
   padding: var(--tub-space-6) var(--tub-space-5);
 }
 .page__head {

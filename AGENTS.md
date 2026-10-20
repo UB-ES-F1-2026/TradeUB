@@ -16,10 +16,10 @@ TradeUB és una còpia reduïda, amb finalitats acadèmiques, de l'experiència 
   - Per a cada tasca concreta, crear una branca filla a partir de la branca
     de la User Story amb el format
     `feature/US<numero>-<explicacio-tasca-concreta>`.
-  - Quan la tasca estigui acabada, fusionar la branca de la tasca a la branca
-    de la User Story corresponent.
+  - Quan la tasca estigui acabada, obrir una Pull Request de la branca
+    `feature/US<numero>-<explicacio-tasca-concreta>` cap a `feature/US<numero>`. Anomenada `Feature/us1.1 <titol-tasca>` per exemple.
   - Quan la User Story estigui completada, obrir una Pull Request de la branca
-    `feature/US<numero>` cap a `develop`.
+    `feature/US<numero>` cap a `develop`. Anomenada `US1.1 <titol-user-story>` per exemple.
 - Els noms de les explicacions de tasca a les branques han de ser breus, en
   minúscules i separats per guions.
 - Els commits han de tenir una descripció breu i clara en anglès, en imperatiu.
