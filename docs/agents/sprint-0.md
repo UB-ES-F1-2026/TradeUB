@@ -6,8 +6,8 @@
 
 ## Eines triades per rol
 
-- Backend: GitHub Copilot Chat/Agent a VS Code
-- Frontend: GitHub Copilot Chat/Agent a VS Code
+- Backend: GitHub Copilot Chat/Agent i Claude a VS Code
+- Frontend: GitHub Copilot Chat/Agent i Claude a VS Code
 - QA: GitHub Copilot en mode Ask/Agent amb revisió humana
 - DevOps: GitHub Copilot en mode Ask/Agent amb revisió humana
 

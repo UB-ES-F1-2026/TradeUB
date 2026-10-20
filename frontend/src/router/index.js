@@ -4,6 +4,8 @@ import RegisterView from '../views/RegisterView.vue'
 
 // meta.requiresAuth: ruta privada, cal sessió
 // meta.guestOnly: només sense sessió (login, registre)
+// Amb la 2FA activa i la sessió encara a aal1, només es pot anar a /mfa
+// meta.requiresAal2: amb la 2FA activa, cal el codi abans d'entrar (Supabase no deixa canviar la contrasenya amb aal1)
 const routes = [
     {
         path: '/',
@@ -70,6 +72,13 @@ const routes = [
     {   path: '/reset-password',
         name: 'reset-password',
         component: () => import('../views/ResetPasswordView.vue'),
+        meta: { hideNav: true, requiresAal2: true }
+    },
+    {
+        // Segon pas de l'inici de sessió quan l'usuari té la 2FA activa
+        path: '/mfa',
+        name: 'mfa',
+        component: () => import('../views/MfaVerifyView.vue'),
         meta: { hideNav: true }
     }
 
@@ -84,9 +93,22 @@ const router = createRouter({
 router.beforeEach((to) => {
     const authStore = useAuthStore()
 
+    if (to.name === 'mfa') {
+        if (!authStore.isAuthenticated) return { name: 'login' }
+        // Sense segon pas pendent, /mfa no té sentit
+        if (!authStore.needsMfa) return { path: '/actius' }
+        return
+    }
+
     if (to.meta.requiresAuth && !authStore.isAuthenticated) {
         // Guardem on volia anar per tornar-hi després del login
         return { name: 'login', query: { redirect: to.fullPath } }
+    }
+
+    if (authStore.needsMfa && (to.meta.requiresAuth || to.meta.requiresAal2 || to.meta.guestOnly)) {
+        // La ruta es recorda per tornar-hi després del codi; des de /login es manté el seu redirect
+        const redirect = to.meta.guestOnly ? to.query.redirect : to.fullPath
+        return { name: 'mfa', query: redirect ? { redirect } : {} }
     }
 
     if (to.meta.guestOnly && authStore.isAuthenticated) {

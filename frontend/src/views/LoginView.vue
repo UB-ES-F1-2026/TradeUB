@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { safeRedirect } from '../utils/redirect'
 import { UiAlert, UiButton, UiInput, UiLogo } from '../components/ui'
 
 const authStore = useAuthStore()
@@ -44,13 +45,6 @@ function errorMessage(err) {
   return "No s'ha pogut iniciar sessió. Torna-ho a provar."
 }
 
-// Només acceptem rutes internes com a destí (evita redireccions a webs externes)
-function redirectTarget() {
-  const redirect = route.query.redirect
-  if (typeof redirect === 'string' && /^\/(?![/\\])/.test(redirect)) return redirect
-  return { path: '/actius' }
-}
-
 async function handleSubmit() {
   submitted.value = true
   error.value = ''
@@ -59,8 +53,10 @@ async function handleSubmit() {
   loading.value = true
   try {
     await authStore.login(normalizedEmail.value, password.value)
-    // replace: el botó "enrere" no torna al formulari de login
-    await router.replace(redirectTarget())
+    const target = safeRedirect(route.query.redirect)
+    // replace: el botó "enrere" no torna al formulari de login.
+    // Amb la 2FA activa, abans cal el codi: /mfa portarà després a la destinació
+    await router.replace(authStore.needsMfa ? { name: 'mfa', query: { redirect: target } } : target)
   } catch (err) {
     error.value = errorMessage(err)
   } finally {
