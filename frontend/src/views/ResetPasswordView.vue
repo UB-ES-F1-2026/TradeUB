@@ -43,6 +43,8 @@ function errorMessage(err) {
       return 'La contrasenya és massa feble. Tria una altra.'
     case 'over_request_rate_limit':
       return 'Massa intents seguits. Espera uns minuts i torna-ho a provar.'
+    case 'insufficient_aal':
+      return "Tens activada la verificació en dos passos: torna a obrir l'enllaç del correu i introdueix el codi."
   }
   if (err?.name === 'AuthSessionMissingError') {
     return "L'enllaç de recuperació no és vàlid. Sol·licita'n un de nou."
