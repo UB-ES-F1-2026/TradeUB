@@ -37,4 +37,22 @@ describe('OnboardingView', () => {
     expect(cards[1].text()).toContain('Pendent')
     expect(cards[1].classes()).not.toContain('onboarding__step--done')
   })
+
+  it('omple la barra de progrés segons els passos completats', () => {
+    const wrapper = mountWith({ 'dades-personals': STEP_STATUS.COMPLETED })
+
+    expect(wrapper.find('[data-test="progress-value"]').text()).toBe('33 %')
+    expect(wrapper.find('[role="progressbar"]').attributes('aria-valuenow')).toBe('33')
+    expect(wrapper.find('.onboarding__bar-fill').attributes('style')).toContain('width: 33%')
+  })
+
+  it('amb tots els passos fets la barra arriba al 100 %', () => {
+    const wrapper = mountWith({
+      'dades-personals': STEP_STATUS.COMPLETED,
+      'questionari-inversor': STEP_STATUS.COMPLETED,
+      'verificacio-identitat': STEP_STATUS.COMPLETED,
+    })
+
+    expect(wrapper.find('[data-test="progress-value"]').text()).toBe('100 %')
+  })
 })

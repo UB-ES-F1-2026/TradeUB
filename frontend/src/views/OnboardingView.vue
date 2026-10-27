@@ -24,6 +24,29 @@ const isCompleted = (step) => step.status === STEP_STATUS.COMPLETED
           </p>
         </header>
 
+        <div class="onboarding__progress">
+          <div class="onboarding__progress-label">
+            <span>Progrés</span>
+            <strong
+              class="tabular"
+              data-test="progress-value"
+            >{{ onboarding.progress }} %</strong>
+          </div>
+          <div
+            class="onboarding__bar"
+            role="progressbar"
+            aria-label="Progrés de l'onboarding"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            :aria-valuenow="onboarding.progress"
+          >
+            <div
+              class="onboarding__bar-fill"
+              :style="{ width: `${onboarding.progress}%` }"
+            />
+          </div>
+        </div>
+
         <ol class="onboarding__steps">
           <li
             v-for="(step, index) in onboarding.steps"
@@ -87,6 +110,30 @@ const isCompleted = (step) => step.status === STEP_STATUS.COMPLETED
 .onboarding__subtitle {
   color: var(--tub-text-muted);
   line-height: 1.5;
+}
+
+/* ---------- Barra de progrés ---------- */
+.onboarding__progress {
+  display: grid;
+  gap: var(--tub-space-2);
+}
+.onboarding__progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--tub-text-sm);
+  color: var(--tub-text-2);
+}
+.onboarding__bar {
+  height: 8px;
+  border-radius: var(--tub-radius-pill);
+  background: var(--tub-surface-2);
+  overflow: hidden;
+}
+.onboarding__bar-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--tub-gradient-primary);
+  transition: width var(--tub-duration) var(--tub-ease);
 }
 
 /* ---------- Targetes dels passos ---------- */

@@ -36,6 +36,24 @@ describe('store de l\'onboarding', () => {
     expect(useOnboardingStore().getStep('dades-personals').status).toBe(STEP_STATUS.PENDING)
   })
 
+  it('calcula el progrés i el següent pas pendent', () => {
+    loginWith({ 'dades-personals': STEP_STATUS.COMPLETED })
+    const store = useOnboardingStore()
+
+    expect(store.progress).toBe(33)
+    expect(store.nextStep.id).toBe('questionari-inversor')
+    expect(store.isComplete).toBe(false)
+  })
+
+  it('està complet quan no queda cap pas pendent', () => {
+    loginWith(Object.fromEntries(ONBOARDING_STEPS.map((s) => [s.id, STEP_STATUS.COMPLETED])))
+    const store = useOnboardingStore()
+
+    expect(store.progress).toBe(100)
+    expect(store.nextStep).toBeNull()
+    expect(store.isComplete).toBe(true)
+  })
+
   it('retorna null per a un pas que no existeix', () => {
     loginWith(null)
     expect(useOnboardingStore().getStep('no-existeix')).toBeNull()

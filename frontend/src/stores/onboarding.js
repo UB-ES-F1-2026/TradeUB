@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { computed } from 'vue';
 import { useAuthStore } from './auth';
-import { STEP_STATUS } from '../utils/onboarding';
+import { STEP_STATUS, firstPendingStep, progressPercent } from '../utils/onboarding';
 
 // Passos de l'onboarding en ordre: cadascun correspon a una user story (US2.2, US2.3 i US2.4)
 export const ONBOARDING_STEPS = [
@@ -35,7 +35,11 @@ export const useOnboardingStore = defineStore('onboarding', () => {
         }))
     );
 
+    const progress = computed(() => progressPercent(steps.value));
+    const nextStep = computed(() => firstPendingStep(steps.value));
+    const isComplete = computed(() => nextStep.value === null);
+
     const getStep = (id) => steps.value.find((s) => s.id === id) ?? null;
 
-    return { steps, getStep };
+    return { steps, progress, nextStep, isComplete, getStep };
 });
