@@ -31,6 +31,7 @@ export const useOnboardingStore = defineStore('onboarding', () => {
     const steps = computed(() =>
         ONBOARDING_STEPS.map((step) => ({
             ...step,
+            route: { name: 'onboarding-step', params: { step: step.id } },
             status: saved.value[step.id] === STEP_STATUS.COMPLETED ? STEP_STATUS.COMPLETED : STEP_STATUS.PENDING,
         }))
     );

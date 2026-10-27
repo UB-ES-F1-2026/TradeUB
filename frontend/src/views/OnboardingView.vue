@@ -1,11 +1,24 @@
 <script setup>
+import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useOnboardingStore } from '../stores/onboarding'
 import { STEP_STATUS } from '../utils/onboarding'
-import { UiBadge, UiCard, UiLogo } from '../components/ui'
+import { UiBadge, UiButton, UiCard, UiLogo } from '../components/ui'
 
 const onboarding = useOnboardingStore()
+const router = useRouter()
 
 const isCompleted = (step) => step.status === STEP_STATUS.COMPLETED
+
+const launchLabel = computed(() => {
+  if (onboarding.isComplete) return "Entra a l'app"
+  return onboarding.progress > 0 ? 'Continua' : 'Comença'
+})
+
+// Porta al primer pas pendent; si ja estan tots fets, a l'app
+function launch() {
+  router.push(onboarding.nextStep?.route ?? { name: 'actius' })
+}
 </script>
 
 <template>
@@ -72,6 +85,15 @@ const isCompleted = (step) => step.status === STEP_STATUS.COMPLETED
             </UiBadge>
           </li>
         </ol>
+
+        <UiButton
+          size="lg"
+          block
+          data-test="launch"
+          @click="launch"
+        >
+          {{ launchLabel }}
+        </UiButton>
       </UiCard>
     </div>
   </div>

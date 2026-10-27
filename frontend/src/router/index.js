@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { useOnboardingStore } from '../stores/onboarding'
 import RegisterView from '../views/RegisterView.vue'
 
 // meta.requiresAuth: ruta privada, cal sessió
@@ -53,6 +54,16 @@ const routes = [
         name: 'onboarding',
         component: () => import('../views/OnboardingView.vue'),
         meta: { requiresAuth: true, hideNav: true }
+    },
+    {
+        path: '/onboarding/:step',
+        name: 'onboarding-step',
+        component: () => import('../views/OnboardingStepView.vue'),
+        meta: { requiresAuth: true, hideNav: true },
+        // Un pas que no existeix torna a la pantalla de benvinguda
+        beforeEnter: (to) => {
+            if (!useOnboardingStore().getStep(to.params.step)) return { name: 'onboarding' }
+        }
     },
     {
         path: '/login',
