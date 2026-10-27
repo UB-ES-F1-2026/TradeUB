@@ -94,6 +94,11 @@ describe('OnboardingView', () => {
     expect(wrapper.router.currentRoute.value.fullPath).toBe('/onboarding/questionari-inversor')
   })
 
+  it('es pot deixar per més tard i anar a l\'app', async () => {
+    const later = mountWith().findAll('a').find((a) => a.text() === 'Ho faré més tard')
+    expect(later.attributes('href')).toBe('/actius')
+  })
+
   it("amb tots els passos fets porta a l'app", async () => {
     const wrapper = mountWith(allCompleted)
 

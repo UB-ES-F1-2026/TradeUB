@@ -94,6 +94,15 @@ function launch() {
         >
           {{ launchLabel }}
         </UiButton>
+
+        <!-- La pantalla no té barra de navegació: sempre es pot sortir cap a l'app -->
+        <RouterLink
+          v-if="!onboarding.isComplete"
+          :to="{ name: 'actius' }"
+          class="onboarding__later"
+        >
+          Ho faré més tard
+        </RouterLink>
       </UiCard>
     </div>
   </div>
@@ -210,6 +219,11 @@ function launch() {
   color: var(--tub-text-muted);
   font-size: var(--tub-text-sm);
   line-height: 1.45;
+}
+
+.onboarding__later {
+  justify-self: center;
+  font-size: var(--tub-text-sm);
 }
 
 @media (max-width: 900px) {
