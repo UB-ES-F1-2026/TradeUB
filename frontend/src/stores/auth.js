@@ -90,6 +90,14 @@ export const useAuthStore = defineStore('auth', () => {
         await logout();
     };
 
+    // Desa claus a user_metadata de Supabase (Supabase les fusiona amb les que ja hi ha) i actualitza l'usuari local
+    const updateUserMetadata = async (metadata) => {
+        const { data, error } = await supabase.auth.updateUser({ data: metadata });
+        if (error) throw error;
+        user.value = data.user;
+        if (session.value) session.value = { ...session.value, user: data.user };
+    };
+
     // --- Verificació en dos passos (TOTP). Supabase desa el factor i el secret, aquí no es guarda res ---
 
     // Factor TOTP verificat de l'usuari, o null si no té la 2FA activa
@@ -143,7 +151,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     return {
         user, session, isAuthenticated, aal, needsMfa,
-        initAuth, register, resend, login, logout, requestPasswordReset, updatePassword,
+        initAuth, register, resend, login, logout, requestPasswordReset, updatePassword, updateUserMetadata,
         getTotpFactor, enrollTotp, verifyTotp, verifyMfaLogin, unenrollTotp,
     };
 });

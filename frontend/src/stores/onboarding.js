@@ -41,5 +41,13 @@ export const useOnboardingStore = defineStore('onboarding', () => {
 
     const getStep = (id) => steps.value.find((s) => s.id === id) ?? null;
 
-    return { steps, progress, nextStep, isComplete, getStep };
+    // Marca un pas com a completat i ho desa al núvol perquè es mantingui en recarregar o canviar de dispositiu
+    const completeStep = async (id) => {
+        if (!getStep(id)) return;
+        await authStore.updateUserMetadata({
+            onboarding: { ...saved.value, [id]: STEP_STATUS.COMPLETED },
+        });
+    };
+
+    return { steps, progress, nextStep, isComplete, getStep, completeStep };
 });
