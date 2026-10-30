@@ -1,9 +1,14 @@
 <script setup>
 import { ref } from 'vue'
-import { UiButton, UiInput, UiCard, UiAlert, UiBadge, UiLogo } from '../components/ui'
+import { UiButton, UiInput, UiSelect, UiCard, UiAlert, UiBadge, UiLogo } from '../components/ui'
 
 const text = ref('')
 const bad = ref('hola')
+const country = ref('')
+const countries = [
+  { value: 'ES', label: 'Espanya' },
+  { value: 'PT', label: 'Portugal' },
+]
 const groups = [
   { name: 'Marca', tokens: ['navy', 'navy-2', 'navy-3', 'green', 'green-dark', 'green-light', 'green-soft'] },
   { name: 'Text i superfícies', tokens: ['text', 'text-2', 'text-muted', 'bg', 'surface', 'surface-2', 'border'] },
@@ -155,6 +160,12 @@ const groups = [
             </UiButton>
           </template>
         </UiInput>
+        <UiSelect
+          v-model="country"
+          label="País de residència fiscal"
+          placeholder="Selecciona un país"
+          :options="countries"
+        />
         <UiButton
           type="submit"
           size="lg"
