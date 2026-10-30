@@ -60,6 +60,13 @@ const routes = [
         meta: { hideNav: true, guestOnly: true }
     },
     {
+        // Pas 1 de l'onboarding: dades personals i residència fiscal
+        path: '/onboarding/dades-personals',
+        name: 'onboarding-dades-personals',
+        component: () => import('../views/DadesPersonalsView.vue'),
+        meta: { requiresAuth: true, hideNav: true }
+    },
+    {
         path: '/ui',
         name: 'styleguide',
         component: () => import('../views/StyleguideView.vue')
