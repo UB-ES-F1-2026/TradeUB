@@ -48,6 +48,13 @@ const routes = [
         meta: { requiresAuth: true }
     },
     {
+        // Qüestionari d'experiència inversora (pas de l'onboarding)
+        path: '/questionari',
+        name: 'questionari',
+        component: () => import('../views/QuestionnaireView.vue'),
+        meta: { requiresAuth: true, hideNav: true }
+    },
+    {
         path: '/login',
         name: 'login',
         component: () => import('../views/LoginView.vue'),
