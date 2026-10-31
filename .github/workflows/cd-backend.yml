@@ -26,6 +26,6 @@ jobs:
       - name: Desplegar en Azure App Service
         uses: azure/webapps-deploy@v2
         with:
-          app-name: 'apptradeub'
+          app-name: 'apptradeub-ceaje7dhhrdzgmc0'
           images: '${{ secrets.REGISTRY_LOGIN_SERVER }}/backend:${{ github.sha }}'
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
