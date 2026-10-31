@@ -48,6 +48,13 @@ const routes = [
         meta: { requiresAuth: true }
     },
     {
+        // Pantalla de benvinguda de l'onboarding amb els passos per completar
+        path: '/onboarding',
+        name: 'onboarding',
+        component: () => import('../views/OnboardingView.vue'),
+        meta: { requiresAuth: true, hideNav: true }
+    },
+    {
         path: '/login',
         name: 'login',
         component: () => import('../views/LoginView.vue'),
