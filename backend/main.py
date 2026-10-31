@@ -19,9 +19,3 @@ app.add_middleware(
 
 # Registrem les rutes
 app.include_router(users.router, prefix="/api/v1/users", tags=["Users"])
-
-# Puntu d'entrada per arrancar Uvicorn
-if __name__ == "__main__":
-    # Azure passa el port en WEBSITES_PORT o PORT; si no existeixen, usa el 8000
-    port = int(os.getenv("WEBSITES_PORT", os.getenv("PORT", "8000")))
-    uvicorn.run("main:app", host="0.0.0.0", port=port)
