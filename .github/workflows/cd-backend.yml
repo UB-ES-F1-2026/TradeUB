@@ -2,7 +2,7 @@ name: CI/CD Backend Docker a Azure
 
 on:
   push:
-    branches: ["main", "develop"]
+    branches: ["develop"]
 
 jobs:
   build-and-deploy:
