@@ -1,12 +1,19 @@
 <script setup>
 import { ref, computed, onBeforeUnmount } from 'vue'
 import { useAuthStore } from '../stores/auth'
-import { UiButton, UiInput, UiCard, UiAlert, UiBadge, UiLogo } from '../components/ui'
+import { UiButton, UiInput, UiCard, UiAlert, UiBadge } from '../components/ui'
+import AuthLayout from '../components/AuthLayout.vue'
 import { getPasswordRules, isPasswordValid } from '../utils/passwordRules'
 
 const authStore = useAuthStore()
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+const perks = [
+  'Compte gratuït i sense compromís',
+  "Cartera, historial i cercador d'actius",
+  'Dades protegides amb verificació',
+]
 
 const email = ref('')
 const emailConfirm = ref('')
@@ -104,273 +111,214 @@ async function resend() {
 onBeforeUnmount(() => clearInterval(timer))
 </script>
 
+
 <template>
-  <div class="page">
-    <!-- Panell de marca -->
-    <aside class="brand tub-on-dark">
-      <UiLogo />
-
-      <div class="brand-body">
-        <h1>Comença a invertir<br>amb diners simulats.</h1>
-        <p class="lead">
-          Practica amb accions i ETFs sense risc. Una plataforma pensada per
-          aprendre a invertir pas a pas.
-        </p>
-
-        <ul class="perks">
-          <li><span class="tick">✓</span> Compte gratuït i sense compromís</li>
-          <li><span class="tick">✓</span> Cartera, historial i cercador d'actius</li>
-          <li><span class="tick">✓</span> Dades protegides amb verificació</li>
-        </ul>
-
-        <UiCard
-          variant="glass"
-          padding="md"
-          class="chart-card"
-          aria-hidden="true"
-        >
-          <div class="chart-head">
-            <div>
-              <span class="chart-label">Cartera simulada</span>
-              <strong class="chart-value tabular">10.482,35 €</strong>
-            </div>
-            <UiBadge variant="on-dark">
-              +4,82 %
-            </UiBadge>
+  <AuthLayout
+    title="Comença a invertir amb diners simulats."
+    lead="Practica amb accions i ETFs sense risc. Una plataforma pensada per aprendre a invertir pas a pas."
+    :perks="perks"
+  >
+    <template #brand>
+      <UiCard
+        variant="glass"
+        padding="md"
+        class="chart-card"
+        aria-hidden="true"
+      >
+        <div class="chart-head">
+          <div>
+            <span class="chart-label">Cartera simulada</span>
+            <strong class="chart-value tabular">10.482,35 €</strong>
           </div>
-          <svg
-            viewBox="0 0 300 80"
-            preserveAspectRatio="none"
-          >
-            <defs>
-              <linearGradient
-                id="fill"
-                x1="0"
-                y1="0"
-                x2="0"
-                y2="1"
-              >
-                <stop
-                  offset="0%"
-                  class="chart-stop"
-                  stop-opacity="0.35"
-                />
-                <stop
-                  offset="100%"
-                  class="chart-stop"
-                  stop-opacity="0"
-                />
-              </linearGradient>
-            </defs>
-            <path
-              d="M0 62 L30 56 L60 60 L90 44 L120 48 L150 34 L180 40 L210 24 L240 28 L270 12 L300 16 L300 80 L0 80 Z"
-              fill="url(#fill)"
-            />
-            <path
-              class="chart-line"
-              d="M0 62 L30 56 L60 60 L90 44 L120 48 L150 34 L180 40 L210 24 L240 28 L270 12 L300 16"
-              fill="none"
-              stroke-width="2.5"
-              stroke-linejoin="round"
-              stroke-linecap="round"
-            />
-          </svg>
-        </UiCard>
-      </div>
-
-      <p class="brand-foot" />
-    </aside>
-
-    <!-- Panell del formulari -->
-    <main class="panel">
-      <UiCard class="card">
-        <!-- Estat: correu enviat -->
-        <section
-          v-if="sent"
-          class="success"
+          <UiBadge variant="on-dark">
+            +4,82 %
+          </UiBadge>
+        </div>
+        <svg
+          viewBox="0 0 300 80"
+          preserveAspectRatio="none"
         >
-          <div class="success-icon">
-            ✉
-          </div>
-          <h2>Revisa el teu correu</h2>
-          <p class="muted">
-            Hem enviat un enllaç de verificació a
-            <strong>{{ normalizedEmail }}</strong>. Fes clic a l'enllaç per activar el teu compte.
-          </p>
-
-          <UiAlert
-            v-if="info"
-            variant="success"
-          >
-            {{ info }}
-          </UiAlert>
-          <UiAlert
-            v-if="error"
-            variant="error"
-          >
-            {{ error }}
-          </UiAlert>
-
-          <UiButton
-            variant="secondary"
-            block
-            :disabled="cooldown > 0"
-            @click="resend"
-          >
-            {{ cooldown > 0 ? `Reenviar correu (${cooldown} s)` : 'Reenviar correu' }}
-          </UiButton>
-          <RouterLink
-            to="/"
-            class="back"
-          >
-            Tornar a l'inici
-          </RouterLink>
-        </section>
-
-        <!-- Estat: formulari -->
-        <form
-          v-else
-          novalidate
-          @submit.prevent="handleSubmit"
-        >
-          <h2>Crea el teu compte</h2>
-          <p class="muted">
-            Només et portarà un minut.
-          </p>
-
-          <UiInput
-            v-model="email"
-            label="Correu electrònic"
-            type="email"
-            autocomplete="email"
-            placeholder="nom@exemple.com"
-            :error="errors.email"
+          <defs>
+            <linearGradient
+              id="fill"
+              x1="0"
+              y1="0"
+              x2="0"
+              y2="1"
+            >
+              <stop
+                offset="0%"
+                class="chart-stop"
+                stop-opacity="0.35"
+              />
+              <stop
+                offset="100%"
+                class="chart-stop"
+                stop-opacity="0"
+              />
+            </linearGradient>
+          </defs>
+          <path
+            d="M0 62 L30 56 L60 60 L90 44 L120 48 L150 34 L180 40 L210 24 L240 28 L270 12 L300 16 L300 80 L0 80 Z"
+            fill="url(#fill)"
           />
-
-          <UiInput
-            v-model="emailConfirm"
-            label="Repeteix el correu electrònic"
-            type="email"
-            autocomplete="off"
-            placeholder="nom@exemple.com"
-            :error="errors.emailConfirm"
-            @paste.prevent
+          <path
+            class="chart-line"
+            d="M0 62 L30 56 L60 60 L90 44 L120 48 L150 34 L180 40 L210 24 L240 28 L270 12 L300 16"
+            fill="none"
+            stroke-width="2.5"
+            stroke-linejoin="round"
+            stroke-linecap="round"
           />
-
-          <UiInput
-            v-model="password"
-            label="Contrasenya"
-            :type="showPassword ? 'text' : 'password'"
-            autocomplete="new-password"
-            placeholder="Crea una contrasenya"
-            :error="errors.password"
-          >
-            <template #trailing>
-              <UiButton
-                variant="ghost"
-                size="sm"
-                @click="showPassword = !showPassword"
-              >
-                {{ showPassword ? 'Amagar' : 'Mostrar' }}
-              </UiButton>
-            </template>
-            <ul class="rules">
-              <li
-                v-for="r in rules"
-                :key="r.label"
-                :class="{ ok: r.ok }"
-              >
-                <span>{{ r.ok ? '✓' : '•' }}</span> {{ r.label }}
-              </li>
-            </ul>
-          </UiInput>
-
-          <UiInput
-            v-model="passwordConfirm"
-            label="Repeteix la contrasenya"
-            :type="showPassword ? 'text' : 'password'"
-            autocomplete="new-password"
-            placeholder="Repeteix la contrasenya"
-            :error="errors.passwordConfirm"
-          />
-
-          <UiAlert
-            v-if="error"
-            variant="error"
-          >
-            {{ error }}
-          </UiAlert>
-
-          <UiButton
-            type="submit"
-            size="lg"
-            block
-            :loading="loading"
-          >
-            {{ loading ? 'Creant el compte…' : 'Crear compte' }}
-          </UiButton>
-
-          <p class="login-hint">
-            Ja tens compte?
-            <RouterLink to="/login">
-              Inicia sessió
-            </RouterLink>
-          </p>
-        </form>
+        </svg>
       </UiCard>
-    </main>
-  </div>
+    </template>
+
+    <!-- Estat: correu enviat -->
+    <section
+      v-if="sent"
+      class="success"
+    >
+      <div class="success-icon">
+        ✉
+      </div>
+      <h1 class="register__title">
+        Revisa el teu correu
+      </h1>
+      <p class="register__subtitle">
+        Hem enviat un enllaç de verificació a
+        <strong>{{ normalizedEmail }}</strong>. Fes clic a l'enllaç per activar el teu compte.
+      </p>
+
+      <UiAlert
+        v-if="info"
+        variant="success"
+      >
+        {{ info }}
+      </UiAlert>
+      <UiAlert
+        v-if="error"
+        variant="error"
+      >
+        {{ error }}
+      </UiAlert>
+
+      <UiButton
+        variant="secondary"
+        block
+        :disabled="cooldown > 0"
+        @click="resend"
+      >
+        {{ cooldown > 0 ? `Reenviar correu (${cooldown} s)` : 'Reenviar correu' }}
+      </UiButton>
+      <RouterLink
+        to="/"
+        class="back"
+      >
+        Tornar a l'inici
+      </RouterLink>
+    </section>
+
+    <!-- Estat: formulari -->
+    <form
+      v-else
+      novalidate
+      @submit.prevent="handleSubmit"
+    >
+      <header class="register__head">
+        <h1 class="register__title">
+          Crea el teu compte
+        </h1>
+        <p class="register__subtitle">
+          Només et portarà un minut.
+        </p>
+      </header>
+
+      <UiInput
+        v-model="email"
+        label="Correu electrònic"
+        type="email"
+        autocomplete="email"
+        placeholder="nom@exemple.com"
+        :error="errors.email"
+      />
+
+      <UiInput
+        v-model="emailConfirm"
+        label="Repeteix el correu electrònic"
+        type="email"
+        autocomplete="off"
+        placeholder="nom@exemple.com"
+        :error="errors.emailConfirm"
+        @paste.prevent
+      />
+
+      <UiInput
+        v-model="password"
+        label="Contrasenya"
+        :type="showPassword ? 'text' : 'password'"
+        autocomplete="new-password"
+        placeholder="Crea una contrasenya"
+        :error="errors.password"
+      >
+        <template #trailing>
+          <UiButton
+            variant="ghost"
+            size="sm"
+            @click="showPassword = !showPassword"
+          >
+            {{ showPassword ? 'Amagar' : 'Mostrar' }}
+          </UiButton>
+        </template>
+        <ul class="rules">
+          <li
+            v-for="r in rules"
+            :key="r.label"
+            :class="{ ok: r.ok }"
+          >
+            <span>{{ r.ok ? '✓' : '•' }}</span> {{ r.label }}
+          </li>
+        </ul>
+      </UiInput>
+
+      <UiInput
+        v-model="passwordConfirm"
+        label="Repeteix la contrasenya"
+        :type="showPassword ? 'text' : 'password'"
+        autocomplete="new-password"
+        placeholder="Repeteix la contrasenya"
+        :error="errors.passwordConfirm"
+      />
+
+      <UiAlert
+        v-if="error"
+        variant="error"
+      >
+        {{ error }}
+      </UiAlert>
+
+      <UiButton
+        type="submit"
+        size="lg"
+        block
+        :loading="loading"
+        class="register__submit"
+      >
+        {{ loading ? 'Creant el compte…' : 'Crear compte' }}
+      </UiButton>
+
+      <p class="register__footer">
+        Ja tens compte?
+        <RouterLink to="/login">
+          Inicia sessió
+        </RouterLink>
+      </p>
+    </form>
+  </AuthLayout>
 </template>
 
 <style scoped>
-.page {
-  display: grid;
-  grid-template-columns: 1.05fr 1fr;
-  min-height: 100vh;
-  width: 100%;
-  text-align: left;
-}
-
-/* ---------- Panell de marca ---------- */
-.brand {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: var(--tub-space-6);
-  padding: var(--tub-space-7) var(--tub-space-8);
-  background: var(--tub-gradient-brand);
-}
-.brand-body h1 {
-  margin: 0 0 var(--tub-space-4);
-  font-size: var(--tub-text-2xl);
-  line-height: 1.15;
-}
-.lead {
-  margin: 0 0 var(--tub-space-5);
-  max-width: 460px;
-  color: var(--tub-text-on-dark-muted);
-  line-height: 1.55;
-}
-.perks {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 var(--tub-space-6);
-  display: grid;
-  gap: var(--tub-space-3);
-  color: var(--tub-text-on-dark-muted);
-}
-.tick {
-  display: inline-grid;
-  place-items: center;
-  width: 20px;
-  height: 20px;
-  margin-right: var(--tub-space-2);
-  border-radius: var(--tub-radius-pill);
-  background: var(--tub-surface-on-dark);
-  color: var(--tub-green-light);
-  font-size: var(--tub-text-xs);
-  font-weight: 700;
-}
+/* ---------- Gràfica del panell de marca ---------- */
 .chart-card {
   max-width: 420px;
 }
@@ -399,30 +347,28 @@ onBeforeUnmount(() => clearInterval(timer))
 .chart-line {
   stroke: var(--tub-green-light);
 }
-.brand-foot {
-  margin: 0;
-  font-size: var(--tub-text-xs);
-  color: var(--tub-text-on-dark-faint);
-}
 
-/* ---------- Panell del formulari ---------- */
-.panel {
+/* ---------- Formulari (mateixa capçalera i peu que el login) ---------- */
+.register__head {
   display: grid;
-  place-items: center;
-  padding: var(--tub-space-6) var(--tub-space-4);
-  background: var(--tub-bg);
+  gap: var(--tub-space-1);
+  margin-bottom: var(--tub-space-5);
 }
-.card {
-  max-width: 440px;
-}
-h2 {
-  margin: 0 0 var(--tub-space-1);
+.register__title {
   font-size: var(--tub-text-xl);
 }
-.muted {
-  margin: 0 0 var(--tub-space-5);
+.register__subtitle {
   color: var(--tub-text-muted);
   line-height: 1.5;
+}
+.register__submit {
+  margin-top: var(--tub-space-4);
+}
+.register__footer {
+  margin-top: var(--tub-space-5);
+  text-align: center;
+  font-size: var(--tub-text-sm);
+  color: var(--tub-text-muted);
 }
 
 .rules {
@@ -440,19 +386,10 @@ h2 {
   font-weight: 600;
 }
 
-.back {
-  display: block;
-  margin-top: var(--tub-space-4);
-  text-align: center;
-}
-.login-hint {
-  margin: var(--tub-space-5) 0 0;
-  text-align: center;
-  color: var(--tub-text-muted);
-  font-size: var(--tub-text-sm);
-}
-
+/* ---------- Estat: correu enviat ---------- */
 .success {
+  display: grid;
+  gap: var(--tub-space-4);
   text-align: center;
 }
 .success-icon {
@@ -460,23 +397,13 @@ h2 {
   place-items: center;
   width: 64px;
   height: 64px;
-  margin: 0 auto var(--tub-space-4);
+  margin: 0 auto;
   border-radius: var(--tub-radius-pill);
   background: var(--tub-success-bg);
   color: var(--tub-success-text);
   font-size: 1.8rem;
 }
-
-/* ---------- Responsive ---------- */
-@media (max-width: 900px) {
-  .page {
-    grid-template-columns: 1fr;
-  }
-  .brand {
-    display: none;
-  }
-  .panel {
-    background: var(--tub-gradient-brand);
-  }
+.back {
+  text-align: center;
 }
 </style>
