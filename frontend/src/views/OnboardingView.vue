@@ -1,11 +1,24 @@
 <script setup>
+import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useOnboardingStore } from '../stores/onboarding'
 import { STEP_STATUS } from '../utils/onboarding'
-import { UiBadge, UiCard, UiLogo } from '../components/ui'
+import { UiBadge, UiButton, UiCard, UiLogo } from '../components/ui'
 
 const onboarding = useOnboardingStore()
+const router = useRouter()
 
 const isCompleted = (step) => step.status === STEP_STATUS.COMPLETED
+
+const launchLabel = computed(() => {
+  if (onboarding.isComplete) return "Entra a l'app"
+  return onboarding.progress > 0 ? 'Continua' : 'Comença'
+})
+
+// Porta al primer pas pendent; si ja estan tots fets, a l'app
+function launch() {
+  router.push(onboarding.nextStep?.route ?? { name: 'actius' })
+}
 </script>
 
 <template>
@@ -23,6 +36,29 @@ const isCompleted = (step) => step.status === STEP_STATUS.COMPLETED
             Abans de començar a invertir amb diners simulats, completa aquests passos.
           </p>
         </header>
+
+        <div class="onboarding__progress">
+          <div class="onboarding__progress-label">
+            <span>Progrés</span>
+            <strong
+              class="tabular"
+              data-test="progress-value"
+            >{{ onboarding.progress }} %</strong>
+          </div>
+          <div
+            class="onboarding__bar"
+            role="progressbar"
+            aria-label="Progrés de l'onboarding"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            :aria-valuenow="onboarding.progress"
+          >
+            <div
+              class="onboarding__bar-fill"
+              :style="{ width: `${onboarding.progress}%` }"
+            />
+          </div>
+        </div>
 
         <ol class="onboarding__steps">
           <li
@@ -49,6 +85,24 @@ const isCompleted = (step) => step.status === STEP_STATUS.COMPLETED
             </UiBadge>
           </li>
         </ol>
+
+        <UiButton
+          size="lg"
+          block
+          data-test="launch"
+          @click="launch"
+        >
+          {{ launchLabel }}
+        </UiButton>
+
+        <!-- La pantalla no té barra de navegació: sempre es pot sortir cap a l'app -->
+        <RouterLink
+          v-if="!onboarding.isComplete"
+          :to="{ name: 'actius' }"
+          class="onboarding__later"
+        >
+          Ho faré més tard
+        </RouterLink>
       </UiCard>
     </div>
   </div>
@@ -87,6 +141,30 @@ const isCompleted = (step) => step.status === STEP_STATUS.COMPLETED
 .onboarding__subtitle {
   color: var(--tub-text-muted);
   line-height: 1.5;
+}
+
+/* ---------- Barra de progrés ---------- */
+.onboarding__progress {
+  display: grid;
+  gap: var(--tub-space-2);
+}
+.onboarding__progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--tub-text-sm);
+  color: var(--tub-text-2);
+}
+.onboarding__bar {
+  height: 8px;
+  border-radius: var(--tub-radius-pill);
+  background: var(--tub-surface-2);
+  overflow: hidden;
+}
+.onboarding__bar-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--tub-gradient-primary);
+  transition: width var(--tub-duration) var(--tub-ease);
 }
 
 /* ---------- Targetes dels passos ---------- */
@@ -141,6 +219,11 @@ const isCompleted = (step) => step.status === STEP_STATUS.COMPLETED
   color: var(--tub-text-muted);
   font-size: var(--tub-text-sm);
   line-height: 1.45;
+}
+
+.onboarding__later {
+  justify-self: center;
+  font-size: var(--tub-text-sm);
 }
 
 @media (max-width: 900px) {
