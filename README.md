@@ -114,6 +114,28 @@ Obre el navegador i accedeix a la documentació a la URL pública assignada per 
 
 Si la pàgina carrega correctament i mostra tots els endpoints (com `/api/v1/users`), el desplegament del backend ha estat un èxit i està llest per rebre peticions del frontend.
 
+## Després de fer PR cap a `develop` o `main` (Frontend)
+
+Un cop la Pull Request de la feature s'hagi aprovat i s'hagi fet el *merge* cap a `develop` o `main`, cal provar el desplegament del frontend a Netlify seguint aquests passos:
+
+### 1. Desplegament automàtic a GitHub
+En fer el *merge* a la branca corresponent, s'activarà el workflow de CI/CD a GitHub Actions per instal·lar les dependències, construir els fitxers estàtics (`npm run build`) i enviar-los a Netlify.
+
+### 2. Supervisar el workflow a GitHub Actions
+Ves a la pestanya **Actions** del repositori a GitHub.
+Selecciona l'execució del workflow `CI/CD Frontend a Netlify` i assegura me que tots els passos (Node.js, instal·lació, build i deploy) es completin correctament en verd.
+
+### 3. Verificar l'aplicació web desplegada
+Accedeix a la URL pública assignada per Netlify segons l'entorn:
+* **Entorn de Producció (`main`):** `https://tradeub.netlify.app`
+* **Entorn de Desenvolupament (`develop`):** `https://tradeub-dev.netlify.app`
+
+### 4. Comprovar la connexió amb el Backend i Supabase
+1. Obre la web desplegada i activa les eines de desenvolupador del navegador prement **F12**.
+2. Entra a la pestanya **Xarxa** (*Network*) i filtra per **Fetch/XHR**.
+3. Realitza una acció (com iniciar sessió o carregar dades). 
+4. *Verificació:* Comprova que les peticions s'envien correctament a la URL d'Azure (`https://apptradeub-ceaje7dhhrdzgmc0.francecentral-01.azurewebsites.net`) i retornen un estat **200 OK** sense errors de CORS a la consola.
+
 ## Treball amb agents de codi
 
 Les instruccions i plantilles del projecte per treballar amb agents de codi són a:
