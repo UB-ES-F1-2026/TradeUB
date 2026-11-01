@@ -14,6 +14,10 @@ vi.mock('../services/supabase', () => ({
   },
 }))
 
+vi.mock('../components/ui/UiLogo.vue', () => ({
+  default: { template: '<div />' },
+}))
+
 import { supabase } from '../services/supabase'
 import { useAuthStore } from '../stores/auth'
 import DadesPersonalsView from '../views/DadesPersonalsView.vue'
