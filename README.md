@@ -92,6 +92,28 @@ Cal comprovar el següent:
 
 **Important:** Cal executar les ordres de cada secció dins del directori corresponent (`/backend` o `/frontend`).
 
+## Després de fer PR cap a `develop` o `main` (Backend)
+
+Un cop la Pull Request d'una feature (p.ex. `feature/US1.1`) s'hagi aprovat i s'hagi fet el *merge* cap a `develop` o `main`, cal provar el desplegament del backend al núvol seguint aquests passos:
+
+### 1. Desplegament automàtic a GitHub
+En fer el *merge* de la Pull Request a les branques `develop` o `main`, s'activarà automàticament el pipeline de CI/CD a GitHub Actions per construir i desplegar la nova versió.
+
+### 2. Supervisar el workflow a GitHub Actions
+Ves al repositori a GitHub i entra a la pestanya **Actions**.
+Espera que tots els passos de les GitHub Actions (construcció de la imatge Docker i desplegament a Azure App Service) finalitzin amb un tic.
+
+![alt text](docs/images/readme_exemple2.png)
+
+### 3. Verificar l'API a producció
+Obre el navegador i accedeix a la documentació a la URL pública assignada per Azure:
+
+[https://apptradeub-ceaje7dhhrdzgmc0.francecentral-01.azurewebsites.net/docs](https://apptradeub-ceaje7dhhrdzgmc0.francecentral-01.azurewebsites.net/docs)
+
+![alt text](docs/images/readme_exemple1.png)
+
+Si la pàgina carrega correctament i mostra tots els endpoints (com `/api/v1/users`), el desplegament del backend ha estat un èxit i està llest per rebre peticions del frontend.
+
 ## Treball amb agents de codi
 
 Les instruccions i plantilles del projecte per treballar amb agents de codi són a:
