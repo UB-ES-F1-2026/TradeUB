@@ -83,6 +83,14 @@ export const useAuthStore = defineStore('auth', () => {
         });
     };
 
+    // Desa dades al perfil de l'usuari (user_metadata). Supabase fusiona les claus de primer nivell
+    const updateUserMetadata = async (data) => {
+        const { data: result, error } = await supabase.auth.updateUser({ data });
+        if (error) throw error;
+        user.value = result.user;
+        if (session.value) session.value = { ...session.value, user: result.user };
+    };
+
     const updatePassword = async (newPassword) => {
         const { error } = await supabase.auth.updateUser({ password: newPassword });
         if (error) throw error;
@@ -143,7 +151,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     return {
         user, session, isAuthenticated, aal, needsMfa,
-        initAuth, register, resend, login, logout, requestPasswordReset, updatePassword,
+        initAuth, register, resend, login, logout, requestPasswordReset, updateUserMetadata, updatePassword,
         getTotpFactor, enrollTotp, verifyTotp, verifyMfaLogin, unenrollTotp,
     };
 });
