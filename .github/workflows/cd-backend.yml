@@ -8,17 +8,17 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Descargar repositorio
+      - name: Descarregar repositori
         uses: actions/checkout@v4
 
-      - name: Iniciar sesión en Azure Container Registry
+      - name: Iniciar sessió en Azure Container Registry
         uses: azure/docker-login@v1
         with:
           login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
-      - name: Construir y subir imagen Docker a ACR
+      - name: Construir i pujar imatge Docker a ACR
         run: |
           docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/backend:${{ github.sha }} ./backend
           docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/backend:${{ github.sha }}
