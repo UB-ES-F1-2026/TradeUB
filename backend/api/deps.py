@@ -5,6 +5,8 @@ amb la clau pública publicada al JWKS del projecte (ES256). Els usuaris amb
 un factor MFA verificat han d'accedir amb autenticació de nivell aal2.
 """
 
+from functools import lru_cache
+
 import jwt
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -12,7 +14,7 @@ from jwt import ExpiredSignatureError, InvalidTokenError, PyJWKClient, PyJWKClie
 from supabase import Client
 from supabase_auth.errors import AuthApiError
 
-from core.config import SUPABASE_URL, create_user_client
+from core.config import SUPABASE_URL, create_admin_client, create_user_client
 
 security = HTTPBearer()
 
@@ -104,3 +106,25 @@ def get_user_client(
     """
     token = credentials.credentials
     return create_user_client(token)
+
+
+@lru_cache(maxsize=1)
+def _admin_client() -> Client:
+    """Client d'administració compartit, creat el primer cop que es necessita."""
+    return create_admin_client()
+
+
+def get_admin_client(_claims: dict = Depends(get_current_user)) -> Client:
+    """Retorna el client de Supabase amb la clau secreta per escriure a profiles.
+
+    Exigeix un token validat perquè només s'utilitzi en rutes protegides. Les
+    escriptures s'han de fer amb ``core.profiles.update_own_profile`` i el
+    ``sub`` del token, mai amb identificadors que vinguin de la petició.
+
+    Args:
+        _claims: dependència d'ordre que garanteix que el token s'ha validat.
+
+    Returns:
+        Client de Supabase que salta el RLS.
+    """
+    return _admin_client()
