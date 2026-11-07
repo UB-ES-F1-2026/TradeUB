@@ -2,7 +2,7 @@ name: CI/CD Frontend a Netlify (Develop)
 
 on:
   push:
-    branches: ["develop", "feature/TR-frontend-backend-deployment-a-produccio"]
+    branches: ["develop"]
 
 jobs:
   build-and-deploy:
