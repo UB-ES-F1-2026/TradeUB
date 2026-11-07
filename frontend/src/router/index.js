@@ -80,6 +80,13 @@ const routes = [
         name: 'mfa',
         component: () => import('../views/MfaVerifyView.vue'),
         meta: { hideNav: true }
+    },
+    {
+        // Qüestionari d'experiència inversora (pas de l'onboarding)
+        path: '/questionari',
+        name: 'questionari',
+        component: () => import('../views/QuestionnaireView.vue'),
+        meta: { requiresAuth: true, hideNav: true }
     }
 
 ]
