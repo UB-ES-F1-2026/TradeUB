@@ -10,7 +10,7 @@
   --tub-primary-hover: #07936e;
   --tub-primary-soft: #e6f7f0;
   --tub-primary-contrast: #ffffff;
-  --tub-gradient-primary: linear-gradient(180deg, #12bd8f 0%, #09af83 60%, #079c74 100%);
+  --tub-gradient-primary: linear-gradient(180deg, #ff5555 0%, #dc2626 60%, #b91c1c 100%);
   --tub-shadow-primary:
     inset 0 1px 0 rgba(255, 255, 255, 0.22),
     0 1px 2px rgba(7, 147, 110, 0.3),
