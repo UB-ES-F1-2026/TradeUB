@@ -15,15 +15,16 @@ const error = ref('')
 const step = computed(() => onboarding.getStep(route.params.step))
 const position = computed(() => onboarding.steps.indexOf(step.value) + 1)
 
-// Desa el pas i salta automàticament al següent pas pendent (o torna a la benvinguda si ja no en queda cap)
+// Torna a demanar l'estat al backend i salta al següent pas pendent (o a la benvinguda si ja no en queda cap).
+// El pas el completa el backend amb el formulari de cada US (2.2, 2.3 i 2.4): aquí només es consulta el resultat
 async function complete() {
   error.value = ''
   loading.value = true
   try {
-    await onboarding.completeStep(step.value.id)
+    await onboarding.load()
     await router.push(onboarding.nextStep?.route ?? { name: 'onboarding' })
   } catch {
-    error.value = "No s'ha pogut desar el pas. Torna-ho a provar."
+    error.value = "No s'ha pogut comprovar el progrés. Torna-ho a provar."
   } finally {
     loading.value = false
   }

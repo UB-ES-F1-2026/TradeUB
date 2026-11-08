@@ -1,12 +1,23 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useOnboardingStore } from '../stores/onboarding'
 import { STEP_STATUS } from '../utils/onboarding'
-import { UiBadge, UiButton, UiCard, UiLogo } from '../components/ui'
+import { UiAlert, UiBadge, UiButton, UiCard, UiLogo } from '../components/ui'
 
 const onboarding = useOnboardingStore()
 const router = useRouter()
+
+const loadError = ref('')
+
+// L'estat es torna a demanar en obrir la pantalla perquè es mantingui en recarregar la pàgina
+onMounted(async () => {
+  try {
+    await onboarding.load()
+  } catch {
+    loadError.value = "No s'ha pogut carregar el teu progrés. Torna-ho a provar més tard."
+  }
+})
 
 const isCompleted = (step) => step.status === STEP_STATUS.COMPLETED
 
@@ -36,6 +47,13 @@ function launch() {
             Abans de començar a invertir amb diners simulats, completa aquests passos.
           </p>
         </header>
+
+        <UiAlert
+          v-if="loadError"
+          variant="error"
+        >
+          {{ loadError }}
+        </UiAlert>
 
         <div class="onboarding__progress">
           <div class="onboarding__progress-label">

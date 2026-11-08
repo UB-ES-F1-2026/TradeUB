@@ -62,6 +62,8 @@ async function handleSubmit() {
     if (authStore.needsMfa) {
       await router.replace({ name: 'mfa', query: { redirect: target } })
     } else {
+      // Si el backend no respon, els passos queden pendents i es passa per la benvinguda, que ho torna a provar
+      await onboarding.load().catch(() => {})
       await router.replace(onboarding.isComplete ? target : { name: 'onboarding' })
     }
   } catch (err) {
