@@ -4,13 +4,9 @@ La validació del token ja es prova a test_users_me.py i la de l'algorisme del
 NIF/NIE a test_nif_nie.py; aquí es comprova el contracte de l'endpoint.
 """
 
-from types import SimpleNamespace
-
 import pytest
 from supabase import PostgrestAPIError
 
-import main
-from api import deps
 from api.profile import PersonalData
 from core.nif_nie import NIF_NIE_ERROR
 from core.onboarding import PERSONAL_DATA_COLUMNS
@@ -30,54 +26,6 @@ VALID_BODY = {
     "poblacio": "Barcelona",
     "residencia_fiscal": "ES",
 }
-
-
-class FakeAdminClient:
-    """Doble encadenable de table().update().eq().execute() amb la clau secreta."""
-
-    def __init__(self, rows=None, error=None):
-        self.rows = rows
-        self.error = error
-        self.table_name = None
-        self.update_data = None
-        self.eq_args = None
-
-    def table(self, name):
-        self.table_name = name
-        return self
-
-    def update(self, data):
-        self.update_data = data
-        return self
-
-    def eq(self, column, value):
-        self.eq_args = (column, value)
-        return self
-
-    def execute(self):
-        if self.error is not None:
-            raise self.error
-        if self.rows is not None:
-            return SimpleNamespace(data=self.rows)
-        return SimpleNamespace(data=[{"id": self.eq_args[1], **self.update_data}])
-
-
-@pytest.fixture
-def fake_admin():
-    """Substitueix get_admin_client per un doble i el retorna per inspeccionar-lo.
-
-    Yields:
-        Funció install(rows=None, error=None). Sense rows, el doble retorna la
-        fila amb les dades rebudes, com faria PostgREST.
-    """
-
-    def install(rows=None, error=None):
-        admin = FakeAdminClient(rows, error)
-        main.app.dependency_overrides[deps.get_admin_client] = lambda: admin
-        return admin
-
-    yield install
-    main.app.dependency_overrides.clear()
 
 
 @pytest.fixture
