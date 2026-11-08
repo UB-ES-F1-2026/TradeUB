@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
-import { computed } from 'vue';
-import { useAuthStore } from './auth';
+import { computed, ref } from 'vue';
+import { apiGet } from '../services/api';
 import { STEP_STATUS, firstPendingStep, progressPercent } from '../utils/onboarding';
 
 // Passos de l'onboarding en ordre: cadascun correspon a una user story (US2.2, US2.3 i US2.4)
@@ -23,16 +23,15 @@ export const ONBOARDING_STEPS = [
 ];
 
 export const useOnboardingStore = defineStore('onboarding', () => {
-    const authStore = useAuthStore();
-
-    // L'estat de cada pas es desa al núvol, a user_metadata.onboarding de Supabase: { [idPas]: 'completat' }
-    const saved = computed(() => authStore.user?.user_metadata?.onboarding ?? {});
+    // Estat de cada pas tal com el retorna el backend: { [idPas]: 'pendent' | 'completat' }.
+    // Està buit (tots pendents) fins que es crida load()
+    const statuses = ref({});
 
     const steps = computed(() =>
         ONBOARDING_STEPS.map((step) => ({
             ...step,
             route: { name: 'onboarding-step', params: { step: step.id } },
-            status: saved.value[step.id] === STEP_STATUS.COMPLETED ? STEP_STATUS.COMPLETED : STEP_STATUS.PENDING,
+            status: statuses.value[step.id] === STEP_STATUS.COMPLETED ? STEP_STATUS.COMPLETED : STEP_STATUS.PENDING,
         }))
     );
 
@@ -42,13 +41,13 @@ export const useOnboardingStore = defineStore('onboarding', () => {
 
     const getStep = (id) => steps.value.find((s) => s.id === id) ?? null;
 
-    // Marca un pas com a completat i ho desa al núvol perquè es mantingui en recarregar o canviar de dispositiu
-    const completeStep = async (id) => {
-        if (!getStep(id)) return;
-        await authStore.updateUserMetadata({
-            onboarding: { ...saved.value, [id]: STEP_STATUS.COMPLETED },
-        });
+    // Demana l'estat dels passos al backend (GET /users/me), que el dedueix de la taula profiles.
+    // El frontend ja no el desa: cada pas el completa el backend quan rep les dades del seu formulari
+    const load = async () => {
+        const data = await apiGet('/users/me');
+        const backendSteps = data?.onboarding?.steps ?? [];
+        statuses.value = Object.fromEntries(backendSteps.map((step) => [step.id, step.status]));
     };
 
-    return { steps, progress, nextStep, isComplete, getStep, completeStep };
+    return { steps, progress, nextStep, isComplete, getStep, load };
 });

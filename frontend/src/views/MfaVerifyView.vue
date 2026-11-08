@@ -31,6 +31,9 @@ async function handleSubmit() {
   loading.value = true
   try {
     await authStore.verifyMfaLogin(normalizedCode.value)
+    // L'estat es demana ara i no al login: amb la 2FA activa, el backend no accepta el token fins que la sessió és aal2.
+    // Si el backend no respon, els passos queden pendents i es passa per la benvinguda, que ho torna a provar
+    await onboarding.load().catch(() => {})
     // Sense l'onboarding acabat, primer es passa per la pantalla de benvinguda
     await router.replace(onboarding.isComplete ? safeRedirect(route.query.redirect) : { name: 'onboarding' })
   } catch (err) {
