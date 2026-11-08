@@ -14,7 +14,9 @@ from api import deps
 
 # Rutes de /api/v1 que poden respondre sense sessió. Afegir-hi una ruta ha de
 # ser una decisió explícita de l'equip.
-PUBLIC_ROUTES: set[tuple[str, str]] = set()
+PUBLIC_ROUTES: set[tuple[str, str]] = {
+    ("GET", "/api/v1/health"),  # smoke test del desplegament (#74): no retorna cap dada
+}
 
 SUBJECT = "11111111-2222-3333-4444-555555555555"
 OTHER_USER = "99999999-8888-7777-6666-555555555555"
