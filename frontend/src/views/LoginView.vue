@@ -2,11 +2,13 @@
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { useOnboardingStore } from '../stores/onboarding'
 import { safeRedirect } from '../utils/redirect'
 import { UiAlert, UiButton, UiInput } from '../components/ui'
 import AuthLayout from '../components/AuthLayout.vue'
 
 const authStore = useAuthStore()
+const onboarding = useOnboardingStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -58,8 +60,15 @@ async function handleSubmit() {
     await authStore.login(normalizedEmail.value, password.value)
     const target = safeRedirect(route.query.redirect)
     // replace: el botó "enrere" no torna al formulari de login.
-    // Amb la 2FA activa, abans cal el codi: /mfa portarà després a la destinació
-    await router.replace(authStore.needsMfa ? { name: 'mfa', query: { redirect: target } } : target)
+    // Amb la 2FA activa, abans cal el codi: /mfa portarà després a la destinació.
+    // Sense l'onboarding acabat, primer es passa per la pantalla de benvinguda
+    if (authStore.needsMfa) {
+      await router.replace({ name: 'mfa', query: { redirect: target } })
+    } else {
+      // Si el backend no respon, els passos queden pendents i es passa per la benvinguda, que ho torna a provar
+      await onboarding.load().catch(() => {})
+      await router.replace(onboarding.isComplete ? target : { name: 'onboarding' })
+    }
   } catch (err) {
     error.value = errorMessage(err)
   } finally {
