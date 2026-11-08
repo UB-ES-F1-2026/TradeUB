@@ -26,7 +26,16 @@ import { useAuthStore } from '../stores/auth'
 import MfaVerifyView from '../views/MfaVerifyView.vue'
 
 const verifiedFactor = { id: 'f1', factor_type: 'totp', status: 'verified' }
-const session = { access_token: 'token', user: { id: 'u1', factors: [verifiedFactor] } }
+// Usuari que ja ha acabat l'onboarding (si no, després del codi va a la benvinguda)
+const onboardingDone = {
+  'dades-personals': 'completat',
+  'questionari-inversor': 'completat',
+  'verificacio-identitat': 'completat',
+}
+const session = {
+  access_token: 'token',
+  user: { id: 'u1', factors: [verifiedFactor], user_metadata: { onboarding: onboardingDone } },
+}
 
 function makeRouter() {
   return createRouter({
@@ -36,6 +45,7 @@ function makeRouter() {
       { path: '/login', name: 'login', component: { render: () => null } },
       { path: '/actius', name: 'actius', component: { render: () => null } },
       { path: '/perfil', name: 'perfil', component: { render: () => null } },
+      { path: '/onboarding', name: 'onboarding', component: { render: () => null } },
     ],
   })
 }
@@ -89,6 +99,17 @@ describe('MfaVerifyView', () => {
     await submitCode(wrapper, '123456')
 
     expect(router.currentRoute.value.path).toBe('/actius')
+  })
+
+  it("sense l'onboarding acabat va a la pantalla de benvinguda", async () => {
+    const newSession = { access_token: 'token', user: { id: 'u2', factors: [verifiedFactor], user_metadata: {} } }
+    supabase.auth.getSession.mockResolvedValue({ data: { session: newSession } })
+    supabase.auth.mfa.challengeAndVerify.mockResolvedValue({ data: {}, error: null })
+    const { wrapper, router } = await mountMfa('/mfa?redirect=/perfil')
+
+    await submitCode(wrapper, '123456')
+
+    expect(router.currentRoute.value.path).toBe('/onboarding')
   })
 
   it('amb un codi incorrecte mostra l\'error i es queda a /mfa', async () => {

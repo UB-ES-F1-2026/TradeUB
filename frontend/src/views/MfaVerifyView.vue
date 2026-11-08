@@ -2,11 +2,13 @@
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { useOnboardingStore } from '../stores/onboarding'
 import { safeRedirect } from '../utils/redirect'
 import { isValidTotpCode, mfaErrorMessage, normalizeTotpCode } from '../utils/mfaErrors'
 import { UiAlert, UiButton, UiCard, UiInput } from '../components/ui'
 
 const authStore = useAuthStore()
+const onboarding = useOnboardingStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -29,7 +31,8 @@ async function handleSubmit() {
   loading.value = true
   try {
     await authStore.verifyMfaLogin(normalizedCode.value)
-    await router.replace(safeRedirect(route.query.redirect))
+    // Sense l'onboarding acabat, primer es passa per la pantalla de benvinguda
+    await router.replace(onboarding.isComplete ? safeRedirect(route.query.redirect) : { name: 'onboarding' })
   } catch (err) {
     error.value = mfaErrorMessage(err)
     code.value = ''
