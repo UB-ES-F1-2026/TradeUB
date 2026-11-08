@@ -1,0 +1,60 @@
+name: CI/CD Frontend a Netlify (Main)
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descarregar repositori
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: ./frontend/package-lock.json
+
+      - name: Instalar dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Comprovar que VITE_API_URL arriba al backend
+        run: |
+          url="$VITE_API_URL/health"
+          for i in $(seq 1 12); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "$url" || true)
+            if [ "$code" = "200" ]; then echo "API OK: $url"; exit 0; fi
+            echo "Intent $i: $code. S'espera 10 s..."; sleep 10
+          done
+          echo "VITE_API_URL no arriba al backend ($url): revisa el secret"; exit 1
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL_MAIN }}
+
+      - name: Construir projecte
+        working-directory: ./frontend
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL_MAIN }}
+
+      - name: Desplegar a Netlify
+        id: netlify
+        uses: nwtgck/actions-netlify@v3.0
+        with:
+          publish-dir: "./frontend/dist"
+          production-deploy: true
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID_MAIN }}
+        timeout-minutes: 10
+
+      - name: Smoke test del frontend desplegat
+        run: |
+          url="${{ steps.netlify.outputs.deploy-url }}"
+          code=$(curl -s -o /dev/null -w '%{http_code}' "$url")
+          if [ "$code" = "200" ]; then echo "Frontend OK: $url"; else echo "El frontend no respon a $url: $code"; exit 1; fi

@@ -1,7 +1,10 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
+import { useAccountStore } from '../stores/account'
 import { useAuthStore } from '../stores/auth'
+import { useProfileStore } from '../stores/profile'
+import { formatCurrency } from '../utils/currency'
 import { UiAlert, UiBadge, UiButton, UiCard } from '../components/ui'
 import TwoFactorCard from '../components/TwoFactorCard.vue'
 
@@ -11,18 +14,25 @@ const router = useRouter()
 const loggingOut = ref(false)
 const error = ref('')
 
-// Dades personals: de moment surten de user_metadata; quan hi hagi backend (taula profiles) es substitueixen
+// Dades personals: vénen del backend (taula profiles). Verificat i la resta de dades del compte, de Supabase Auth
+const profileStore = useProfileStore()
+onMounted(profileStore.load)
+const perfil = computed(() => profileStore.perfil)
 const meta = computed(() => authStore.user?.user_metadata ?? {})
 const fullName = computed(() => {
-  const name = [meta.value.first_name, meta.value.last_name].filter(Boolean).join(' ')
+  const name = [perfil.value.nom, perfil.value.cognoms].filter(Boolean).join(' ')
   return name || 'Perfil'
 })
+const address = computed(() => {
+  const { carrer, codi_postal, poblacio } = perfil.value
+  return [carrer, [codi_postal, poblacio].filter(Boolean).join(' ')].filter(Boolean).join(', ')
+})
 const personalRows = computed(() => [
-  { label: 'Nom', value: meta.value.first_name },
-  { label: 'Cognoms', value: meta.value.last_name },
-  { label: 'Telèfon', value: meta.value.phone },
-  { label: 'Data de naixement', value: formatDate(meta.value.birthdate) },
-  { label: 'Adreça', value: meta.value.address },
+  { label: 'Nom', value: perfil.value.nom },
+  { label: 'Cognoms', value: perfil.value.cognoms },
+  { label: 'Telèfon', value: perfil.value.telefon },
+  { label: 'Data de naixement', value: formatDate(perfil.value.data_naixement) },
+  { label: 'Adreça', value: address.value },
 ])
 
 // Verificació d'identitat: de moment un marcador a user_metadata; quan hi hagi backend vindrà de la taula de verificacions
@@ -34,8 +44,12 @@ const userId = computed(() => authStore.user?.id ?? '—')
 const createdAt = computed(() => formatDate(authStore.user?.created_at))
 const lastSignIn = computed(() => formatDate(authStore.user?.last_sign_in_at))
 
-// Targetes resum: de moment valors de mostra fins que hi hagi dades reals
-const patrimonio = new Intl.NumberFormat('ca-ES', { style: 'currency', currency: 'EUR' }).format(0)
+// Patrimoni = saldo del compte (encara no hi ha posicions); missatges, valor de mostra
+const accountStore = useAccountStore()
+onMounted(accountStore.fetchBalance)
+const patrimonio = computed(() =>
+  accountStore.hasBalance ? formatCurrency(accountStore.balance, accountStore.currency) : '—',
+)
 const missatges = 0
 
 function formatDate(value) {
