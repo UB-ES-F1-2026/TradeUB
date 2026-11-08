@@ -1,13 +1,15 @@
 """Escriptura de les dades del perfil de l'usuari autenticat."""
 
 from datetime import date
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, StringConstraints
 from supabase import Client, PostgrestAPIError
 
+from core.investor_profile import INVESTOR_QUESTIONS, calculate_investor_profile
 from core.nif_nie import NIF_NIE_ERROR, is_valid_nif_nie, normalize_nif_nie
+from core.onboarding import INVESTOR_PROFILE_COLUMN
 from core.profiles import update_own_profile
 
 from .deps import get_admin_client, get_current_user
@@ -70,3 +72,61 @@ def save_personal_data(
     if not rows:
         raise HTTPException(status_code=404, detail="Perfil no trobat")
     return {"perfil": rows[0]}
+
+
+# Columna de profiles amb les respostes del qüestionari
+# (supabase/migrations/20261109120000_profiles_investor_profile.sql)
+INVESTOR_ANSWERS_COLUMN = "respostes_questionari"
+
+
+class InvestorQuestionnaire(BaseModel):
+    """Les 5 respostes del qüestionari: id de pregunta → id d'opció.
+
+    Cada camp només admet les opcions de la seva pregunta, que surten de
+    ``core.investor_profile.INVESTOR_QUESTIONS``. Una resposta que falta o que
+    no és cap de les opcions retorna 422. Els camps que no són preguntes
+    s'ignoren i no es desen.
+    """
+
+    experiencia: Literal[*INVESTOR_QUESTIONS["experiencia"]]
+    coneixement: Literal[*INVESTOR_QUESTIONS["coneixement"]]
+    seguiment: Literal[*INVESTOR_QUESTIONS["seguiment"]]
+    caiguda: Literal[*INVESTOR_QUESTIONS["caiguda"]]
+    horitzo: Literal[*INVESTOR_QUESTIONS["horitzo"]]
+
+
+@router.post("/investor-questionnaire")
+def save_investor_questionnaire(
+    answers: InvestorQuestionnaire,
+    user=Depends(get_current_user),
+    admin: Client = Depends(get_admin_client),
+):
+    """Calcula el perfil d'inversor i el desa a profiles amb les respostes.
+
+    El perfil sempre el calcula el servidor: el cos només porta les respostes.
+    Si l'usuari ja havia respost, es sobreescriuen les respostes i el perfil.
+
+    Returns:
+        ``{"profile": "principiant" | "intermedi" | "avancat"}``.
+
+    Raises:
+        HTTPException: 422 si falta alguna resposta o no és vàlida (amb el
+            format de Pydantic), 404 si l'usuari no té fila a profiles i 500
+            si no s'han pogut desar.
+    """
+    values = answers.model_dump()
+    profile = calculate_investor_profile(values)
+
+    try:
+        rows = update_own_profile(
+            admin,
+            user["sub"],
+            {INVESTOR_ANSWERS_COLUMN: values, INVESTOR_PROFILE_COLUMN: profile},
+        )
+    except PostgrestAPIError as e:
+        raise HTTPException(
+            status_code=500, detail="No s'ha pogut desar el qüestionari"
+        ) from e
+    if not rows:
+        raise HTTPException(status_code=404, detail="Perfil no trobat")
+    return {"profile": profile}
