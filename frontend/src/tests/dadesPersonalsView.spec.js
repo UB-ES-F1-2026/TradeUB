@@ -139,6 +139,37 @@ describe('DadesPersonalsView', () => {
     expect(supabase.auth.updateUser).not.toHaveBeenCalled()
   })
 
+  it('no desa si el NIF/NIE té la lletra de control incorrecta i ho indica al camp', async () => {
+    const { wrapper } = await mountForm()
+    await fillForm(wrapper, { ...validData, 'NIF/NIE': '12345678A' })
+
+    await submit(wrapper)
+
+    expect(supabase.auth.updateUser).not.toHaveBeenCalled()
+    expect(field(wrapper, 'NIF/NIE').text()).toContain('El format del NIF/NIE no és vàlid.')
+    expect(field(wrapper, 'Nom').text()).not.toContain('no és vàlid')
+  })
+
+  it('accepta un NIE vàlid', async () => {
+    const { wrapper } = await mountForm()
+    await fillForm(wrapper, { ...validData, 'NIF/NIE': 'x0000000t' })
+
+    await submit(wrapper)
+
+    expect(supabase.auth.updateUser).toHaveBeenCalledOnce()
+    expect(supabase.auth.updateUser.mock.calls[0][0].data.nif).toBe('X0000000T')
+  })
+
+  it('un NIF buit demana el camp i no el format', async () => {
+    const { wrapper } = await mountForm()
+    await fillForm(wrapper, { ...validData, 'NIF/NIE': '' })
+
+    await submit(wrapper)
+
+    expect(field(wrapper, 'NIF/NIE').text()).toContain('Camp obligatori.')
+    expect(field(wrapper, 'NIF/NIE').text()).not.toContain('no és vàlid')
+  })
+
   it('desa les dades al perfil i marca el pas com a completat', async () => {
     const { wrapper } = await mountForm()
     await fillForm(wrapper)
