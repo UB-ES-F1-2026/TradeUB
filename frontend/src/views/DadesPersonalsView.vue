@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { UiAlert, UiButton, UiCard, UiInput, UiLogo, UiSelect } from '../components/ui'
 import { FISCAL_COUNTRIES } from '../utils/countries'
+import { isValidNifNie, NIF_NIE_ERROR } from '../utils/nifNie'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -36,10 +37,14 @@ const isEmpty = (value) => !String(value).trim()
 const missingFields = computed(() => Object.keys(form).filter((key) => isEmpty(form[key])))
 
 // Només es mostren els errors un cop l'usuari ha intentat desar
+function fieldError(key) {
+  if (!submitted.value) return ''
+  if (isEmpty(form[key])) return 'Camp obligatori.'
+  // Avís previ per a l'usuari; la validació definitiva la fa el backend
+  return key === 'nif' && !isValidNifNie(form.nif) ? NIF_NIE_ERROR : ''
+}
 const errors = computed(() =>
-  Object.fromEntries(
-    Object.keys(form).map((key) => [key, submitted.value && isEmpty(form[key]) ? 'Camp obligatori.' : ''])
-  )
+  Object.fromEntries(Object.keys(form).map((key) => [key, fieldError(key)]))
 )
 const alertMessage = computed(() =>
   submitted.value && missingFields.value.length ? REQUIRED_ERROR : saveError.value
@@ -69,7 +74,7 @@ function buildPayload() {
 async function handleSubmit() {
   submitted.value = true
   saveError.value = ''
-  if (missingFields.value.length) return
+  if (missingFields.value.length || !isValidNifNie(form.nif)) return
 
   loading.value = true
   try {
