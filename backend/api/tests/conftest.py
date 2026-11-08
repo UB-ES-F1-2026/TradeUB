@@ -11,6 +11,7 @@ import socket
 # Definim les env vars que es llegeixen en importació
 os.environ["SUPABASE_URL"] = "https://proyecto-de-test.supabase.co"
 os.environ["SUPABASE_KEY"] = "sb_publishable_clave_falsa_de_test"
+os.environ["SUPABASE_SECRET_KEY"] = "sb_secret_clave_falsa_de_test"
 
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
