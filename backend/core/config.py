@@ -7,7 +7,7 @@ from supabase import Client, ClientOptions, create_client
 load_dotenv()
 
 # Comprovar variables d'entorn obligatories
-required_env = ("SUPABASE_URL", "SUPABASE_KEY")
+required_env = ("SUPABASE_URL", "SUPABASE_KEY", "SUPABASE_SECRET_KEY")
 
 missing_env = [var for var in required_env if not os.getenv(var)]
 
@@ -19,6 +19,8 @@ if missing_env:
 # Eliminar el possible / final de la URL
 SUPABASE_URL = os.getenv("SUPABASE_URL").rstrip("/")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+# Clau secreta: salta el RLS. Només per al servidor, mai al frontend.
+SUPABASE_SECRET_KEY = os.getenv("SUPABASE_SECRET_KEY")
 
 # Validar la URL de Supabase
 parsed_url = urlparse(SUPABASE_URL)
@@ -52,4 +54,21 @@ def create_user_client(access_token: str) -> Client:
             auto_refresh_token=False,
             persist_session=False,
         ),
+    )
+
+
+def create_admin_client() -> Client:
+    """Crea un client de Supabase amb la clau secreta del projecte.
+
+    Aquest client salta el RLS, així que només l'ha de fer servir el servidor
+    i sempre a través de ``core.profiles`` perquè escrigui a la fila de
+    l'usuari del token.
+
+    Returns:
+        Client de Supabase amb permisos d'administració.
+    """
+    return create_client(
+        SUPABASE_URL,
+        SUPABASE_SECRET_KEY,
+        options=ClientOptions(auto_refresh_token=False, persist_session=False),
     )

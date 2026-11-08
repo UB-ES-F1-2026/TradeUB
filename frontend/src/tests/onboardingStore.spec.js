@@ -1,55 +1,79 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
-import { useAuthStore } from '../stores/auth'
 import { ONBOARDING_STEPS, useOnboardingStore } from '../stores/onboarding'
 import { STEP_STATUS } from '../utils/onboarding'
 
-vi.mock('../services/supabase', () => ({
-  supabase: { auth: { updateUser: vi.fn() } },
-}))
+// API falsa: cap crida de xarxa al backend
+vi.mock('../services/api', () => ({ apiGet: vi.fn() }))
 
-import { supabase } from '../services/supabase'
+import { apiGet } from '../services/api'
 
-function loginWith(onboarding) {
-  useAuthStore().user = { id: 'u1', user_metadata: onboarding ? { onboarding } : {} }
+const { COMPLETED, PENDING } = STEP_STATUS
+
+// Resposta de GET /users/me amb els passos indicats com a completats, com la retorna el backend
+function mockBackend(completedIds = []) {
+  apiGet.mockResolvedValue({
+    onboarding: {
+      steps: ONBOARDING_STEPS.map((s) => ({
+        id: s.id,
+        status: completedIds.includes(s.id) ? COMPLETED : PENDING,
+      })),
+    },
+  })
 }
 
 describe('store de l\'onboarding', () => {
-  beforeEach(() => setActivePinia(createPinia()))
+  beforeEach(() => {
+    vi.clearAllMocks()
+    setActivePinia(createPinia())
+  })
 
-  it('té els passos en ordre i tots pendents si no hi ha res desat', () => {
-    loginWith(null)
+  it('abans de carregar té els passos en ordre i tots pendents', () => {
     const store = useOnboardingStore()
 
     expect(store.steps.map((s) => s.id)).toEqual(ONBOARDING_STEPS.map((s) => s.id))
-    expect(store.steps.every((s) => s.status === STEP_STATUS.PENDING)).toBe(true)
+    expect(store.steps.every((s) => s.status === PENDING)).toBe(true)
+    expect(apiGet).not.toHaveBeenCalled()
   })
 
-  it("llegeix l'estat desat a user_metadata", () => {
-    loginWith({ 'dades-personals': STEP_STATUS.COMPLETED })
+  it("carrega l'estat dels passos de GET /users/me", async () => {
+    mockBackend(['dades-personals'])
     const store = useOnboardingStore()
 
-    expect(store.getStep('dades-personals').status).toBe(STEP_STATUS.COMPLETED)
-    expect(store.getStep('questionari-inversor').status).toBe(STEP_STATUS.PENDING)
+    await store.load()
+
+    expect(apiGet).toHaveBeenCalledWith('/users/me')
+    expect(store.getStep('dades-personals').status).toBe(COMPLETED)
+    expect(store.getStep('questionari-inversor').status).toBe(PENDING)
   })
 
-  it('ignora valors desconeguts i els tracta com a pendents', () => {
-    loginWith({ 'dades-personals': 'qualsevol-cosa' })
-    expect(useOnboardingStore().getStep('dades-personals').status).toBe(STEP_STATUS.PENDING)
-  })
-
-  it('calcula el progrés i el següent pas pendent', () => {
-    loginWith({ 'dades-personals': STEP_STATUS.COMPLETED })
+  it('ignora valors desconeguts i els tracta com a pendents', async () => {
+    apiGet.mockResolvedValue({
+      onboarding: { steps: [{ id: 'dades-personals', status: 'qualsevol-cosa' }] },
+    })
     const store = useOnboardingStore()
+
+    await store.load()
+
+    expect(store.getStep('dades-personals').status).toBe(PENDING)
+  })
+
+  it('calcula el progrés i el següent pas pendent', async () => {
+    mockBackend(['dades-personals'])
+    const store = useOnboardingStore()
+
+    await store.load()
 
     expect(store.progress).toBe(33)
     expect(store.nextStep.id).toBe('questionari-inversor')
     expect(store.isComplete).toBe(false)
   })
 
-  it('està complet quan no queda cap pas pendent', () => {
-    loginWith(Object.fromEntries(ONBOARDING_STEPS.map((s) => [s.id, STEP_STATUS.COMPLETED])))
+  it('està complet quan no queda cap pas pendent', async () => {
+    mockBackend(ONBOARDING_STEPS.map((s) => s.id))
     const store = useOnboardingStore()
+
+    await store.load()
 
     expect(store.progress).toBe(100)
     expect(store.nextStep).toBeNull()
@@ -57,45 +81,16 @@ describe('store de l\'onboarding', () => {
   })
 
   it('retorna null per a un pas que no existeix', () => {
-    loginWith(null)
     expect(useOnboardingStore().getStep('no-existeix')).toBeNull()
   })
 
-  describe('completeStep', () => {
-    beforeEach(() => vi.clearAllMocks())
+  it("propaga l'error del backend i no canvia l'estat", async () => {
+    mockBackend(['dades-personals'])
+    const store = useOnboardingStore()
+    await store.load()
+    apiGet.mockRejectedValue(new Error('Error de xarxa'))
 
-    it('desa el pas a user_metadata sense perdre els que ja estaven fets', async () => {
-      loginWith({ 'dades-personals': STEP_STATUS.COMPLETED })
-      const onboarding = {
-        'dades-personals': STEP_STATUS.COMPLETED,
-        'questionari-inversor': STEP_STATUS.COMPLETED,
-      }
-      supabase.auth.updateUser.mockResolvedValue({
-        data: { user: { id: 'u1', user_metadata: { onboarding } } },
-        error: null,
-      })
-      const store = useOnboardingStore()
-
-      await store.completeStep('questionari-inversor')
-
-      expect(supabase.auth.updateUser).toHaveBeenCalledWith({ data: { onboarding } })
-      expect(store.getStep('questionari-inversor').status).toBe(STEP_STATUS.COMPLETED)
-      expect(store.progress).toBe(67)
-    })
-
-    it('no desa res per a un pas que no existeix', async () => {
-      loginWith(null)
-      await useOnboardingStore().completeStep('no-existeix')
-      expect(supabase.auth.updateUser).not.toHaveBeenCalled()
-    })
-
-    it("propaga l'error de Supabase i no canvia l'estat", async () => {
-      loginWith(null)
-      supabase.auth.updateUser.mockResolvedValue({ data: {}, error: new Error('Error de xarxa') })
-      const store = useOnboardingStore()
-
-      await expect(store.completeStep('dades-personals')).rejects.toThrow('Error de xarxa')
-      expect(store.progress).toBe(0)
-    })
+    await expect(store.load()).rejects.toThrow('Error de xarxa')
+    expect(store.progress).toBe(33)
   })
 })
