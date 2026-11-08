@@ -9,8 +9,13 @@ import OnboardingStepView from '../views/OnboardingStepView.vue'
 vi.mock('../components/ui/UiLogo.vue', () => ({
   default: { template: '<div />' },
 }))
-// API falsa: cap crida de xarxa al backend
-vi.mock('../services/api', () => ({ apiGet: vi.fn() }))
+// Supabase i API falsos: cap crida de xarxa ni variables d'entorn
+vi.mock('../services/supabase', () => ({ supabase: { auth: {} } }))
+vi.mock('../services/api', async (importOriginal) => ({
+  ...(await importOriginal()),
+  apiGet: vi.fn(),
+  apiPost: vi.fn(),
+}))
 
 import { apiGet } from '../services/api'
 
@@ -28,7 +33,7 @@ function mockBackend(completedIds = []) {
   })
 }
 
-async function mountAt(step) {
+async function mountAt(step, stubs = {}) {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
@@ -38,7 +43,7 @@ async function mountAt(step) {
   })
   router.push(`/onboarding/${step}`)
   await router.isReady()
-  const wrapper = mount(OnboardingStepView, { global: { plugins: [router] } })
+  const wrapper = mount(OnboardingStepView, { global: { plugins: [router], stubs } })
   return { wrapper, router }
 }
 
@@ -63,31 +68,31 @@ describe('OnboardingStepView', () => {
   })
 
   it("torna a carregar l'estat i salta al següent pas pendent", async () => {
-    mockBackend(['dades-personals'])
-    const { wrapper, router } = await mountAt('dades-personals')
+    mockBackend(['dades-personals', 'questionari-inversor'])
+    const { wrapper, router } = await mountAt('questionari-inversor')
 
     await clickComplete(wrapper)
 
     expect(apiGet).toHaveBeenCalledWith('/users/me')
-    expect(router.currentRoute.value.fullPath).toBe('/onboarding/questionari-inversor')
-  })
-
-  it('salta un pas que ja estava fet', async () => {
-    mockBackend(['dades-personals', 'questionari-inversor'])
-    const { wrapper, router } = await mountAt('dades-personals')
-
-    await clickComplete(wrapper)
-
     expect(router.currentRoute.value.fullPath).toBe('/onboarding/verificacio-identitat')
   })
 
-  it('es queda al mateix pas si el backend encara el té pendent', async () => {
-    mockBackend([])
-    const { wrapper, router } = await mountAt('dades-personals')
+  it('torna a un pas anterior si encara està pendent', async () => {
+    mockBackend(['questionari-inversor', 'verificacio-identitat'])
+    const { wrapper, router } = await mountAt('questionari-inversor')
 
     await clickComplete(wrapper)
 
     expect(router.currentRoute.value.fullPath).toBe('/onboarding/dades-personals')
+  })
+
+  it('es queda al mateix pas si el backend encara el té pendent', async () => {
+    mockBackend(['dades-personals'])
+    const { wrapper, router } = await mountAt('questionari-inversor')
+
+    await clickComplete(wrapper)
+
+    expect(router.currentRoute.value.fullPath).toBe('/onboarding/questionari-inversor')
   })
 
   it('amb tots els passos fets torna a la benvinguda', async () => {
@@ -101,11 +106,44 @@ describe('OnboardingStepView', () => {
 
   it('si el backend falla mostra un error i no canvia de pas', async () => {
     apiGet.mockRejectedValue(new Error('Error de xarxa'))
-    const { wrapper, router } = await mountAt('dades-personals')
+    const { wrapper, router } = await mountAt('questionari-inversor')
 
     await clickComplete(wrapper)
 
     expect(wrapper.text()).toContain("No s'ha pogut comprovar el progrés.")
-    expect(router.currentRoute.value.fullPath).toBe('/onboarding/dades-personals')
+    expect(router.currentRoute.value.fullPath).toBe('/onboarding/questionari-inversor')
+  })
+
+  describe('pas de dades personals', () => {
+    const FormStub = { template: '<button data-test="form-stub" @click="$emit(\'saved\')" />' }
+
+    it('mostra el formulari en lloc dels botons provisionals', async () => {
+      mockBackend()
+      const { wrapper } = await mountAt('dades-personals')
+
+      expect(wrapper.find('form').exists()).toBe(true)
+      expect(completeButton(wrapper)).toBeUndefined()
+    })
+
+    it("en desar el formulari torna a carregar l'estat i passa al següent pas", async () => {
+      mockBackend(['dades-personals'])
+      const { wrapper, router } = await mountAt('dades-personals', { DadesPersonalsForm: FormStub })
+
+      await wrapper.get('[data-test="form-stub"]').trigger('click')
+      await flushPromises()
+
+      expect(apiGet).toHaveBeenCalledWith('/users/me')
+      expect(router.currentRoute.value.fullPath).toBe('/onboarding/questionari-inversor')
+    })
+
+    it('si el backend no el dona per completat, es queda al formulari', async () => {
+      mockBackend([])
+      const { wrapper, router } = await mountAt('dades-personals', { DadesPersonalsForm: FormStub })
+
+      await wrapper.get('[data-test="form-stub"]').trigger('click')
+      await flushPromises()
+
+      expect(router.currentRoute.value.fullPath).toBe('/onboarding/dades-personals')
+    })
   })
 })
