@@ -134,7 +134,7 @@ Accedeix a la URL pública assignada per Netlify segons l'entorn:
 * **Entorn de Desenvolupament (`develop`):** `https://tradeub-dev.netlify.app`
 
 ### 4. Smoke test automàtic
-El workflow comprova abans del build que el secret `VITE_API_URL_DEV` / `VITE_API_URL_MAIN` acaba en `/api/v1` (si no, les peticions van a rutes que no existeixen) i, després del deploy, que la URL de Netlify respon 200.
+El workflow comprova abans del build que el secret `VITE_API_URL_DEV` / `VITE_API_URL_MAIN` arriba al backend (`GET <VITE_API_URL>/health` ha de respondre 200; si el secret no porta el prefix de l'API, les peticions van a rutes que no existeixen) i, després del deploy, que la URL de Netlify respon 200.
 
 ### 5. Comprovar la connexió amb el Backend i Supabase
 1. Obre la web desplegada i activa les eines de desenvolupador del navegador prement **F12**.

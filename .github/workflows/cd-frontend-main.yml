@@ -22,12 +22,15 @@ jobs:
         working-directory: ./frontend
         run: npm ci
 
-      - name: Comprovar que VITE_API_URL acaba en /api/v1
+      - name: Comprovar que VITE_API_URL arriba al backend
         run: |
-          case "$VITE_API_URL" in
-            */api/v1) echo "VITE_API_URL correcta" ;;
-            *) echo "VITE_API_URL ha d'acabar en /api/v1 (el backend hi serveix les rutes)"; exit 1 ;;
-          esac
+          url="$VITE_API_URL/health"
+          for i in $(seq 1 12); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "$url" || true)
+            if [ "$code" = "200" ]; then echo "API OK: $url"; exit 0; fi
+            echo "Intent $i: $code. S'espera 10 s..."; sleep 10
+          done
+          echo "VITE_API_URL no arriba al backend ($url): revisa el secret"; exit 1
         env:
           VITE_API_URL: ${{ secrets.VITE_API_URL_MAIN }}
 
