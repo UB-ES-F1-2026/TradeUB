@@ -1,7 +1,9 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
+import { useAccountStore } from '../stores/account'
 import { useAuthStore } from '../stores/auth'
+import { formatCurrency } from '../utils/currency'
 import { UiAlert, UiBadge, UiButton, UiCard } from '../components/ui'
 import TwoFactorCard from '../components/TwoFactorCard.vue'
 
@@ -34,8 +36,12 @@ const userId = computed(() => authStore.user?.id ?? '—')
 const createdAt = computed(() => formatDate(authStore.user?.created_at))
 const lastSignIn = computed(() => formatDate(authStore.user?.last_sign_in_at))
 
-// Targetes resum: de moment valors de mostra fins que hi hagi dades reals
-const patrimonio = new Intl.NumberFormat('ca-ES', { style: 'currency', currency: 'EUR' }).format(0)
+// Patrimoni = saldo del compte (encara no hi ha posicions); missatges, valor de mostra
+const accountStore = useAccountStore()
+onMounted(accountStore.fetchBalance)
+const patrimonio = computed(() =>
+  accountStore.hasBalance ? formatCurrency(accountStore.balance, accountStore.currency) : '—',
+)
 const missatges = 0
 
 function formatDate(value) {
