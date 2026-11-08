@@ -3,8 +3,9 @@ import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useOnboardingStore } from '../stores/onboarding'
 import { UiAlert, UiButton, UiCard } from '../components/ui'
+import DadesPersonalsForm from '../components/DadesPersonalsForm.vue'
 
-// Contenidor provisional de cada pas: el formulari real de cada pas arriba amb les US2.2, US2.3 i US2.4
+// Contenidor de cada pas. Les dades personals (US2.2) ja tenen formulari; els altres passos (US2.3 i US2.4) són provisionals
 const onboarding = useOnboardingStore()
 const route = useRoute()
 const router = useRouter()
@@ -13,10 +14,11 @@ const loading = ref(false)
 const error = ref('')
 
 const step = computed(() => onboarding.getStep(route.params.step))
+const isPersonalData = computed(() => step.value?.id === 'dades-personals')
 const position = computed(() => onboarding.steps.indexOf(step.value) + 1)
 
 // Torna a demanar l'estat al backend i salta al següent pas pendent (o a la benvinguda si ja no en queda cap).
-// El pas el completa el backend amb el formulari de cada US (2.2, 2.3 i 2.4): aquí només es consulta el resultat
+// El pas el completa el backend quan rep les dades del formulari: aquí només es consulta el resultat
 async function complete() {
   error.value = ''
   loading.value = true
@@ -36,6 +38,7 @@ async function complete() {
     <UiCard
       v-if="step"
       class="onboarding-step__card"
+      :class="{ 'onboarding-step__card--form': isPersonalData }"
     >
       <span class="eyebrow">Pas {{ position }} de {{ onboarding.steps.length }}</span>
       <h1 class="onboarding-step__title">
@@ -52,7 +55,15 @@ async function complete() {
         {{ error }}
       </UiAlert>
 
-      <div class="onboarding-step__actions">
+      <DadesPersonalsForm
+        v-if="isPersonalData"
+        @saved="complete"
+      />
+
+      <div
+        v-else
+        class="onboarding-step__actions"
+      >
         <UiButton
           variant="secondary"
           @click="router.push({ name: 'onboarding' })"
@@ -82,6 +93,10 @@ async function complete() {
   gap: var(--tub-space-3);
   max-width: 560px;
   margin: auto;
+}
+.onboarding-step__card--form {
+  width: 100%;
+  max-width: 640px;
 }
 .onboarding-step__title {
   font-size: var(--tub-text-xl);
