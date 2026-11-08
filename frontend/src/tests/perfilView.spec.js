@@ -18,7 +18,13 @@ vi.mock('../services/supabase', () => ({
   },
 }))
 
+vi.mock('../services/api', async (importOriginal) => ({
+  ...(await importOriginal()),
+  apiGet: vi.fn(),
+}))
+
 import { supabase } from '../services/supabase'
+import { apiGet } from '../services/api'
 import { useAuthStore } from '../stores/auth'
 import PerfilView from '../views/PerfilView.vue'
 
@@ -55,6 +61,16 @@ describe('PerfilView', () => {
     const store = useAuthStore()
     store.user = user
     store.session = { access_token: 'token', user }
+  })
+
+  it('mostra el saldo del compte com a patrimoni', async () => {
+    apiGet.mockResolvedValue({ balance: '10000', currency: 'EUR', updated_at: null })
+
+    const { wrapper } = await mountPerfil()
+    await flushPromises()
+
+    expect(apiGet).toHaveBeenCalledWith('/account/balance')
+    expect(wrapper.text().replace(/\s/g, ' ')).toContain('10.000,00 €')
   })
 
   it('mostra el correu i les dates de l\'usuari', async () => {
