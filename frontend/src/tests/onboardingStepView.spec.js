@@ -17,10 +17,10 @@ import { supabase } from '../services/supabase'
 
 const { COMPLETED } = STEP_STATUS
 
-// updateUser retorna l'usuari amb les metadades que s'han enviat, com Supabase
+// updateUser fusiona les metadades enviades amb les que ja té l'usuari, com Supabase
 function mockSupabaseSave() {
   supabase.auth.updateUser.mockImplementation(async ({ data }) => ({
-    data: { user: { id: 'u1', user_metadata: data } },
+    data: { user: { id: 'u1', user_metadata: { ...useAuthStore().user.user_metadata, ...data } } },
     error: null,
   }))
 }
@@ -86,6 +86,32 @@ describe('OnboardingStepView', () => {
     await flushPromises()
 
     expect(router.currentRoute.value.path).toBe('/onboarding')
+  })
+
+  it('al pas del qüestionari mostra les 5 preguntes en comptes del botó de completar', async () => {
+    const { wrapper } = await mountAt('questionari-inversor')
+
+    expect(wrapper.findAll('[data-test="question"]')).toHaveLength(5)
+    expect(completeButton(wrapper)).toBeUndefined()
+  })
+
+  it('en enviar el qüestionari desa el perfil, completa el pas i salta al següent', async () => {
+    mockSupabaseSave()
+    const { wrapper, router } = await mountAt('questionari-inversor', { 'dades-personals': COMPLETED })
+
+    for (const question of wrapper.findAll('[data-test="question"]')) {
+      await question.find('input[type="radio"]').setValue(true)
+    }
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(supabase.auth.updateUser).toHaveBeenNthCalledWith(1, {
+      data: { investor_profile: expect.objectContaining({ profile: 'principiant' }) },
+    })
+    expect(supabase.auth.updateUser).toHaveBeenNthCalledWith(2, {
+      data: { onboarding: { 'dades-personals': COMPLETED, 'questionari-inversor': COMPLETED } },
+    })
+    expect(router.currentRoute.value.fullPath).toBe('/onboarding/verificacio-identitat')
   })
 
   it("si no es pot desar mostra un error i no canvia de pas", async () => {

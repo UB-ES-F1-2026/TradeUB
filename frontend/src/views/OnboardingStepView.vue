@@ -2,10 +2,14 @@
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useOnboardingStore } from '../stores/onboarding'
+import { useInvestorProfileStore } from '../stores/investorProfile'
+import { INVESTOR_QUESTIONS } from '../utils/investorQuestions'
 import { UiAlert, UiButton, UiCard } from '../components/ui'
+import InvestorQuestionnaire from '../components/InvestorQuestionnaire.vue'
 
-// Contenidor provisional de cada pas: el formulari real de cada pas arriba amb les US2.2, US2.3 i US2.4
+// Contenidor de cada pas: el qüestionari (US2.3) ja hi és; els formularis de US2.2 i US2.4 encara no
 const onboarding = useOnboardingStore()
+const investorProfile = useInvestorProfileStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -14,12 +18,15 @@ const error = ref('')
 
 const step = computed(() => onboarding.getStep(route.params.step))
 const position = computed(() => onboarding.steps.indexOf(step.value) + 1)
+const isQuestionnaire = computed(() => step.value?.id === 'questionari-inversor')
 
-// Desa el pas i salta automàticament al següent pas pendent (o torna a la benvinguda si ja no en queda cap)
-async function complete() {
+// Desa el pas i salta automàticament al següent pas pendent (o torna a la benvinguda si ja no en queda cap).
+// Al pas del qüestionari primer es calcula i desa el perfil amb les respostes
+async function complete(answers) {
   error.value = ''
   loading.value = true
   try {
+    if (answers) await investorProfile.submitAnswers(answers)
     await onboarding.completeStep(step.value.id)
     await router.push(onboarding.nextStep?.route ?? { name: 'onboarding' })
   } catch {
@@ -51,6 +58,13 @@ async function complete() {
         {{ error }}
       </UiAlert>
 
+      <InvestorQuestionnaire
+        v-if="isQuestionnaire"
+        :questions="INVESTOR_QUESTIONS"
+        :loading="loading"
+        @submit="complete"
+      />
+
       <div class="onboarding-step__actions">
         <UiButton
           variant="secondary"
@@ -59,8 +73,9 @@ async function complete() {
           Torna
         </UiButton>
         <UiButton
+          v-if="!isQuestionnaire"
           :loading="loading"
-          @click="complete"
+          @click="complete()"
         >
           Completa el pas
         </UiButton>
