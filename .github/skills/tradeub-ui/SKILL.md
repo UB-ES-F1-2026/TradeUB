@@ -20,7 +20,7 @@ modificar-la.
 |---|---|---|
 | Colors, tipografia, espais, radis, ombres | `frontend/src/styles/tokens.css` | Variables CSS `--tub-*`; únic lloc amb valors hex |
 | Reset i estils globals | `frontend/src/styles/base.css` | Només consumeix tokens |
-| Components base | `frontend/src/components/ui/` | `UiButton`, `UiInput`, `UiCard`, `UiAlert`, `UiBadge`, `UiLogo` |
+| Components base | `frontend/src/components/ui/` | `UiButton`, `UiInput`, `UiCard`, `UiAlert`, `UiBadge`, `UiLogo`, `UiRadioGroup` |
 | Mostra visual | `frontend/src/views/StyleguideView.vue` | Ruta `/ui` |
 
 ## Regles
@@ -49,6 +49,10 @@ modificar-la.
 <UiAlert variant="info|success|warning|error">Missatge</UiAlert>
 <UiBadge variant="neutral|success|danger|info|on-dark">+4,82 %</UiBadge>
 <UiLogo to="/" size="sm|md|lg" :mark-only="bool" />
+
+<!-- Resposta tancada (una sola opció). Si va dins d'un <fieldset> amb <legend>, no cal label -->
+<UiRadioGroup v-model="resposta" name="pregunta-1" label="Nom accessible del grup"
+              :options="[{ id: 'a', label: 'Opció A' }, { id: 'b', label: 'Opció B' }]" />
 ```
 
 ## Com canviar l'estil de tota l'app
