@@ -21,7 +21,13 @@ vi.mock('../services/supabase', () => ({
 import { supabase } from '../services/supabase'
 import LoginView from '../views/LoginView.vue'
 
-const user = { id: 'u1', email: 'nom@exemple.com' }
+// Usuari que ja ha acabat l'onboarding (si no, el login el porta a la benvinguda)
+const onboardingDone = {
+  'dades-personals': 'completat',
+  'questionari-inversor': 'completat',
+  'verificacio-identitat': 'completat',
+}
+const user = { id: 'u1', email: 'nom@exemple.com', user_metadata: { onboarding: onboardingDone } }
 const session = { access_token: 'token', user }
 
 function makeRouter() {
@@ -33,6 +39,7 @@ function makeRouter() {
       { path: '/actius', name: 'actius', component: { render: () => null } },
       { path: '/forgot-password', name: 'forgot-password', component: { render: () => null } },
       { path: '/mfa', name: 'mfa', component: { render: () => null } },
+      { path: '/onboarding', name: 'onboarding', component: { render: () => null } },
     ],
   })
 }
@@ -80,6 +87,21 @@ describe('LoginView', () => {
       password: 'contrasenya1',
     })
     expect(router.currentRoute.value.path).toBe('/actius')
+  })
+
+  it("sense l'onboarding acabat porta a la pantalla de benvinguda", async () => {
+    const newUser = { id: 'u2', email: 'nou@exemple.com', user_metadata: {} }
+    supabase.auth.signInWithPassword.mockResolvedValue({
+      data: { user: newUser, session: { access_token: 'token', user: newUser } },
+      error: null,
+    })
+    const { wrapper, router } = await mountLogin()
+
+    await fill(wrapper, 'nou@exemple.com', 'contrasenya1')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(router.currentRoute.value.path).toBe('/onboarding')
   })
 
   it("amb la 2FA activa demana el codi abans d'entrar", async () => {
