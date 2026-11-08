@@ -105,7 +105,10 @@ Espera que tots els passos de les GitHub Actions (construcció de la imatge Dock
 
 ![alt text](docs/images/readme_exemple2.png)
 
-### 3. Verificar l'API a producció
+### 3. Smoke test automàtic
+L'últim pas del workflow crida `GET /api/v1/health` del backend desplegat i falla si no respon 200. Si el workflow queda en vermell en aquest pas, el backend no arrenca: el motiu habitual és una variable d'entorn nova. **Tota variable que s'afegeixi a `backend/.env.example` s'ha d'afegir també a l'App Service d'Azure (Environment variables) abans de fer merge a `develop` o `main`.**
+
+### 4. Verificar l'API a producció
 Obre el navegador i accedeix a la documentació a la URL pública assignada per Azure:
 
 [https://apptradeub-ceaje7dhhrdzgmc0.francecentral-01.azurewebsites.net/docs](https://apptradeub-ceaje7dhhrdzgmc0.francecentral-01.azurewebsites.net/docs)
@@ -130,7 +133,10 @@ Accedeix a la URL pública assignada per Netlify segons l'entorn:
 * **Entorn de Producció (`main`):** `https://tradeub.netlify.app`
 * **Entorn de Desenvolupament (`develop`):** `https://tradeub-dev.netlify.app`
 
-### 4. Comprovar la connexió amb el Backend i Supabase
+### 4. Smoke test automàtic
+El workflow comprova abans del build que el secret `VITE_API_URL_DEV` / `VITE_API_URL_MAIN` acaba en `/api/v1` (si no, les peticions van a rutes que no existeixen) i, després del deploy, que la URL de Netlify respon 200.
+
+### 5. Comprovar la connexió amb el Backend i Supabase
 1. Obre la web desplegada i activa les eines de desenvolupador del navegador prement **F12**.
 2. Entra a la pestanya **Xarxa** (*Network*) i filtra per **Fetch/XHR**.
 3. Realitza una acció (com iniciar sessió o carregar dades). 
