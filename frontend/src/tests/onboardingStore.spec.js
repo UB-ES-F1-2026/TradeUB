@@ -4,15 +4,15 @@ import { ONBOARDING_STEPS, useOnboardingStore } from '../stores/onboarding'
 import { STEP_STATUS } from '../utils/onboarding'
 
 // API falsa: cap crida de xarxa al backend
-vi.mock('../services/api', () => ({ apiRequest: vi.fn() }))
+vi.mock('../services/api', () => ({ apiGet: vi.fn() }))
 
-import { apiRequest } from '../services/api'
+import { apiGet } from '../services/api'
 
 const { COMPLETED, PENDING } = STEP_STATUS
 
 // Resposta de GET /users/me amb els passos indicats com a completats, com la retorna el backend
 function mockBackend(completedIds = []) {
-  apiRequest.mockResolvedValue({
+  apiGet.mockResolvedValue({
     onboarding: {
       steps: ONBOARDING_STEPS.map((s) => ({
         id: s.id,
@@ -33,7 +33,7 @@ describe('store de l\'onboarding', () => {
 
     expect(store.steps.map((s) => s.id)).toEqual(ONBOARDING_STEPS.map((s) => s.id))
     expect(store.steps.every((s) => s.status === PENDING)).toBe(true)
-    expect(apiRequest).not.toHaveBeenCalled()
+    expect(apiGet).not.toHaveBeenCalled()
   })
 
   it("carrega l'estat dels passos de GET /users/me", async () => {
@@ -42,13 +42,13 @@ describe('store de l\'onboarding', () => {
 
     await store.load()
 
-    expect(apiRequest).toHaveBeenCalledWith('/users/me')
+    expect(apiGet).toHaveBeenCalledWith('/users/me')
     expect(store.getStep('dades-personals').status).toBe(COMPLETED)
     expect(store.getStep('questionari-inversor').status).toBe(PENDING)
   })
 
   it('ignora valors desconeguts i els tracta com a pendents', async () => {
-    apiRequest.mockResolvedValue({
+    apiGet.mockResolvedValue({
       onboarding: { steps: [{ id: 'dades-personals', status: 'qualsevol-cosa' }] },
     })
     const store = useOnboardingStore()
@@ -88,7 +88,7 @@ describe('store de l\'onboarding', () => {
     mockBackend(['dades-personals'])
     const store = useOnboardingStore()
     await store.load()
-    apiRequest.mockRejectedValue(new Error('Error de xarxa'))
+    apiGet.mockRejectedValue(new Error('Error de xarxa'))
 
     await expect(store.load()).rejects.toThrow('Error de xarxa')
     expect(store.progress).toBe(33)

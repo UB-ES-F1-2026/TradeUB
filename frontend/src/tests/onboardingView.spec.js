@@ -10,9 +10,9 @@ vi.mock('../components/ui/UiLogo.vue', () => ({
   default: { template: '<div />' },
 }))
 // API falsa: cap crida de xarxa al backend
-vi.mock('../services/api', () => ({ apiRequest: vi.fn() }))
+vi.mock('../services/api', () => ({ apiGet: vi.fn() }))
 
-import { apiRequest } from '../services/api'
+import { apiGet } from '../services/api'
 
 function makeRouter() {
   return createRouter({
@@ -27,7 +27,7 @@ function makeRouter() {
 
 // Munta la pantalla amb el backend retornant com a completats els passos indicats
 async function mountWith(completedIds = []) {
-  apiRequest.mockResolvedValue({
+  apiGet.mockResolvedValue({
     onboarding: {
       steps: ONBOARDING_STEPS.map((s) => ({
         id: s.id,
@@ -53,11 +53,11 @@ describe('OnboardingView', () => {
   it("carrega l'estat del backend en obrir la pantalla", async () => {
     await mountWith()
 
-    expect(apiRequest).toHaveBeenCalledWith('/users/me')
+    expect(apiGet).toHaveBeenCalledWith('/users/me')
   })
 
   it('si el backend falla mostra un avís i els passos pendents', async () => {
-    apiRequest.mockRejectedValue(new Error('Error de xarxa'))
+    apiGet.mockRejectedValue(new Error('Error de xarxa'))
     const wrapper = mount(OnboardingView, { global: { plugins: [makeRouter()] } })
     await flushPromises()
 

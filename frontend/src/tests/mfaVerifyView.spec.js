@@ -22,10 +22,10 @@ vi.mock('../services/supabase', () => ({
 }))
 
 // API falsa: l'estat de l'onboarding es demana al backend després del codi
-vi.mock('../services/api', () => ({ apiRequest: vi.fn() }))
+vi.mock('../services/api', () => ({ apiGet: vi.fn() }))
 
 import { supabase } from '../services/supabase'
-import { apiRequest } from '../services/api'
+import { apiGet } from '../services/api'
 import { useAuthStore } from '../stores/auth'
 import { ONBOARDING_STEPS } from '../stores/onboarding'
 import MfaVerifyView from '../views/MfaVerifyView.vue'
@@ -38,7 +38,7 @@ const session = {
 
 // Resposta de GET /users/me amb tots els passos en l'estat indicat
 function mockOnboarding(status) {
-  apiRequest.mockResolvedValue({
+  apiGet.mockResolvedValue({
     onboarding: { steps: ONBOARDING_STEPS.map((s) => ({ id: s.id, status })) },
   })
 }
@@ -97,7 +97,7 @@ describe('MfaVerifyView', () => {
     await submitCode(wrapper, '123 456')
 
     expect(supabase.auth.mfa.challengeAndVerify).toHaveBeenCalledWith({ factorId: 'f1', code: '123456' })
-    expect(apiRequest).toHaveBeenCalledWith('/users/me')
+    expect(apiGet).toHaveBeenCalledWith('/users/me')
     expect(router.currentRoute.value.path).toBe('/perfil')
   })
 
@@ -121,7 +121,7 @@ describe('MfaVerifyView', () => {
   })
 
   it('si el backend no respon va a la benvinguda sense mostrar error de codi', async () => {
-    apiRequest.mockRejectedValue(new Error('Error de xarxa'))
+    apiGet.mockRejectedValue(new Error('Error de xarxa'))
     supabase.auth.mfa.challengeAndVerify.mockResolvedValue({ data: {}, error: null })
     const { wrapper, router } = await mountMfa('/mfa?redirect=/perfil')
 

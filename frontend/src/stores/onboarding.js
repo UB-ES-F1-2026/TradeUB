@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import { apiRequest } from '../services/api';
+import { apiGet } from '../services/api';
 import { STEP_STATUS, firstPendingStep, progressPercent } from '../utils/onboarding';
 
 // Passos de l'onboarding en ordre: cadascun correspon a una user story (US2.2, US2.3 i US2.4)
@@ -44,7 +44,7 @@ export const useOnboardingStore = defineStore('onboarding', () => {
     // Demana l'estat dels passos al backend (GET /users/me), que el dedueix de la taula profiles.
     // El frontend ja no el desa: cada pas el completa el backend quan rep les dades del seu formulari
     const load = async () => {
-        const data = await apiRequest('/users/me');
+        const data = await apiGet('/users/me');
         const backendSteps = data?.onboarding?.steps ?? [];
         statuses.value = Object.fromEntries(backendSteps.map((step) => [step.id, step.status]));
     };

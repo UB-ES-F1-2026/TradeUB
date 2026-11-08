@@ -19,10 +19,10 @@ vi.mock('../services/supabase', () => ({
 }))
 
 // API falsa: l'estat de l'onboarding es demana al backend després del login
-vi.mock('../services/api', () => ({ apiRequest: vi.fn() }))
+vi.mock('../services/api', () => ({ apiGet: vi.fn() }))
 
 import { supabase } from '../services/supabase'
-import { apiRequest } from '../services/api'
+import { apiGet } from '../services/api'
 import { ONBOARDING_STEPS } from '../stores/onboarding'
 import LoginView from '../views/LoginView.vue'
 
@@ -31,7 +31,7 @@ const session = { access_token: 'token', user }
 
 // Resposta de GET /users/me amb tots els passos en l'estat indicat
 function mockOnboarding(status) {
-  apiRequest.mockResolvedValue({
+  apiGet.mockResolvedValue({
     onboarding: { steps: ONBOARDING_STEPS.map((s) => ({ id: s.id, status })) },
   })
 }
@@ -93,7 +93,7 @@ describe('LoginView', () => {
       email: 'nom@exemple.com',
       password: 'contrasenya1',
     })
-    expect(apiRequest).toHaveBeenCalledWith('/users/me')
+    expect(apiGet).toHaveBeenCalledWith('/users/me')
     expect(router.currentRoute.value.path).toBe('/actius')
   })
 
@@ -111,7 +111,7 @@ describe('LoginView', () => {
 
   it('si el backend no respon porta a la benvinguda sense mostrar error de login', async () => {
     supabase.auth.signInWithPassword.mockResolvedValue({ data: { user, session }, error: null })
-    apiRequest.mockRejectedValue(new Error('Error de xarxa'))
+    apiGet.mockRejectedValue(new Error('Error de xarxa'))
     const { wrapper, router } = await mountLogin()
 
     await fill(wrapper, 'nom@exemple.com', 'contrasenya1')
@@ -136,7 +136,7 @@ describe('LoginView', () => {
 
     expect(router.currentRoute.value.fullPath).toBe('/mfa?redirect=/actius')
     // Amb la sessió a aal1 el backend rebutjaria el token: l'estat es demana després del codi
-    expect(apiRequest).not.toHaveBeenCalled()
+    expect(apiGet).not.toHaveBeenCalled()
   })
 
   it('enllaça a la recuperació de contrasenya', async () => {

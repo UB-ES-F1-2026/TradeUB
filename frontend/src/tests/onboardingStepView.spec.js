@@ -10,15 +10,15 @@ vi.mock('../components/ui/UiLogo.vue', () => ({
   default: { template: '<div />' },
 }))
 // API falsa: cap crida de xarxa al backend
-vi.mock('../services/api', () => ({ apiRequest: vi.fn() }))
+vi.mock('../services/api', () => ({ apiGet: vi.fn() }))
 
-import { apiRequest } from '../services/api'
+import { apiGet } from '../services/api'
 
 const { COMPLETED, PENDING } = STEP_STATUS
 
 // El backend retorna com a completats els passos indicats
 function mockBackend(completedIds = []) {
-  apiRequest.mockResolvedValue({
+  apiGet.mockResolvedValue({
     onboarding: {
       steps: ONBOARDING_STEPS.map((s) => ({
         id: s.id,
@@ -68,7 +68,7 @@ describe('OnboardingStepView', () => {
 
     await clickComplete(wrapper)
 
-    expect(apiRequest).toHaveBeenCalledWith('/users/me')
+    expect(apiGet).toHaveBeenCalledWith('/users/me')
     expect(router.currentRoute.value.fullPath).toBe('/onboarding/questionari-inversor')
   })
 
@@ -100,7 +100,7 @@ describe('OnboardingStepView', () => {
   })
 
   it('si el backend falla mostra un error i no canvia de pas', async () => {
-    apiRequest.mockRejectedValue(new Error('Error de xarxa'))
+    apiGet.mockRejectedValue(new Error('Error de xarxa'))
     const { wrapper, router } = await mountAt('dades-personals')
 
     await clickComplete(wrapper)
