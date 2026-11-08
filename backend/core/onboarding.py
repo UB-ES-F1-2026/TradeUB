@@ -4,9 +4,8 @@ Cada pas té una regla que, a partir del perfil, decideix si està completat.
 L'ordre de ``ONBOARDING_STEPS`` és l'ordre en què l'usuari els ha de fer i
 els identificadors coincideixen amb els del frontend (``stores/onboarding.js``).
 
-De moment cap pas té dades a ``profiles``, així que totes les regles retornen
-``False``. Les tasques de backend de US2.2, US2.3 i US2.4 hi afegeixen la regla
-del seu pas quan creen les columnes corresponents.
+Les tasques de backend de US2.2, US2.3 i US2.4 hi afegeixen la regla del seu
+pas quan creen les columnes corresponents. Mentre no la tenen, retorna ``False``.
 """
 
 from collections.abc import Callable
@@ -16,10 +15,30 @@ STATUS_COMPLETED = "completat"
 
 StepRule = Callable[[dict], bool]
 
+# Columnes de profiles del pas de dades personals
+# (supabase/migrations/20261108120000_profiles_personal_data.sql)
+PERSONAL_DATA_COLUMNS = (
+    "nom",
+    "cognoms",
+    "data_naixement",
+    "telefon",
+    "nif",
+    "carrer",
+    "codi_postal",
+    "poblacio",
+    "residencia_fiscal",
+)
+
 
 def _personal_data_completed(profile: dict) -> bool:
-    """US2.2: es completarà quan tots els camps de dades personals tinguin valor."""
-    return False
+    """US2.2: completat quan totes les columnes de dades personals tenen valor.
+
+    Una columna sense valor és NULL (o no hi és, si no hi ha fila) o un text
+    buit o només d'espais.
+    """
+    return all(
+        str(profile.get(column) or "").strip() for column in PERSONAL_DATA_COLUMNS
+    )
 
 
 def _investor_questionnaire_completed(profile: dict) -> bool:
