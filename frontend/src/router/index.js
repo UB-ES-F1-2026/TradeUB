@@ -66,6 +66,13 @@ const routes = [
         }
     },
     {
+        // Acceptació dels termes (US2.4), després de verificar el DNI. La vista comprova l'estat al backend
+        path: '/onboarding/verificacio-identitat/termes',
+        name: 'onboarding-termes',
+        component: () => import('../views/TermsView.vue'),
+        meta: { requiresAuth: true, hideNav: true }
+    },
+    {
         path: '/login',
         name: 'login',
         component: () => import('../views/LoginView.vue'),

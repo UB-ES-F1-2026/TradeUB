@@ -4,6 +4,7 @@ import { RouterLink, useRouter } from 'vue-router'
 import { useAccountStore } from '../stores/account'
 import { useAuthStore } from '../stores/auth'
 import { useProfileStore } from '../stores/profile'
+import { canOperate, fetchVerification } from '../services/verification'
 import { formatCurrency } from '../utils/currency'
 import { UiAlert, UiBadge, UiButton, UiCard } from '../components/ui'
 import TwoFactorCard from '../components/TwoFactorCard.vue'
@@ -14,11 +15,10 @@ const router = useRouter()
 const loggingOut = ref(false)
 const error = ref('')
 
-// Dades personals: vénen del backend (taula profiles). Verificat i la resta de dades del compte, de Supabase Auth
+// Dades personals: vénen del backend (taula profiles). La resta de dades del compte, de Supabase Auth
 const profileStore = useProfileStore()
 onMounted(profileStore.load)
 const perfil = computed(() => profileStore.perfil)
-const meta = computed(() => authStore.user?.user_metadata ?? {})
 const fullName = computed(() => {
   const name = [perfil.value.nom, perfil.value.cognoms].filter(Boolean).join(' ')
   return name || 'Perfil'
@@ -35,8 +35,16 @@ const personalRows = computed(() => [
   { label: 'Adreça', value: address.value },
 ])
 
-// Verificació d'identitat: de moment un marcador a user_metadata; quan hi hagi backend vindrà de la taula de verificacions
-const verificat = computed(() => meta.value.verified === true)
+// Verificació (US2.4): ve del backend (GET /users/me). Compta com a verificat amb la identitat verificada
+// i els termes vigents acceptats, el mateix criteri que fa servir el backend per a l'operativa
+const verificat = ref(false)
+onMounted(async () => {
+  try {
+    verificat.value = canOperate(await fetchVerification())
+  } catch {
+    verificat.value = false
+  }
+})
 
 // Dades del compte: vénen de Supabase Auth
 const email = computed(() => authStore.user?.email ?? '')
@@ -96,9 +104,9 @@ async function handleLogout() {
           v-if="!verificat"
           variant="primary"
           size="sm"
-          disabled
+          @click="router.push({ name: 'onboarding-step', params: { step: 'verificacio-identitat' } })"
         >
-          Verifica't · Pròximament
+          Verifica't
         </UiButton>
       </div>
     </header>
