@@ -20,7 +20,7 @@ modificar-la.
 |---|---|---|
 | Colors, tipografia, espais, radis, ombres | `frontend/src/styles/tokens.css` | Variables CSS `--tub-*`; únic lloc amb valors hex |
 | Reset i estils globals | `frontend/src/styles/base.css` | Només consumeix tokens |
-| Components base | `frontend/src/components/ui/` | `UiButton`, `UiInput`, `UiSelect`, `UiCard`, `UiAlert`, `UiBadge`, `UiLogo` |
+| Components base | `frontend/src/components/ui/` | `UiButton`, `UiInput`, `UiSelect`, `UiCheckbox`, `UiCard`, `UiAlert`, `UiBadge`, `UiLogo` |
 | Mostra visual | `frontend/src/views/StyleguideView.vue` | Ruta `/ui` |
 
 ## Regles
@@ -47,6 +47,9 @@ modificar-la.
 
 <UiSelect v-model="country" label="País de residència fiscal" placeholder="Selecciona un país"
           :options="[{ value: 'ES', label: 'Espanya' }]" :error="errors.country" hint="Opcional" />
+
+<UiCheckbox v-model="accepted" label="Accepto els termes i condicions" :disabled="bool"
+            :error="errors.terms" hint="Opcional" />  <!-- o el text de l'etiqueta al slot per defecte -->
 
 <UiCard variant="default|glass" padding="sm|md|lg">...</UiCard>
 <UiAlert variant="info|success|warning|error">Missatge</UiAlert>
