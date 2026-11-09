@@ -3,6 +3,7 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import { ONBOARDING_STEPS } from '../stores/onboarding'
+import { useVerificationStore } from '../stores/verification'
 import { STEP_STATUS } from '../utils/onboarding'
 import OnboardingStepView from '../views/OnboardingStepView.vue'
 
@@ -39,6 +40,7 @@ async function mountAt(step, stubs = {}) {
     routes: [
       { path: '/onboarding', name: 'onboarding', component: { render: () => null } },
       { path: '/onboarding/:step', name: 'onboarding-step', component: OnboardingStepView },
+      { path: '/onboarding/verificacio-identitat/termes', name: 'onboarding-termes', component: { render: () => null } },
     ],
   })
   router.push(`/onboarding/${step}`)
@@ -210,6 +212,25 @@ describe('OnboardingStepView', () => {
       expect(wrapper.find('[data-test="dni-stub"]').exists()).toBe(true)
       expect(completeButton(wrapper)).toBeUndefined()
       expect(wrapper.findAll('button').some((b) => b.text() === 'Torna')).toBe(true)
+    })
+
+    const DniStub = { template: '<div data-test="dni-stub" />' }
+
+    it('no deixa passar als termes fins que el DNI està verificat', async () => {
+      useVerificationStore().status = 'en-revisio'
+      const { wrapper } = await mountAt('verificacio-identitat', { IdentityDocumentUpload: DniStub })
+
+      expect(wrapper.find('[data-test="go-to-terms"]').exists()).toBe(false)
+    })
+
+    it('amb el DNI verificat porta a la pantalla dels termes', async () => {
+      useVerificationStore().status = 'verificat'
+      const { wrapper, router } = await mountAt('verificacio-identitat', { IdentityDocumentUpload: DniStub })
+
+      await wrapper.get('[data-test="go-to-terms"]').trigger('click')
+      await flushPromises()
+
+      expect(router.currentRoute.value.name).toBe('onboarding-termes')
     })
   })
 })

@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useOnboardingStore } from '../stores/onboarding'
 import { useProfileStore } from '../stores/profile'
+import { useVerificationStore } from '../stores/verification'
 import { UiAlert, UiBadge, UiButton, UiCard } from '../components/ui'
 import DadesPersonalsForm from '../components/DadesPersonalsForm.vue'
 import InvestorQuestionnaire from '../components/InvestorQuestionnaire.vue'
@@ -13,6 +14,8 @@ import { INVESTOR_QUESTIONS, PROFILE_LABELS } from '../utils/investorQuestions'
 // qüestionari (US2.3) i pujada del DNI (US2.4)
 const onboarding = useOnboardingStore()
 const profile = useProfileStore()
+// La carrega IdentityDocumentUpload; aquí només es mira si ja es pot passar als termes
+const verification = useVerificationStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -112,10 +115,9 @@ async function complete() {
         />
       </template>
 
-      <!-- US2.4: l'acceptació dels termes (#48) va a continuació del DNI i és la que completa el pas -->
       <IdentityDocumentUpload v-else-if="isIdentityVerification" />
 
-      <!-- Cada pas es completa des del seu component; ja no queda cap pas amb el botó provisional "Completa el pas" -->
+      <!-- US2.4: amb el DNI verificat es continua a la pantalla dels termes, que és la que completa el pas -->
       <div
         v-if="isIdentityVerification"
         class="onboarding-step__actions"
@@ -125,6 +127,13 @@ async function complete() {
           @click="router.push({ name: 'onboarding' })"
         >
           Torna
+        </UiButton>
+        <UiButton
+          v-if="verification.isVerified"
+          data-test="go-to-terms"
+          @click="router.push({ name: 'onboarding-termes' })"
+        >
+          Continua als termes
         </UiButton>
       </div>
     </UiCard>
