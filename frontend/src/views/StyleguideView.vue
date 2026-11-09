@@ -1,11 +1,13 @@
 <script setup>
 import { ref } from 'vue'
 import { UiButton, UiInput, UiSelect, UiFileInput, UiCard, UiAlert, UiBadge, UiLogo } from '../components/ui'
+import { UiButton, UiInput, UiSelect, UiCheckbox, UiCard, UiAlert, UiBadge, UiLogo } from '../components/ui'
 
 const text = ref('')
 const fileName = ref('')
 const bad = ref('hola')
 const country = ref('')
+const accepted = ref(false)
 const countries = [
   { value: 'ES', label: 'Espanya' },
   { value: 'PT', label: 'Portugal' },
@@ -174,6 +176,14 @@ const groups = [
           hint="JPG o PNG."
           :file-name="fileName"
           @change="(file) => (fileName = file.name)"
+        <UiCheckbox
+          v-model="accepted"
+          label="Accepto els termes i condicions"
+          hint="Cal acceptar-los per continuar."
+        />
+        <UiCheckbox
+          label="Opció desactivada"
+          disabled
         />
         <UiButton
           type="submit"

@@ -31,6 +31,7 @@ TradeUB és una còpia reduïda, amb finalitats acadèmiques, de l'experiència 
   - `backend/api/tests/`: tests del backend.
   - `frontend/src/views/`: pantalles i vistes.
   - `frontend/src/components/ui/`: components visuals reutilitzables (`UiButton`, `UiInput`, `UiSelect`, `UiFileInput`, `UiCard`, `UiAlert`, `UiBadge`, `UiLogo`).
+  - `frontend/src/components/ui/`: components visuals reutilitzables (`UiButton`, `UiInput`, `UiSelect`, `UiCheckbox`, `UiCard`, `UiAlert`, `UiBadge`, `UiLogo`).
   - `frontend/src/styles/tokens.css`: única font de veritat per colors, tipografia, espais, radis i ombres (no hardcodegar colors).
   - `frontend/src/styles/base.css`: reset i estils globals.
   - `frontend/src/stores/` i `frontend/src/services/`: estat i integracions.
