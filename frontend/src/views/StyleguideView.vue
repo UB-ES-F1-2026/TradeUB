@@ -1,9 +1,14 @@
 <script setup>
 import { ref } from 'vue'
-import { UiButton, UiInput, UiCard, UiAlert, UiBadge, UiLogo, UiRadioGroup } from '../components/ui'
+import { UiButton, UiInput, UiSelect, UiCard, UiAlert, UiBadge, UiLogo, UiRadioGroup } from '../components/ui'
 
 const text = ref('')
 const bad = ref('hola')
+const country = ref('')
+const countries = [
+  { value: 'ES', label: 'Espanya' },
+  { value: 'PT', label: 'Portugal' },
+]
 const choice = ref('mitja')
 const choiceOptions = [
   { id: 'baix', label: 'No sé ben bé què són' },
@@ -161,6 +166,12 @@ const groups = [
             </UiButton>
           </template>
         </UiInput>
+        <UiSelect
+          v-model="country"
+          label="País de residència fiscal"
+          placeholder="Selecciona un país"
+          :options="countries"
+        />
         <p class="sg__card-sub">
           Resposta tancada (<code>UiRadioGroup</code>)
         </p>

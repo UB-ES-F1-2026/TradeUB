@@ -2,21 +2,43 @@
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useOnboardingStore } from '../stores/onboarding'
-import { UiAlert, UiButton, UiCard } from '../components/ui'
+import { useProfileStore } from '../stores/profile'
+import { UiAlert, UiBadge, UiButton, UiCard } from '../components/ui'
+import DadesPersonalsForm from '../components/DadesPersonalsForm.vue'
+import InvestorQuestionnaire from '../components/InvestorQuestionnaire.vue'
+import { INVESTOR_QUESTIONS, PROFILE_LABELS } from '../utils/investorQuestions'
 
-// Contenidor provisional de cada pas: el formulari real de cada pas arriba amb les US2.2, US2.3 i US2.4
+// Contenidor de cada pas. Dades personals (US2.2) i qüestionari (US2.3) ja tenen formulari; la verificació (US2.4) és provisional
 const onboarding = useOnboardingStore()
+const profile = useProfileStore()
 const route = useRoute()
 const router = useRouter()
 
 const loading = ref(false)
 const error = ref('')
+// Perfil que ha retornat el backend en enviar el qüestionari; es mostra abans de continuar
+const investorProfile = ref('')
 
 const step = computed(() => onboarding.getStep(route.params.step))
+const isPersonalData = computed(() => step.value?.id === 'dades-personals')
+const isQuestionnaire = computed(() => step.value?.id === 'questionari-inversor')
 const position = computed(() => onboarding.steps.indexOf(step.value) + 1)
 
+// El backend calcula i desa el perfil amb les respostes; aquí només es mostra el resultat
+async function submitQuestionnaire(answers) {
+  error.value = ''
+  loading.value = true
+  try {
+    investorProfile.value = await profile.saveInvestorQuestionnaire(answers)
+  } catch {
+    error.value = "No s'ha pogut desar el teu perfil. Torna-ho a provar."
+  } finally {
+    loading.value = false
+  }
+}
+
 // Torna a demanar l'estat al backend i salta al següent pas pendent (o a la benvinguda si ja no en queda cap).
-// El pas el completa el backend amb el formulari de cada US (2.2, 2.3 i 2.4): aquí només es consulta el resultat
+// El pas el completa el backend quan rep les dades del formulari: aquí només es consulta el resultat
 async function complete() {
   error.value = ''
   loading.value = true
@@ -36,6 +58,7 @@ async function complete() {
     <UiCard
       v-if="step"
       class="onboarding-step__card"
+      :class="{ 'onboarding-step__card--form': isPersonalData || isQuestionnaire }"
     >
       <span class="eyebrow">Pas {{ position }} de {{ onboarding.steps.length }}</span>
       <h1 class="onboarding-step__title">
@@ -52,7 +75,44 @@ async function complete() {
         {{ error }}
       </UiAlert>
 
-      <div class="onboarding-step__actions">
+      <DadesPersonalsForm
+        v-if="isPersonalData"
+        @saved="complete"
+      />
+
+      <template v-else-if="isQuestionnaire">
+        <section
+          v-if="investorProfile"
+          class="onboarding-step__result"
+          data-test="result"
+        >
+          <span class="eyebrow">El teu perfil és</span>
+          <UiBadge
+            variant="success"
+            class="onboarding-step__profile"
+          >
+            {{ PROFILE_LABELS[investorProfile] ?? investorProfile }}
+          </UiBadge>
+          <UiButton
+            block
+            :loading="loading"
+            @click="complete"
+          >
+            Continua
+          </UiButton>
+        </section>
+        <InvestorQuestionnaire
+          v-else
+          :questions="INVESTOR_QUESTIONS"
+          :loading="loading"
+          @submit="submitQuestionnaire"
+        />
+      </template>
+
+      <div
+        v-else
+        class="onboarding-step__actions"
+      >
         <UiButton
           variant="secondary"
           @click="router.push({ name: 'onboarding' })"
@@ -83,11 +143,24 @@ async function complete() {
   max-width: 560px;
   margin: auto;
 }
+.onboarding-step__card--form {
+  width: 100%;
+  max-width: 640px;
+}
 .onboarding-step__title {
   font-size: var(--tub-text-xl);
 }
 .onboarding-step__text {
   color: var(--tub-text-muted);
+}
+.onboarding-step__result {
+  display: grid;
+  justify-items: center;
+  gap: var(--tub-space-3);
+  text-align: center;
+}
+.onboarding-step__profile {
+  font-size: var(--tub-text-lg);
 }
 .onboarding-step__actions {
   display: flex;

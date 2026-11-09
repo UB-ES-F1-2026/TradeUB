@@ -47,3 +47,10 @@ export const INVESTOR_QUESTIONS = [
     ],
   },
 ]
+
+// Etiquetes dels perfils que calcula i retorna el backend
+export const PROFILE_LABELS = {
+  principiant: 'Principiant',
+  intermedi: 'Intermedi',
+  avancat: 'Avançat',
+}

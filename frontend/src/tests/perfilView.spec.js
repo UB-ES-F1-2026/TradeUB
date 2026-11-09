@@ -54,9 +54,14 @@ async function mountPerfil() {
   return { wrapper, router }
 }
 
+// Respostes del backend simulat, per ruta
+let backend
+
 describe('PerfilView', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    backend = { '/users/me': { perfil: {} } }
+    apiGet.mockImplementation(async (path) => backend[path])
     setActivePinia(createPinia())
     const store = useAuthStore()
     store.user = user
@@ -64,7 +69,7 @@ describe('PerfilView', () => {
   })
 
   it('mostra el saldo del compte com a patrimoni', async () => {
-    apiGet.mockResolvedValue({ balance: '10000', currency: 'EUR', updated_at: null })
+    backend['/account/balance'] = { balance: '10000', currency: 'EUR', updated_at: null }
 
     const { wrapper } = await mountPerfil()
     await flushPromises()
@@ -87,15 +92,25 @@ describe('PerfilView', () => {
     expect(wrapper.text()).toContain('u1')
   })
 
-  it('mostra el nom complet i les dades personals', async () => {
-    useAuthStore().user = {
-      ...user,
-      user_metadata: { first_name: 'Cristian', last_name: 'Prado', phone: '600000000' },
+  it('mostra el nom complet i les dades personals que retorna el backend', async () => {
+    backend['/users/me'] = {
+      perfil: {
+        nom: 'Cristian',
+        cognoms: 'Prado',
+        telefon: '600000000',
+        data_naixement: '2003-01-11',
+        carrer: 'Carrer Gran Via 585',
+        codi_postal: '08007',
+        poblacio: 'Barcelona',
+      },
     }
     const { wrapper } = await mountPerfil()
+    await flushPromises()
 
+    expect(apiGet).toHaveBeenCalledWith('/users/me')
     expect(wrapper.find('h1').text()).toBe('Cristian Prado')
     expect(wrapper.text()).toContain('600000000')
+    expect(wrapper.text()).toContain('Carrer Gran Via 585, 08007 Barcelona')
   })
 
   it('mostra un guió quan una dada personal encara no existeix', async () => {

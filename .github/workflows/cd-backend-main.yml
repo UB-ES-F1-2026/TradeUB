@@ -24,8 +24,19 @@ jobs:
           docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/backend:prod-${{ github.sha }}
 
       - name: Desplegar en Azure App Service (Main)
+        id: deploy
         uses: azure/webapps-deploy@v2
         with:
           app-name: 'tradeub'
           images: '${{ secrets.REGISTRY_LOGIN_SERVER }}/backend:prod-${{ github.sha }}'
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_MAIN }}
+
+      - name: Smoke test del backend desplegat
+        run: |
+          url="${{ steps.deploy.outputs.webapp-url }}/api/v1/health"
+          for i in $(seq 1 12); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "$url" || true)
+            if [ "$code" = "200" ]; then echo "Backend OK: $url"; exit 0; fi
+            echo "Intent $i: $code. S'espera 10 s..."; sleep 10
+          done
+          echo "El backend no respon a $url després del desplegament"; exit 1
