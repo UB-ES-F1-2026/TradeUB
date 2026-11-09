@@ -2,7 +2,9 @@
 
 import pytest
 
+from core.investor_profile import INVESTOR_PROFILES
 from core.onboarding import (
+    INVESTOR_PROFILE_COLUMN,
     ONBOARDING_STEPS,
     PERSONAL_DATA_COLUMNS,
     STATUS_COMPLETED,
@@ -131,3 +133,51 @@ def test_users_me_returns_personal_data_completed(client, make_token, fake_profi
         "id": "dades-personals",
         "status": STATUS_COMPLETED,
     }
+
+
+def _questionnaire_status(profile):
+    """Estat del pas del qüestionari d'inversor per a un perfil."""
+    return get_onboarding_status(profile)["steps"][1]["status"]
+
+
+@pytest.mark.parametrize("investor_profile", INVESTOR_PROFILES)
+def test_questionnaire_completed_with_saved_profile(investor_profile):
+    """Amb un perfil d'inversor desat, el pas del qüestionari surt completat."""
+    profile = {"id": "user-123", INVESTOR_PROFILE_COLUMN: investor_profile}
+
+    assert _questionnaire_status(profile) == STATUS_COMPLETED
+
+
+@pytest.mark.parametrize(
+    "value", [None, "", "expert", "Principiant"], ids=["null", "empty", "unknown", "case"]
+)
+def test_questionnaire_pending_without_valid_profile(value):
+    """Un perfil buit o que el càlcul no pot assignar deixa el pas pendent."""
+    profile = {"id": "user-123", INVESTOR_PROFILE_COLUMN: value}
+
+    assert _questionnaire_status(profile) == STATUS_PENDING
+
+
+def test_questionnaire_completed_does_not_complete_other_steps():
+    """Completar el qüestionari no marca cap altre pas."""
+    steps = get_onboarding_status({INVESTOR_PROFILE_COLUMN: "intermedi"})["steps"]
+
+    assert [step["status"] for step in steps] == [
+        STATUS_PENDING,
+        STATUS_COMPLETED,
+        STATUS_PENDING,
+    ]
+
+
+def test_users_me_returns_questionnaire_completed(client, make_token, fake_profile):
+    """GET /users/me reflecteix els passos completats quan el perfil té les dades."""
+    fake_profile(rows=[{**COMPLETE_PERSONAL_DATA, INVESTOR_PROFILE_COLUMN: "avancat"}])
+
+    response = client.get(ENDPOINT, headers={"Authorization": f"Bearer {make_token()}"})
+
+    assert response.status_code == 200
+    assert response.json()["onboarding"]["steps"] == [
+        {"id": "dades-personals", "status": STATUS_COMPLETED},
+        {"id": "questionari-inversor", "status": STATUS_COMPLETED},
+        {"id": "verificacio-identitat", "status": STATUS_PENDING},
+    ]
