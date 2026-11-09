@@ -2,7 +2,7 @@ name: CI/CD Backend Docker a Azure (Main)
 
 on:
   push:
-    branches: ["main", "feature/TD-migracio-frontend-a-vercel"]
+    branches: ["main"]
 
 jobs:
   build-and-deploy:
