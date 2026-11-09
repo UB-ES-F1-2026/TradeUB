@@ -11,10 +11,11 @@ import jwt
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt import ExpiredSignatureError, InvalidTokenError, PyJWKClient, PyJWKClientError
-from supabase import Client
+from supabase import Client, PostgrestAPIError
 from supabase_auth.errors import AuthApiError
 
 from core.config import SUPABASE_URL, create_admin_client, create_user_client
+from core.verification import is_fully_verified
 
 security = HTTPBearer()
 
@@ -128,3 +129,34 @@ def get_admin_client(_claims: dict = Depends(get_current_user)) -> Client:
         Client de Supabase que salta el RLS.
     """
     return _admin_client()
+
+
+def require_verified_user(
+    user: dict = Depends(get_current_user),
+    db: Client = Depends(get_user_client),
+) -> dict:
+    """Exigeix que l'usuari pugui operar: identitat verificada i termes acceptats.
+
+    És la dependència dels endpoints operatius (US2.4), perquè el bloqueig de
+    l'operativa no es pugui saltar des del navegador.
+
+    Returns:
+        Els claims del token, igual que ``get_current_user``.
+
+    Raises:
+        HTTPException: 403 si la identitat no està verificada o no s'han
+            acceptat els termes vigents, i 500 si no es pot llegir el perfil.
+    """
+    try:
+        response = db.table("profiles").select("*").eq("id", user["sub"]).execute()
+    except PostgrestAPIError as e:
+        raise HTTPException(
+            status_code=500, detail="No s'ha pogut recuperar el perfil"
+        ) from e
+    profile = response.data[0] if response.data else {}
+    if not is_fully_verified(profile):
+        raise HTTPException(
+            status_code=403,
+            detail="Cal verificar la identitat i acceptar els termes per operar",
+        )
+    return user
