@@ -2,7 +2,7 @@ name: CI/CD Frontend a Vercel (Main)
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "feature/TD-migracio-frontend-a-vercel"]
 
 jobs:
   build-and-deploy:
