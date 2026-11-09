@@ -3,6 +3,7 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import { ONBOARDING_STEPS } from '../stores/onboarding'
+import { useVerificationStore } from '../stores/verification'
 import { STEP_STATUS } from '../utils/onboarding'
 import OnboardingStepView from '../views/OnboardingStepView.vue'
 
@@ -39,6 +40,7 @@ async function mountAt(step, stubs = {}) {
     routes: [
       { path: '/onboarding', name: 'onboarding', component: { render: () => null } },
       { path: '/onboarding/:step', name: 'onboarding-step', component: OnboardingStepView },
+      { path: '/onboarding/verificacio-identitat/termes', name: 'onboarding-termes', component: { render: () => null } },
     ],
   })
   router.push(`/onboarding/${step}`)
@@ -49,8 +51,22 @@ async function mountAt(step, stubs = {}) {
 
 const completeButton = (wrapper) => wrapper.findAll('button').find((b) => b.text() === 'Completa el pas')
 
-async function clickComplete(wrapper) {
-  await completeButton(wrapper).trigger('click')
+const QuestionnaireStub = {
+  template: '<button data-test="questionnaire-stub" @click="$emit(\'submit\', { experiencia: \'cap\' })" />',
+}
+const continueButton = (wrapper) => wrapper.findAll('button').find((b) => b.text() === 'Continua')
+
+// Ja no hi ha cap pas amb el botó provisional: la navegació després de completar un pas es prova
+// amb el qüestionari (pas 2), que en prémer "Continua" torna a carregar l'estat i salta al següent pas pendent
+async function mountQuestionnaire() {
+  apiPost.mockResolvedValue({ profile: 'intermedi' })
+  return mountAt('questionari-inversor', { InvestorQuestionnaire: QuestionnaireStub })
+}
+
+async function completeQuestionnaire(wrapper) {
+  await wrapper.get('[data-test="questionnaire-stub"]').trigger('click')
+  await flushPromises()
+  await continueButton(wrapper).trigger('click')
   await flushPromises()
 }
 
@@ -67,59 +83,44 @@ describe('OnboardingStepView', () => {
     expect(wrapper.text()).toContain("Qüestionari d'experiència inversora")
   })
 
-  it("torna a carregar l'estat i salta al següent pas pendent", async () => {
-    mockBackend(['dades-personals', 'verificacio-identitat'])
-    const { wrapper, router } = await mountAt('verificacio-identitat')
-
-    await clickComplete(wrapper)
-
-    expect(apiGet).toHaveBeenCalledWith('/users/me')
-    expect(router.currentRoute.value.fullPath).toBe('/onboarding/questionari-inversor')
-  })
-
   it('torna a un pas anterior si encara està pendent', async () => {
     mockBackend(['questionari-inversor', 'verificacio-identitat'])
-    const { wrapper, router } = await mountAt('verificacio-identitat')
+    const { wrapper, router } = await mountQuestionnaire()
 
-    await clickComplete(wrapper)
+    await completeQuestionnaire(wrapper)
 
     expect(router.currentRoute.value.fullPath).toBe('/onboarding/dades-personals')
   })
 
   it('es queda al mateix pas si el backend encara el té pendent', async () => {
-    mockBackend(['dades-personals', 'questionari-inversor'])
-    const { wrapper, router } = await mountAt('verificacio-identitat')
+    mockBackend(['dades-personals'])
+    const { wrapper, router } = await mountQuestionnaire()
 
-    await clickComplete(wrapper)
+    await completeQuestionnaire(wrapper)
 
-    expect(router.currentRoute.value.fullPath).toBe('/onboarding/verificacio-identitat')
+    expect(router.currentRoute.value.fullPath).toBe('/onboarding/questionari-inversor')
   })
 
   it('amb tots els passos fets torna a la benvinguda', async () => {
     mockBackend(ONBOARDING_STEPS.map((s) => s.id))
-    const { wrapper, router } = await mountAt('verificacio-identitat')
+    const { wrapper, router } = await mountQuestionnaire()
 
-    await clickComplete(wrapper)
+    await completeQuestionnaire(wrapper)
 
     expect(router.currentRoute.value.path).toBe('/onboarding')
   })
 
   it('si el backend falla mostra un error i no canvia de pas', async () => {
     apiGet.mockRejectedValue(new Error('Error de xarxa'))
-    const { wrapper, router } = await mountAt('verificacio-identitat')
+    const { wrapper, router } = await mountQuestionnaire()
 
-    await clickComplete(wrapper)
+    await completeQuestionnaire(wrapper)
 
     expect(wrapper.text()).toContain("No s'ha pogut comprovar el progrés.")
-    expect(router.currentRoute.value.fullPath).toBe('/onboarding/verificacio-identitat')
+    expect(router.currentRoute.value.fullPath).toBe('/onboarding/questionari-inversor')
   })
 
   describe('pas del qüestionari', () => {
-    const QuestionnaireStub = {
-      template: '<button data-test="questionnaire-stub" @click="$emit(\'submit\', { experiencia: \'cap\' })" />',
-    }
-    const continueButton = (wrapper) => wrapper.findAll('button').find((b) => b.text() === 'Continua')
-
     it('mostra el qüestionari en lloc dels botons provisionals', async () => {
       mockBackend()
       const { wrapper } = await mountAt('questionari-inversor')
@@ -199,6 +200,37 @@ describe('OnboardingStepView', () => {
       await flushPromises()
 
       expect(router.currentRoute.value.fullPath).toBe('/onboarding/dades-personals')
+    })
+  })
+
+  describe('pas de verificació del DNI', () => {
+    it('mostra la pujada del document en lloc del botó provisional', async () => {
+      const { wrapper } = await mountAt('verificacio-identitat', {
+        IdentityDocumentUpload: { template: '<div data-test="dni-stub" />' },
+      })
+
+      expect(wrapper.find('[data-test="dni-stub"]').exists()).toBe(true)
+      expect(completeButton(wrapper)).toBeUndefined()
+      expect(wrapper.findAll('button').some((b) => b.text() === 'Torna')).toBe(true)
+    })
+
+    const DniStub = { template: '<div data-test="dni-stub" />' }
+
+    it('no deixa passar als termes fins que el DNI està verificat', async () => {
+      useVerificationStore().status = 'en-revisio'
+      const { wrapper } = await mountAt('verificacio-identitat', { IdentityDocumentUpload: DniStub })
+
+      expect(wrapper.find('[data-test="go-to-terms"]').exists()).toBe(false)
+    })
+
+    it('amb el DNI verificat porta a la pantalla dels termes', async () => {
+      useVerificationStore().status = 'verificat'
+      const { wrapper, router } = await mountAt('verificacio-identitat', { IdentityDocumentUpload: DniStub })
+
+      await wrapper.get('[data-test="go-to-terms"]').trigger('click')
+      await flushPromises()
+
+      expect(router.currentRoute.value.name).toBe('onboarding-termes')
     })
   })
 })

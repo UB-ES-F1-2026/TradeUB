@@ -1,6 +1,6 @@
 """Escriptura de les dades del perfil de l'usuari autenticat."""
 
-from datetime import date
+from datetime import UTC, date, datetime
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -10,7 +10,12 @@ from supabase import Client, PostgrestAPIError
 from core.investor_profile import INVESTOR_QUESTIONS, calculate_investor_profile
 from core.nif_nie import NIF_NIE_ERROR, is_valid_nif_nie, normalize_nif_nie
 from core.onboarding import INVESTOR_PROFILE_COLUMN
-from core.profiles import update_own_profile
+from core.profiles import get_own_profile, update_own_profile
+from core.verification import (
+    TERMS_VERSION,
+    get_verification_status,
+    is_identity_verified,
+)
 
 from .deps import get_admin_client, get_current_user
 
@@ -130,3 +135,91 @@ def save_investor_questionnaire(
     if not rows:
         raise HTTPException(status_code=404, detail="Perfil no trobat")
     return {"profile": profile}
+
+
+def _save_own_profile(admin: Client, user_id: str, values: dict, error: str) -> dict:
+    """Desa ``values`` a la fila de l'usuari i en retorna la fila actualitzada."""
+    try:
+        rows = update_own_profile(admin, user_id, values)
+    except PostgrestAPIError as e:
+        raise HTTPException(status_code=500, detail=error) from e
+    if not rows:
+        raise HTTPException(status_code=404, detail="Perfil no trobat")
+    return rows[0]
+
+
+@router.post("/identity-document")
+def submit_identity_document(
+    user=Depends(get_current_user),
+    admin: Client = Depends(get_admin_client),
+):
+    """Registra que l'usuari ha enviat el DNI per a la verificació simulada.
+
+    No rep ni desa cap imatge: només el moment de l'enviament. Si ja n'havia
+    enviat un, se sobreescriu i la revisió torna a començar.
+
+    Returns:
+        ``{"verificacio": ...}`` amb l'estat calculat a partir de la fila desada.
+
+    Raises:
+        HTTPException: 404 si l'usuari no té fila a profiles i 500 si no s'ha
+            pogut desar.
+    """
+    values = {"dni_enviat_at": datetime.now(UTC).isoformat()}
+    row = _save_own_profile(
+        admin, user["sub"], values, "No s'ha pogut registrar l'enviament del document"
+    )
+    return {"verificacio": get_verification_status(row)}
+
+
+class TermsAcceptance(BaseModel):
+    """Versió dels termes que l'usuari ha llegit i accepta."""
+
+    versio: RequiredText
+
+
+@router.post("/terms")
+def accept_terms(
+    data: TermsAcceptance,
+    user=Depends(get_current_user),
+    admin: Client = Depends(get_admin_client),
+):
+    """Desa l'acceptació de la versió vigent dels termes i condicions.
+
+    Només es poden acceptar amb la identitat ja verificada i només la versió
+    vigent (``core.verification.TERMS_VERSION``).
+
+    Returns:
+        ``{"verificacio": ...}`` amb l'estat calculat a partir de la fila desada.
+
+    Raises:
+        HTTPException: 409 si la identitat no està verificada o la versió no és
+            la vigent, 404 si l'usuari no té fila a profiles i 500 si no s'ha
+            pogut llegir o desar el perfil.
+    """
+    try:
+        profile = get_own_profile(admin, user["sub"])
+    except PostgrestAPIError as e:
+        raise HTTPException(
+            status_code=500, detail="No s'ha pogut recuperar el perfil"
+        ) from e
+    if not profile:
+        raise HTTPException(status_code=404, detail="Perfil no trobat")
+    if not is_identity_verified(profile):
+        raise HTTPException(
+            status_code=409,
+            detail="Cal tenir la identitat verificada per acceptar els termes",
+        )
+    if data.versio != TERMS_VERSION:
+        raise HTTPException(
+            status_code=409, detail="La versió dels termes no és la vigent"
+        )
+
+    values = {
+        "termes_versio": TERMS_VERSION,
+        "termes_acceptats_at": datetime.now(UTC).isoformat(),
+    }
+    row = _save_own_profile(
+        admin, user["sub"], values, "No s'ha pogut desar l'acceptació dels termes"
+    )
+    return {"verificacio": get_verification_status(row)}

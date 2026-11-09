@@ -1,10 +1,12 @@
 <script setup>
 import { ref } from 'vue'
-import { UiButton, UiInput, UiSelect, UiCard, UiAlert, UiBadge, UiLogo, UiRadioGroup } from '../components/ui'
+import { UiButton, UiInput, UiSelect, UiFileInput, UiCheckbox, UiCard, UiAlert, UiBadge, UiLogo, UiRadioGroup } from '../components/ui'
 
 const text = ref('')
+const fileName = ref('')
 const bad = ref('hola')
 const country = ref('')
+const accepted = ref(false)
 const countries = [
   { value: 'ES', label: 'Espanya' },
   { value: 'PT', label: 'Portugal' },
@@ -171,6 +173,23 @@ const groups = [
           label="País de residència fiscal"
           placeholder="Selecciona un país"
           :options="countries"
+        />
+        <UiFileInput
+          class="sg__file"
+          label="Selecciona una imatge"
+          accept=".jpg,.jpeg,.png"
+          hint="JPG o PNG."
+          :file-name="fileName"
+          @change="(file) => (fileName = file.name)"
+        />
+        <UiCheckbox
+          v-model="accepted"
+          label="Accepto els termes i condicions"
+          hint="Cal acceptar-los per continuar."
+        />
+        <UiCheckbox
+          label="Opció desactivada"
+          disabled
         />
         <p class="sg__card-sub">
           Resposta tancada (<code>UiRadioGroup</code>)
@@ -396,6 +415,9 @@ code {
 .sg__card-sub {
   color: var(--tub-text-muted);
   margin: var(--tub-space-1) 0 var(--tub-space-5);
+}
+.sg__file {
+  margin-bottom: 1.1rem;
 }
 .sg__radio {
   margin-bottom: var(--tub-space-5);

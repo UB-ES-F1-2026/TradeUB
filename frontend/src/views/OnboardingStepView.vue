@@ -3,14 +3,19 @@ import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useOnboardingStore } from '../stores/onboarding'
 import { useProfileStore } from '../stores/profile'
+import { useVerificationStore } from '../stores/verification'
 import { UiAlert, UiBadge, UiButton, UiCard } from '../components/ui'
 import DadesPersonalsForm from '../components/DadesPersonalsForm.vue'
 import InvestorQuestionnaire from '../components/InvestorQuestionnaire.vue'
+import IdentityDocumentUpload from '../components/IdentityDocumentUpload.vue'
 import { INVESTOR_QUESTIONS, PROFILE_LABELS } from '../utils/investorQuestions'
 
-// Contenidor de cada pas. Dades personals (US2.2) i qüestionari (US2.3) ja tenen formulari; la verificació (US2.4) és provisional
+// Contenidor de cada pas. Cada un té el seu component: formulari de dades personals (US2.2),
+// qüestionari (US2.3) i pujada del DNI (US2.4)
 const onboarding = useOnboardingStore()
 const profile = useProfileStore()
+// La carrega IdentityDocumentUpload; aquí només es mira si ja es pot passar als termes
+const verification = useVerificationStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -22,6 +27,7 @@ const investorProfile = ref('')
 const step = computed(() => onboarding.getStep(route.params.step))
 const isPersonalData = computed(() => step.value?.id === 'dades-personals')
 const isQuestionnaire = computed(() => step.value?.id === 'questionari-inversor')
+const isIdentityVerification = computed(() => step.value?.id === 'verificacio-identitat')
 const position = computed(() => onboarding.steps.indexOf(step.value) + 1)
 
 // El backend calcula i desa el perfil amb les respostes; aquí només es mostra el resultat
@@ -58,7 +64,7 @@ async function complete() {
     <UiCard
       v-if="step"
       class="onboarding-step__card"
-      :class="{ 'onboarding-step__card--form': isPersonalData || isQuestionnaire }"
+      :class="{ 'onboarding-step__card--form': isPersonalData || isQuestionnaire || isIdentityVerification }"
     >
       <span class="eyebrow">Pas {{ position }} de {{ onboarding.steps.length }}</span>
       <h1 class="onboarding-step__title">
@@ -109,8 +115,11 @@ async function complete() {
         />
       </template>
 
+      <IdentityDocumentUpload v-else-if="isIdentityVerification" />
+
+      <!-- US2.4: amb el DNI verificat es continua a la pantalla dels termes, que és la que completa el pas -->
       <div
-        v-else
+        v-if="isIdentityVerification"
         class="onboarding-step__actions"
       >
         <UiButton
@@ -120,10 +129,11 @@ async function complete() {
           Torna
         </UiButton>
         <UiButton
-          :loading="loading"
-          @click="complete"
+          v-if="verification.isVerified"
+          data-test="go-to-terms"
+          @click="router.push({ name: 'onboarding-termes' })"
         >
-          Completa el pas
+          Continua als termes
         </UiButton>
       </div>
     </UiCard>

@@ -41,6 +41,7 @@ function makeRouter() {
     routes: [
       { path: '/perfil', name: 'perfil', component: PerfilView },
       { path: '/login', name: 'login', component: { render: () => null } },
+      { path: '/onboarding', name: 'onboarding', component: { render: () => null } },
     ],
   })
 }
@@ -123,17 +124,46 @@ describe('PerfilView', () => {
 
   it('indica que el compte no està verificat i ofereix el botó de verificar', async () => {
     const { wrapper } = await mountPerfil()
+    await flushPromises()
 
     expect(wrapper.text()).toContain('No verificat')
     expect(wrapper.text()).toContain("Verifica't")
   })
 
-  it('indica que el compte està verificat i amaga el botó de verificar', async () => {
-    useAuthStore().user = { ...user, user_metadata: { verified: true } }
+  it("el botó de verificar porta a la pantalla de l'onboarding", async () => {
+    const { wrapper, router } = await mountPerfil()
+    await flushPromises()
+
+    await wrapper.findAll('button').find((b) => b.text() === "Verifica't").trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.fullPath).toBe('/onboarding')
+  })
+
+  it('indica que el compte està verificat segons el backend i amaga el botó de verificar', async () => {
+    backend['/users/me'] = { perfil: {}, verificacio: { estat: 'verificat', termes_acceptats: true } }
     const { wrapper } = await mountPerfil()
+    await flushPromises()
 
     expect(wrapper.text()).toContain('Verificat')
+    expect(wrapper.text()).not.toContain('No verificat')
     expect(wrapper.text()).not.toContain("Verifica't")
+  })
+
+  it('no el dona per verificat sense els termes acceptats', async () => {
+    backend['/users/me'] = { perfil: {}, verificacio: { estat: 'verificat', termes_acceptats: false } }
+    const { wrapper } = await mountPerfil()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('No verificat')
+  })
+
+  it('ignora el marcador antic de user_metadata', async () => {
+    useAuthStore().user = { ...user, user_metadata: { verified: true } }
+    const { wrapper } = await mountPerfil()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('No verificat')
   })
 
   it('mostra els ajustes com a pròximament, sense enllaç', async () => {
