@@ -4,8 +4,10 @@ import { useRoute, useRouter } from 'vue-router'
 import { useOnboardingStore } from '../stores/onboarding'
 import { UiAlert, UiButton, UiCard } from '../components/ui'
 import DadesPersonalsForm from '../components/DadesPersonalsForm.vue'
+import IdentityDocumentUpload from '../components/IdentityDocumentUpload.vue'
 
-// Contenidor de cada pas. Les dades personals (US2.2) ja tenen formulari; els altres passos (US2.3 i US2.4) són provisionals
+// Contenidor de cada pas. Les dades personals (US2.2) tenen formulari i la verificació (US2.4) la pujada del DNI;
+// el qüestionari (US2.3) encara és provisional
 const onboarding = useOnboardingStore()
 const route = useRoute()
 const router = useRouter()
@@ -15,6 +17,7 @@ const error = ref('')
 
 const step = computed(() => onboarding.getStep(route.params.step))
 const isPersonalData = computed(() => step.value?.id === 'dades-personals')
+const isIdentityVerification = computed(() => step.value?.id === 'verificacio-identitat')
 const position = computed(() => onboarding.steps.indexOf(step.value) + 1)
 
 // Torna a demanar l'estat al backend i salta al següent pas pendent (o a la benvinguda si ja no en queda cap).
@@ -38,7 +41,7 @@ async function complete() {
     <UiCard
       v-if="step"
       class="onboarding-step__card"
-      :class="{ 'onboarding-step__card--form': isPersonalData }"
+      :class="{ 'onboarding-step__card--form': isPersonalData || isIdentityVerification }"
     >
       <span class="eyebrow">Pas {{ position }} de {{ onboarding.steps.length }}</span>
       <h1 class="onboarding-step__title">
@@ -60,8 +63,11 @@ async function complete() {
         @saved="complete"
       />
 
+      <!-- US2.4: l'acceptació dels termes (#48) va a continuació del DNI i és la que completa el pas -->
+      <IdentityDocumentUpload v-else-if="isIdentityVerification" />
+
       <div
-        v-else
+        v-if="!isPersonalData"
         class="onboarding-step__actions"
       >
         <UiButton
@@ -71,6 +77,7 @@ async function complete() {
           Torna
         </UiButton>
         <UiButton
+          v-if="!isIdentityVerification"
           :loading="loading"
           @click="complete"
         >

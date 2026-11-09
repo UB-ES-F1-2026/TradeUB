@@ -1,8 +1,9 @@
 <script setup>
 import { ref } from 'vue'
-import { UiButton, UiInput, UiSelect, UiCheckbox, UiCard, UiAlert, UiBadge, UiLogo } from '../components/ui'
+import { UiButton, UiInput, UiSelect, UiFileInput, UiCheckbox, UiCard, UiAlert, UiBadge, UiLogo } from '../components/ui'
 
 const text = ref('')
+const fileName = ref('')
 const bad = ref('hola')
 const country = ref('')
 const accepted = ref(false)
@@ -166,6 +167,14 @@ const groups = [
           label="País de residència fiscal"
           placeholder="Selecciona un país"
           :options="countries"
+        />
+        <UiFileInput
+          class="sg__file"
+          label="Selecciona una imatge"
+          accept=".jpg,.jpeg,.png"
+          hint="JPG o PNG."
+          :file-name="fileName"
+          @change="(file) => (fileName = file.name)"
         />
         <UiCheckbox
           v-model="accepted"
@@ -390,6 +399,9 @@ code {
 .sg__card-sub {
   color: var(--tub-text-muted);
   margin: var(--tub-space-1) 0 var(--tub-space-5);
+}
+.sg__file {
+  margin-bottom: 1.1rem;
 }
 .sg__alerts {
   max-width: 560px;

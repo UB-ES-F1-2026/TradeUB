@@ -20,7 +20,7 @@ modificar-la.
 |---|---|---|
 | Colors, tipografia, espais, radis, ombres | `frontend/src/styles/tokens.css` | Variables CSS `--tub-*`; únic lloc amb valors hex |
 | Reset i estils globals | `frontend/src/styles/base.css` | Només consumeix tokens |
-| Components base | `frontend/src/components/ui/` | `UiButton`, `UiInput`, `UiSelect`, `UiCheckbox`, `UiCard`, `UiAlert`, `UiBadge`, `UiLogo` |
+| Components base | `frontend/src/components/ui/` | `UiButton`, `UiInput`, `UiSelect`, `UiFileInput`, `UiCheckbox`, `UiCard`, `UiAlert`, `UiBadge`, `UiLogo` |
 | Mostra visual | `frontend/src/views/StyleguideView.vue` | Ruta `/ui` |
 
 ## Regles
@@ -48,6 +48,9 @@ modificar-la.
 <UiSelect v-model="country" label="País de residència fiscal" placeholder="Selecciona un país"
           :options="[{ value: 'ES', label: 'Espanya' }]" :error="errors.country" hint="Opcional" />
 
+<!-- Emet el File a "change"; el pare el valida i passa el nom a file-name. El slot és per a una previsualització -->
+<UiFileInput label="Selecciona una imatge" accept=".jpg,.png" :file-name="file?.name"
+             :error="errors.file" hint="JPG o PNG." @change="onFile"><img :src="preview"></UiFileInput>
 <UiCheckbox v-model="accepted" label="Accepto els termes i condicions" :disabled="bool"
             :error="errors.terms" hint="Opcional" />  <!-- o el text de l'etiqueta al slot per defecte -->
 
