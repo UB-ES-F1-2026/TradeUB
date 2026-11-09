@@ -10,6 +10,8 @@ pas quan creen les columnes corresponents. Mentre no la tenen, retorna ``False``
 
 from collections.abc import Callable
 
+from core.verification import is_fully_verified
+
 STATUS_PENDING = "pendent"
 STATUS_COMPLETED = "completat"
 
@@ -47,8 +49,8 @@ def _investor_questionnaire_completed(profile: dict) -> bool:
 
 
 def _identity_verification_completed(profile: dict) -> bool:
-    """US2.4: es completarà amb la identitat verificada i els termes acceptats."""
-    return False
+    """US2.4: completat amb la identitat verificada i els termes vigents acceptats."""
+    return is_fully_verified(profile)
 
 
 ONBOARDING_STEPS: tuple[tuple[str, StepRule], ...] = (
