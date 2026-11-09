@@ -20,8 +20,7 @@ modificar-la.
 |---|---|---|
 | Colors, tipografia, espais, radis, ombres | `frontend/src/styles/tokens.css` | Variables CSS `--tub-*`; únic lloc amb valors hex |
 | Reset i estils globals | `frontend/src/styles/base.css` | Només consumeix tokens |
-| Components base | `frontend/src/components/ui/` | `UiButton`, `UiInput`, `UiSelect`, `UiFileInput`, `UiCard`, `UiAlert`, `UiBadge`, `UiLogo` |
-| Components base | `frontend/src/components/ui/` | `UiButton`, `UiInput`, `UiSelect`, `UiCheckbox`, `UiCard`, `UiAlert`, `UiBadge`, `UiLogo` |
+| Components base | `frontend/src/components/ui/` | `UiButton`, `UiInput`, `UiSelect`, `UiFileInput`, `UiCheckbox`, `UiCard`, `UiAlert`, `UiBadge`, `UiLogo` |
 | Mostra visual | `frontend/src/views/StyleguideView.vue` | Ruta `/ui` |
 
 ## Regles
