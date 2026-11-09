@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 
@@ -19,16 +19,22 @@ import App from '../../App.vue'
 import router from '../../router'
 import { useAuthStore } from '../../stores/auth'
 import { ONBOARDING_STEPS } from '../../stores/onboarding'
+import { INVESTOR_QUESTIONS } from '../../utils/investorQuestions'
 
 const user = { id: 'u1', email: 'nou@exemple.com', user_metadata: {} }
 const session = { access_token: 'token', user }
 
 // Backend fals: els passos que el servidor dona per completats
 let completed
-const fetchMock = vi.fn(async (url) => {
+const fetchMock = vi.fn(async (url, init = {}) => {
+  // Com el backend real (#69): desar el qüestionari completa el pas i retorna el perfil calculat
+  if (String(url).endsWith('/profile/investor-questionnaire') && init.method === 'POST') {
+    completed.add('questionari-inversor')
+    return { ok: true, status: 200, json: async () => ({ profile: 'intermedi' }) }
+  }
   if (!String(url).endsWith('/users/me')) throw new Error(`Crida no esperada: ${url}`)
   const steps = ONBOARDING_STEPS.map((s) => ({ id: s.id, status: completed.has(s.id) ? 'completat' : 'pendent' }))
-  return { ok: true, status: 200, json: async () => ({ onboarding: { steps } }) }
+  return { ok: true, status: 200, json: async () => ({ onboarding: { steps }, perfil: {} }) }
 })
 
 // Les vistes es carreguen amb import(): s'espera que la navegació acabi en comptes de comptar ticks
@@ -37,10 +43,12 @@ async function expectRoute(fullPath) {
   await flushPromises()
 }
 
+// El router és compartit entre tests: cada App es desmunta perquè no reaccioni a les navegacions del següent
+let wrapper
 async function mountAt(path) {
   await router.push(path)
   await router.isReady()
-  const wrapper = mount(App, { global: { plugins: [router] } })
+  wrapper = mount(App, { global: { plugins: [router] } })
   await flushPromises()
   return wrapper
 }
@@ -60,6 +68,11 @@ describe('Flux d\'onboarding (US2.1 + US2.3)', () => {
     setActivePinia(createPinia())
     completed = new Set()
     vi.stubGlobal('fetch', fetchMock)
+  })
+
+  afterEach(() => {
+    wrapper?.unmount()
+    wrapper = null
   })
 
   it('sense sessió, /onboarding porta al login i hi guarda la destinació', async () => {
@@ -87,7 +100,7 @@ describe('Flux d\'onboarding (US2.1 + US2.3)', () => {
     expect(wrapper.find('[data-test="progress-value"]').text()).toBe('0 %')
   })
 
-  it('"Comença" porta al primer pas pendent i, quan el backend el dona per fet, la barra de progrés avança', async () => {
+  it('"Comença" porta al primer pas pendent', async () => {
     signedIn()
     const wrapper = await mountAt('/onboarding')
 
@@ -97,21 +110,45 @@ describe('Flux d\'onboarding (US2.1 + US2.3)', () => {
 
     await expectRoute('/onboarding/dades-personals')
     expect(wrapper.text()).toContain('Pas 1 de 3')
+  })
 
-    // El pas el completa el backend en rebre el formulari (US2.2); aquí se simula que ja ho ha fet
+  it("respondre les 5 preguntes desa el perfil al backend, el mostra i la barra de progrés avança", async () => {
+    // Les dades personals (US2.2) queden fora d'aquest flux: el backend ja les dona per fetes
     completed.add('dades-personals')
-    await button(wrapper, 'Completa el pas').trigger('click')
+    signedIn()
+    const wrapper = await mountAt('/onboarding')
 
-    // Es torna a demanar l'estat i se salta al següent pas pendent
+    expect(wrapper.find('[data-test="progress-value"]').text()).toBe('33 %')
+    const launch = wrapper.find('[data-test="launch"]')
+    expect(launch.text()).toBe('Continua')
+    await launch.trigger('click')
+
     await expectRoute('/onboarding/questionari-inversor')
     expect(wrapper.text()).toContain('Pas 2 de 3')
+    expect(wrapper.findAll('[data-test="question"]')).toHaveLength(INVESTOR_QUESTIONS.length)
+
+    for (const question of INVESTOR_QUESTIONS) {
+      await wrapper.find(`input[name="${question.id}"][value="${question.options[1].id}"]`).setValue()
+    }
+    expect(wrapper.find('[data-test="answered-count"]').text()).toBe('5 de 5 respostes')
+    await wrapper.find('form').trigger('submit')
+
+    // Les respostes van al backend, i el perfil que retorna és el que es mostra
+    await vi.waitFor(() => expect(wrapper.find('[data-test="result"]').text()).toContain('Intermedi'))
+    const [, init] = fetchMock.mock.calls.find(([url]) => url.endsWith('/profile/investor-questionnaire'))
+    expect(JSON.parse(init.body)).toEqual(
+      Object.fromEntries(INVESTOR_QUESTIONS.map((q) => [q.id, q.options[1].id]))
+    )
+
+    // En continuar es torna a demanar l'estat: el pas ja surt completat i se salta al següent
+    await button(wrapper, 'Continua').trigger('click')
+    await expectRoute('/onboarding/verificacio-identitat')
+    expect(wrapper.text()).toContain('Pas 3 de 3')
 
     await button(wrapper, 'Torna').trigger('click')
-
     await expectRoute('/onboarding')
-    await vi.waitFor(() => expect(wrapper.find('[data-test="progress-value"]').text()).toBe('33 %'))
-    expect(wrapper.findAll('[data-test="step-card"]')[0].text()).toContain('Completat')
-    expect(wrapper.find('[data-test="launch"]').text()).toBe('Continua')
+    await vi.waitFor(() => expect(wrapper.find('[data-test="progress-value"]').text()).toBe('67 %'))
+    expect(wrapper.findAll('[data-test="step-card"]')[1].text()).toContain('Completat')
   })
 
   it('si el backend no respon, la benvinguda avisa i deixa tots els passos pendents', async () => {
@@ -122,8 +159,4 @@ describe('Flux d\'onboarding (US2.1 + US2.3)', () => {
     await vi.waitFor(() => expect(wrapper.text()).toContain("No s'ha pogut carregar el teu progrés"))
     expect(wrapper.find('[data-test="progress-value"]').text()).toBe('0 %')
   })
-
-  // Pendent de #69 (endpoint del qüestionari) i #82 (el pas obre el qüestionari i l'envia al backend):
-  // des de la #67 el frontend ja no pot completar el pas des de user_metadata
-  it.todo("respondre les 5 preguntes al pas 'questionari-inversor' desa el perfil al backend i completa el pas")
 })
