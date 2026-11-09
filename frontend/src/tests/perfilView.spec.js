@@ -41,7 +41,7 @@ function makeRouter() {
     routes: [
       { path: '/perfil', name: 'perfil', component: PerfilView },
       { path: '/login', name: 'login', component: { render: () => null } },
-      { path: '/onboarding/:step', name: 'onboarding-step', component: { render: () => null } },
+      { path: '/onboarding', name: 'onboarding', component: { render: () => null } },
     ],
   })
 }
@@ -130,14 +130,14 @@ describe('PerfilView', () => {
     expect(wrapper.text()).toContain("Verifica't")
   })
 
-  it("el botó de verificar porta al pas de verificació de l'onboarding", async () => {
+  it("el botó de verificar porta a la pantalla de l'onboarding", async () => {
     const { wrapper, router } = await mountPerfil()
     await flushPromises()
 
     await wrapper.findAll('button').find((b) => b.text() === "Verifica't").trigger('click')
     await flushPromises()
 
-    expect(router.currentRoute.value.fullPath).toBe('/onboarding/verificacio-identitat')
+    expect(router.currentRoute.value.fullPath).toBe('/onboarding')
   })
 
   it('indica que el compte està verificat segons el backend i amaga el botó de verificar', async () => {

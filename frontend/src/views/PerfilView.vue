@@ -4,7 +4,7 @@ import { RouterLink, useRouter } from 'vue-router'
 import { useAccountStore } from '../stores/account'
 import { useAuthStore } from '../stores/auth'
 import { useProfileStore } from '../stores/profile'
-import { canOperate, fetchVerification } from '../services/verification'
+import { useVerificationStore } from '../stores/verification'
 import { formatCurrency } from '../utils/currency'
 import { UiAlert, UiBadge, UiButton, UiCard } from '../components/ui'
 import TwoFactorCard from '../components/TwoFactorCard.vue'
@@ -37,14 +37,10 @@ const personalRows = computed(() => [
 
 // Verificació (US2.4): ve del backend (GET /users/me). Compta com a verificat amb la identitat verificada
 // i els termes vigents acceptats, el mateix criteri que fa servir el backend per a l'operativa
-const verificat = ref(false)
-onMounted(async () => {
-  try {
-    verificat.value = canOperate(await fetchVerification())
-  } catch {
-    verificat.value = false
-  }
-})
+// Si no es pot comprovar, es manté l'últim estat conegut (d'entrada, no verificat)
+const verification = useVerificationStore()
+onMounted(verification.load)
+const verificat = computed(() => verification.canOperate)
 
 // Dades del compte: vénen de Supabase Auth
 const email = computed(() => authStore.user?.email ?? '')
@@ -104,7 +100,7 @@ async function handleLogout() {
           v-if="!verificat"
           variant="primary"
           size="sm"
-          @click="router.push({ name: 'onboarding-step', params: { step: 'verificacio-identitat' } })"
+          @click="router.push({ name: 'onboarding' })"
         >
           Verifica't
         </UiButton>

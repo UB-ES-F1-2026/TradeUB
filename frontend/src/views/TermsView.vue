@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ONBOARDING_STEPS, useOnboardingStore } from '../stores/onboarding'
-import { acceptTerms, fetchVerification, isIdentityVerified } from '../services/verification'
+import { useVerificationStore } from '../stores/verification'
 import { TERMS_SECTIONS } from '../utils/terms'
 import { UiAlert, UiButton, UiCard, UiCheckbox } from '../components/ui'
 
@@ -13,12 +13,12 @@ const DNI_STEP = { name: 'onboarding-step', params: { step: STEP_ID } }
 
 const router = useRouter()
 const onboarding = useOnboardingStore()
+const verification = useVerificationStore()
 
 const position = ONBOARDING_STEPS.findIndex((s) => s.id === STEP_ID) + 1
 
 const loading = ref(true)
 const loadError = ref('')
-const verificacio = ref(null)
 const readToEnd = ref(false)
 const accepted = ref(false)
 const submitting = ref(false)
@@ -39,18 +39,18 @@ async function leave() {
 async function load() {
   loading.value = true
   loadError.value = ''
-  try {
-    verificacio.value = await fetchVerification()
-  } catch {
-    loadError.value = "No s'ha pogut comprovar l'estat de la verificació."
+  // La store no llança l'error: el deixa a verification.error
+  await verification.load()
+  if (verification.error) {
+    loadError.value = verification.error
     loading.value = false
     return
   }
-  if (!isIdentityVerified(verificacio.value)) {
+  if (!verification.isVerified) {
     await router.replace(DNI_STEP)
     return
   }
-  if (verificacio.value.termes_acceptats) {
+  if (verification.termsAccepted) {
     await leave()
     return
   }
@@ -88,7 +88,7 @@ async function submit() {
   submitError.value = ''
   submitting.value = true
   try {
-    await acceptTerms(verificacio.value.termes_versio_vigent)
+    await verification.acceptTerms()
   } catch (e) {
     // Els 409 del backend ja porten un missatge en català (identitat no verificada o versió antiga)
     submitError.value = e?.status === 409
@@ -138,9 +138,9 @@ async function submit() {
         <p class="terms-page__muted">
           Llegeix les condicions del servei fins al final per poder-les acceptar.
           <span
-            v-if="verificacio?.termes_versio_vigent"
+            v-if="verification.termsVersion"
             class="tabular"
-          >Versió {{ verificacio.termes_versio_vigent }}.</span>
+          >Versió {{ verification.termsVersion }}.</span>
         </p>
 
         <div

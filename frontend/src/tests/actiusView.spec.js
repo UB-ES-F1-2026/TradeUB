@@ -23,7 +23,7 @@ async function mountActius() {
     history: createMemoryHistory(),
     routes: [
       { path: '/actius', name: 'actius', component: ActiusView },
-      { path: '/onboarding/:step', name: 'onboarding-step', component: blank },
+      { path: '/onboarding', name: 'onboarding', component: blank },
     ],
   })
   router.push('/actius')
@@ -66,14 +66,14 @@ describe('ActiusView', () => {
     expect(wrapper.find('[data-test="verification-required"]').exists()).toBe(true)
   })
 
-  it('el banner porta al pas de verificació', async () => {
+  it("el banner porta a la pantalla de l'onboarding", async () => {
     backend['/users/me'] = { verificacio: { estat: 'pendent', termes_acceptats: false } }
     const { wrapper, router } = await mountActius()
 
     await wrapper.get('[data-test="verification-required"] button').trigger('click')
     await flushPromises()
 
-    expect(router.currentRoute.value.fullPath).toBe('/onboarding/verificacio-identitat')
+    expect(router.currentRoute.value.fullPath).toBe('/onboarding')
   })
 
   it("si no es pot comprovar l'estat, mostra l'error i no el saldo", async () => {
