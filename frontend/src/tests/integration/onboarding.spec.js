@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 
-// Test d'integració de US2.1 i US2.3: App, router i stores reals. Només es simulen les dues fronteres
+// Test d'integració de US2.1, US2.2 i US2.3: App, router i stores reals. Només es simulen les dues fronteres
 // externes: Supabase (sessió) i el backend (GET /users/me, d'on surt l'estat de l'onboarding des de la #67)
 vi.mock('../../services/supabase', () => ({
   supabase: {
@@ -27,7 +27,11 @@ const session = { access_token: 'token', user }
 // Backend fals: els passos que el servidor dona per completats
 let completed
 const fetchMock = vi.fn(async (url, init = {}) => {
-  // Com el backend real (#69): desar el qüestionari completa el pas i retorna el perfil calculat
+  // Com el backend real: desar cada formulari completa el seu pas
+  if (String(url).endsWith('/profile/personal-data') && init.method === 'POST') {
+    completed.add('dades-personals')
+    return { ok: true, status: 200, json: async () => ({ perfil: JSON.parse(init.body) }) }
+  }
   if (String(url).endsWith('/profile/investor-questionnaire') && init.method === 'POST') {
     completed.add('questionari-inversor')
     return { ok: true, status: 200, json: async () => ({ profile: 'intermedi' }) }
@@ -62,7 +66,22 @@ function signedIn() {
 
 const button = (wrapper, text) => wrapper.findAll('button').find((b) => b.text() === text)
 
-describe('Flux d\'onboarding (US2.1 + US2.3)', () => {
+// Cada camp del formulari és un .ui-field amb la seva etiqueta
+const field = (wrapper, label) => wrapper.findAll('.ui-field').find((f) => f.find('label').text() === label)
+
+// Dades simulades: el NIF només ha de passar la validació de format
+const personalData = {
+  Nom: 'Usuari',
+  Cognoms: 'De Prova',
+  'Data de naixement': '1999-05-17',
+  Telèfon: '600000000',
+  'NIF/NIE': '12345678z',
+  'Carrer i número': 'Carrer de Prova 1',
+  'Codi postal': '08007',
+  Població: 'Barcelona',
+}
+
+describe('Flux d\'onboarding (US2.1 + US2.2 + US2.3)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     setActivePinia(createPinia())
@@ -100,7 +119,7 @@ describe('Flux d\'onboarding (US2.1 + US2.3)', () => {
     expect(wrapper.find('[data-test="progress-value"]').text()).toBe('0 %')
   })
 
-  it('"Comença" porta al primer pas pendent', async () => {
+  it('"Comença" porta a les dades personals i, en desar-les, al qüestionari', async () => {
     signedIn()
     const wrapper = await mountAt('/onboarding')
 
@@ -110,10 +129,28 @@ describe('Flux d\'onboarding (US2.1 + US2.3)', () => {
 
     await expectRoute('/onboarding/dades-personals')
     expect(wrapper.text()).toContain('Pas 1 de 3')
+
+    for (const [label, value] of Object.entries(personalData)) {
+      await field(wrapper, label).find('input').setValue(value)
+    }
+    await field(wrapper, 'País de residència fiscal').find('select').setValue('ES')
+    await wrapper.find('form').trigger('submit')
+
+    // El backend rep les dades i dona el pas per fet; el formulari salta al següent pas pendent
+    await expectRoute('/onboarding/questionari-inversor')
+    expect(wrapper.text()).toContain('Pas 2 de 3')
+    const [, init] = fetchMock.mock.calls.find(([url]) => url.endsWith('/profile/personal-data'))
+    expect(JSON.parse(init.body)).toMatchObject({ nom: 'Usuari', nif: '12345678Z', residencia_fiscal: 'ES' })
+
+    // El pas del qüestionari no té botó per tornar: la benvinguda es torna a obrir des del router
+    await router.push('/onboarding')
+    await expectRoute('/onboarding')
+    await vi.waitFor(() => expect(wrapper.find('[data-test="progress-value"]').text()).toBe('33 %'))
+    expect(wrapper.findAll('[data-test="step-card"]')[0].text()).toContain('Completat')
   })
 
   it("respondre les 5 preguntes desa el perfil al backend, el mostra i la barra de progrés avança", async () => {
-    // Les dades personals (US2.2) queden fora d'aquest flux: el backend ja les dona per fetes
+    // Les dades personals ja es proven al test anterior: aquí el backend ja les dona per fetes
     completed.add('dades-personals')
     signedIn()
     const wrapper = await mountAt('/onboarding')
