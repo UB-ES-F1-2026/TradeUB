@@ -38,10 +38,17 @@ export const useProfileStore = defineStore('profile', () => {
         return saved;
     };
 
+    // Envia les respostes del qüestionari; el backend calcula el perfil, el desa i el retorna
+    const saveInvestorQuestionnaire = async (answers) => {
+        const { profile } = await apiPost('/profile/investor-questionnaire', answers);
+        perfil.value = { ...perfil.value, perfil_inversor: profile };
+        return profile;
+    };
+
     // En tancar sessió o canviar d'usuari no es pot quedar el perfil de l'anterior
     watch(() => authStore.user?.id, (id, previousId) => {
         if (id !== previousId) reset();
     });
 
-    return { perfil, loading, error, load, savePersonalData, reset };
+    return { perfil, loading, error, load, savePersonalData, saveInvestorQuestionnaire, reset };
 });

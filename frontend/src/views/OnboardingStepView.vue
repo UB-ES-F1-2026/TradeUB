@@ -2,20 +2,40 @@
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useOnboardingStore } from '../stores/onboarding'
-import { UiAlert, UiButton, UiCard } from '../components/ui'
+import { useProfileStore } from '../stores/profile'
+import { UiAlert, UiBadge, UiButton, UiCard } from '../components/ui'
 import DadesPersonalsForm from '../components/DadesPersonalsForm.vue'
+import InvestorQuestionnaire from '../components/InvestorQuestionnaire.vue'
+import { INVESTOR_QUESTIONS, PROFILE_LABELS } from '../utils/investorQuestions'
 
-// Contenidor de cada pas. Les dades personals (US2.2) ja tenen formulari; els altres passos (US2.3 i US2.4) són provisionals
+// Contenidor de cada pas. Dades personals (US2.2) i qüestionari (US2.3) ja tenen formulari; la verificació (US2.4) és provisional
 const onboarding = useOnboardingStore()
+const profile = useProfileStore()
 const route = useRoute()
 const router = useRouter()
 
 const loading = ref(false)
 const error = ref('')
+// Perfil que ha retornat el backend en enviar el qüestionari; es mostra abans de continuar
+const investorProfile = ref('')
 
 const step = computed(() => onboarding.getStep(route.params.step))
 const isPersonalData = computed(() => step.value?.id === 'dades-personals')
+const isQuestionnaire = computed(() => step.value?.id === 'questionari-inversor')
 const position = computed(() => onboarding.steps.indexOf(step.value) + 1)
+
+// El backend calcula i desa el perfil amb les respostes; aquí només es mostra el resultat
+async function submitQuestionnaire(answers) {
+  error.value = ''
+  loading.value = true
+  try {
+    investorProfile.value = await profile.saveInvestorQuestionnaire(answers)
+  } catch {
+    error.value = "No s'ha pogut desar el teu perfil. Torna-ho a provar."
+  } finally {
+    loading.value = false
+  }
+}
 
 // Torna a demanar l'estat al backend i salta al següent pas pendent (o a la benvinguda si ja no en queda cap).
 // El pas el completa el backend quan rep les dades del formulari: aquí només es consulta el resultat
@@ -38,7 +58,7 @@ async function complete() {
     <UiCard
       v-if="step"
       class="onboarding-step__card"
-      :class="{ 'onboarding-step__card--form': isPersonalData }"
+      :class="{ 'onboarding-step__card--form': isPersonalData || isQuestionnaire }"
     >
       <span class="eyebrow">Pas {{ position }} de {{ onboarding.steps.length }}</span>
       <h1 class="onboarding-step__title">
@@ -59,6 +79,35 @@ async function complete() {
         v-if="isPersonalData"
         @saved="complete"
       />
+
+      <template v-else-if="isQuestionnaire">
+        <section
+          v-if="investorProfile"
+          class="onboarding-step__result"
+          data-test="result"
+        >
+          <span class="eyebrow">El teu perfil és</span>
+          <UiBadge
+            variant="success"
+            class="onboarding-step__profile"
+          >
+            {{ PROFILE_LABELS[investorProfile] ?? investorProfile }}
+          </UiBadge>
+          <UiButton
+            block
+            :loading="loading"
+            @click="complete"
+          >
+            Continua
+          </UiButton>
+        </section>
+        <InvestorQuestionnaire
+          v-else
+          :questions="INVESTOR_QUESTIONS"
+          :loading="loading"
+          @submit="submitQuestionnaire"
+        />
+      </template>
 
       <div
         v-else
@@ -103,6 +152,15 @@ async function complete() {
 }
 .onboarding-step__text {
   color: var(--tub-text-muted);
+}
+.onboarding-step__result {
+  display: grid;
+  justify-items: center;
+  gap: var(--tub-space-3);
+  text-align: center;
+}
+.onboarding-step__profile {
+  font-size: var(--tub-text-lg);
 }
 .onboarding-step__actions {
   display: flex;
