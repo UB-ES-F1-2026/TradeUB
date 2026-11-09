@@ -1,7 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-import { UiButton, UiInput, UiSelect, UiFileInput, UiCard, UiAlert, UiBadge, UiLogo } from '../components/ui'
-import { UiButton, UiInput, UiSelect, UiCheckbox, UiCard, UiAlert, UiBadge, UiLogo } from '../components/ui'
+import { UiButton, UiInput, UiSelect, UiFileInput, UiCheckbox, UiCard, UiAlert, UiBadge, UiLogo } from '../components/ui'
 
 const text = ref('')
 const fileName = ref('')
@@ -176,6 +175,7 @@ const groups = [
           hint="JPG o PNG."
           :file-name="fileName"
           @change="(file) => (fileName = file.name)"
+        />
         <UiCheckbox
           v-model="accepted"
           label="Accepto els termes i condicions"
