@@ -70,6 +70,16 @@ describe('profile store', () => {
     expect(store.perfil).toEqual({})
   })
 
+  it('saveInvestorQuestionnaire envia les respostes a POST /profile/investor-questionnaire i retorna el perfil', async () => {
+    apiPost.mockResolvedValue({ profile: 'avancat' })
+
+    const profile = await store.saveInvestorQuestionnaire({ experiencia: 'habitual' })
+
+    expect(apiPost).toHaveBeenCalledWith('/profile/investor-questionnaire', { experiencia: 'habitual' })
+    expect(profile).toBe('avancat')
+    expect(store.perfil.perfil_inversor).toBe('avancat')
+  })
+
   it('en canviar d\'usuari s\'esborra el perfil de l\'anterior', async () => {
     const auth = useAuthStore()
     auth.user = { id: 'u1' }
