@@ -2,7 +2,8 @@
 
 Els tests son hermetics: no fan cap peticio de xarxa ni toquen dades reals
 de Supabase. El JWKS es substitueix per una clau generada aqui mateix i la
-taula profiles per un doble.
+taula profiles per dobles (de lectura amb el client de l'usuari i
+d'escriptura amb el client d'administracio).
 """
 
 import os
@@ -151,6 +152,54 @@ def fake_profile():
         fake_client = FakeSupabaseClient(rows or [], error)
         main.app.dependency_overrides[deps.get_user_client] = lambda: fake_client
         return fake_client
+
+    yield install
+    main.app.dependency_overrides.clear()
+
+
+class FakeAdminClient:
+    """Doble encadenable de table().update().eq().execute() amb la clau secreta."""
+
+    def __init__(self, rows=None, error=None):
+        self.rows = rows
+        self.error = error
+        self.table_name = None
+        self.update_data = None
+        self.eq_args = None
+
+    def table(self, name):
+        self.table_name = name
+        return self
+
+    def update(self, data):
+        self.update_data = data
+        return self
+
+    def eq(self, column, value):
+        self.eq_args = (column, value)
+        return self
+
+    def execute(self):
+        if self.error is not None:
+            raise self.error
+        if self.rows is not None:
+            return SimpleNamespace(data=self.rows)
+        return SimpleNamespace(data=[{"id": self.eq_args[1], **self.update_data}])
+
+
+@pytest.fixture
+def fake_admin():
+    """Substitueix get_admin_client per un doble i el retorna per inspeccionar-lo.
+
+    Yields:
+        Funció install(rows=None, error=None). Sense rows, el doble retorna la
+        fila amb les dades rebudes, com faria PostgREST.
+    """
+
+    def install(rows=None, error=None):
+        admin = FakeAdminClient(rows, error)
+        main.app.dependency_overrides[deps.get_admin_client] = lambda: admin
+        return admin
 
     yield install
     main.app.dependency_overrides.clear()

@@ -98,8 +98,7 @@ const routes = [
         name: 'mfa',
         component: () => import('../views/MfaVerifyView.vue'),
         meta: { hideNav: true }
-    }
-
+    },
 ]
 
 const router = createRouter({

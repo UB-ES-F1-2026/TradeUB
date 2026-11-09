@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-import { UiButton, UiInput, UiSelect, UiCard, UiAlert, UiBadge, UiLogo } from '../components/ui'
+import { UiButton, UiInput, UiSelect, UiCard, UiAlert, UiBadge, UiLogo, UiRadioGroup } from '../components/ui'
 
 const text = ref('')
 const bad = ref('hola')
@@ -8,6 +8,12 @@ const country = ref('')
 const countries = [
   { value: 'ES', label: 'Espanya' },
   { value: 'PT', label: 'Portugal' },
+]
+const choice = ref('mitja')
+const choiceOptions = [
+  { id: 'baix', label: 'No sé ben bé què són' },
+  { id: 'mitja', label: 'Conec el funcionament bàsic' },
+  { id: 'alt', label: 'Entenc bé els riscos' },
 ]
 const groups = [
   { name: 'Marca', tokens: ['navy', 'navy-2', 'navy-3', 'green', 'green-dark', 'green-light', 'green-soft'] },
@@ -165,6 +171,16 @@ const groups = [
           label="País de residència fiscal"
           placeholder="Selecciona un país"
           :options="countries"
+        />
+        <p class="sg__card-sub">
+          Resposta tancada (<code>UiRadioGroup</code>)
+        </p>
+        <UiRadioGroup
+          v-model="choice"
+          name="sg-choice"
+          label="Coneixement sobre accions i ETFs"
+          :options="choiceOptions"
+          class="sg__radio"
         />
         <UiButton
           type="submit"
@@ -380,6 +396,9 @@ code {
 .sg__card-sub {
   color: var(--tub-text-muted);
   margin: var(--tub-space-1) 0 var(--tub-space-5);
+}
+.sg__radio {
+  margin-bottom: var(--tub-space-5);
 }
 .sg__alerts {
   max-width: 560px;
