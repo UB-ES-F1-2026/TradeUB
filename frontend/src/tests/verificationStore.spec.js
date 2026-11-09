@@ -152,4 +152,65 @@ describe('verification store', () => {
     await vi.advanceTimersByTimeAsync(20000)
     expect(apiGet).not.toHaveBeenCalled()
   })
+  describe('termes', () => {
+    const withTerms = (accepted) => ({
+      verificacio: {
+        estat: 'verificat',
+        document_enviat_at: NOW.toISOString(),
+        termes_versio_vigent: '2026-11',
+        termes_acceptats: accepted,
+      },
+    })
+
+    it('desa la versió vigent i si els termes estan acceptats', async () => {
+      apiGet.mockResolvedValue(withTerms(false))
+
+      await store.load()
+
+      expect(store.termsVersion).toBe('2026-11')
+      expect(store.termsAccepted).toBe(false)
+      expect(store.canOperate).toBe(false)
+    })
+
+    it('només es pot operar amb la identitat verificada i els termes acceptats', async () => {
+      apiGet.mockResolvedValue(withTerms(true))
+      await store.load()
+      expect(store.canOperate).toBe(true)
+
+      apiGet.mockResolvedValue({ verificacio: { estat: 'en-revisio', termes_acceptats: true } })
+      await store.load()
+      expect(store.canOperate).toBe(false)
+    })
+
+    it('acceptTerms envia la versió vigent i aplica la resposta', async () => {
+      apiGet.mockResolvedValue(withTerms(false))
+      await store.load()
+      apiPost.mockResolvedValue(withTerms(true))
+
+      await store.acceptTerms()
+
+      expect(apiPost).toHaveBeenCalledWith('/profile/terms', { versio: '2026-11' })
+      expect(store.termsAccepted).toBe(true)
+      expect(store.canOperate).toBe(true)
+    })
+
+    it("si el backend rebutja l'acceptació, llança l'error i no canvia l'estat", async () => {
+      apiGet.mockResolvedValue(withTerms(false))
+      await store.load()
+      apiPost.mockRejectedValue(new ApiError(409, 'Versió antiga'))
+
+      await expect(store.acceptTerms()).rejects.toThrow('Versió antiga')
+      expect(store.termsAccepted).toBe(false)
+    })
+
+    it('reset oblida els termes', async () => {
+      apiGet.mockResolvedValue(withTerms(true))
+      await store.load()
+
+      store.reset()
+
+      expect(store.termsVersion).toBeNull()
+      expect(store.termsAccepted).toBe(false)
+    })
+  })
 })

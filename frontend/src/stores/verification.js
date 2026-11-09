@@ -11,13 +11,16 @@ export const MAX_RECHECKS = 5;
 const STATUS_ERROR = "No s'ha pogut comprovar l'estat de la verificació.";
 const KNOWN_STATUSES = Object.values(VERIFICATION_STATUS);
 
-// Estat de la verificació simulada del DNI (US2.4). El decideix el backend a partir del moment de l'enviament:
-// el frontend només mostra el compte enrere i, en acabar, torna a demanar l'estat real a GET /users/me
+// Estat de la verificació simulada del DNI i dels termes (US2.4). El decideix el backend a partir del moment de
+// l'enviament: el frontend només mostra el compte enrere i, en acabar, torna a demanar l'estat real a GET /users/me
 export const useVerificationStore = defineStore('verification', () => {
     const authStore = useAuthStore();
 
     const status = ref(VERIFICATION_STATUS.PENDING);
     const documentSentAt = ref(null);
+    // Versió vigent dels termes (la decideix el backend) i si l'usuari ja l'ha acceptada
+    const termsVersion = ref(null);
+    const termsAccepted = ref(false);
     const secondsLeft = ref(0);
     const loading = ref(false);
     const checking = ref(false);
@@ -26,6 +29,8 @@ export const useVerificationStore = defineStore('verification', () => {
     const isPending = computed(() => status.value === VERIFICATION_STATUS.PENDING);
     const isInReview = computed(() => status.value === VERIFICATION_STATUS.IN_REVIEW);
     const isVerified = computed(() => status.value === VERIFICATION_STATUS.VERIFIED);
+    // Mateix criteri que require_verified_user al backend: identitat verificada i termes vigents acceptats
+    const canOperate = computed(() => isVerified.value && termsAccepted.value);
 
     let countdownTimer = null;
     let recheckTimer = null;
@@ -42,6 +47,8 @@ export const useVerificationStore = defineStore('verification', () => {
     const apply = (verificacio) => {
         status.value = KNOWN_STATUSES.includes(verificacio?.estat) ? verificacio.estat : VERIFICATION_STATUS.PENDING;
         documentSentAt.value = verificacio?.document_enviat_at ?? null;
+        termsVersion.value = verificacio?.termes_versio_vigent ?? null;
+        termsAccepted.value = verificacio?.termes_acceptats === true;
     };
 
     const fetchStatus = async () => {
@@ -108,10 +115,19 @@ export const useVerificationStore = defineStore('verification', () => {
         if (isInReview.value) startCountdown();
     };
 
+    // Accepta la versió vigent dels termes. El backend respon 409 si la identitat no està verificada o si la
+    // versió no és la vigent; en aquest cas llança l'ApiError i l'estat no canvia
+    const acceptTerms = async () => {
+        const data = await apiPost('/profile/terms', { versio: termsVersion.value });
+        apply(data?.verificacio);
+    };
+
     const reset = () => {
         stopTimers();
         status.value = VERIFICATION_STATUS.PENDING;
         documentSentAt.value = null;
+        termsVersion.value = null;
+        termsAccepted.value = false;
         secondsLeft.value = 0;
         loading.value = false;
         checking.value = false;
@@ -124,8 +140,8 @@ export const useVerificationStore = defineStore('verification', () => {
     });
 
     return {
-        status, documentSentAt, secondsLeft, loading, checking, error,
-        isPending, isInReview, isVerified,
-        load, submitDocument, reset,
+        status, documentSentAt, termsVersion, termsAccepted, secondsLeft, loading, checking, error,
+        isPending, isInReview, isVerified, canOperate,
+        load, submitDocument, acceptTerms, reset,
     };
 });
