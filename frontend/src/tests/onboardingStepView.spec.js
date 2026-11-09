@@ -17,7 +17,7 @@ vi.mock('../services/api', async (importOriginal) => ({
   apiPost: vi.fn(),
 }))
 
-import { apiGet } from '../services/api'
+import { apiGet, apiPost, ApiError } from '../services/api'
 
 const { COMPLETED, PENDING } = STEP_STATUS
 
@@ -49,8 +49,22 @@ async function mountAt(step, stubs = {}) {
 
 const completeButton = (wrapper) => wrapper.findAll('button').find((b) => b.text() === 'Completa el pas')
 
-async function clickComplete(wrapper) {
-  await completeButton(wrapper).trigger('click')
+const QuestionnaireStub = {
+  template: '<button data-test="questionnaire-stub" @click="$emit(\'submit\', { experiencia: \'cap\' })" />',
+}
+const continueButton = (wrapper) => wrapper.findAll('button').find((b) => b.text() === 'Continua')
+
+// Ja no hi ha cap pas amb el botó provisional: la navegació després de completar un pas es prova
+// amb el qüestionari (pas 2), que en prémer "Continua" torna a carregar l'estat i salta al següent pas pendent
+async function mountQuestionnaire() {
+  apiPost.mockResolvedValue({ profile: 'intermedi' })
+  return mountAt('questionari-inversor', { InvestorQuestionnaire: QuestionnaireStub })
+}
+
+async function completeQuestionnaire(wrapper) {
+  await wrapper.get('[data-test="questionnaire-stub"]').trigger('click')
+  await flushPromises()
+  await continueButton(wrapper).trigger('click')
   await flushPromises()
 }
 
@@ -67,51 +81,91 @@ describe('OnboardingStepView', () => {
     expect(wrapper.text()).toContain("Qüestionari d'experiència inversora")
   })
 
-  it("torna a carregar l'estat i salta al següent pas pendent", async () => {
-    mockBackend(['dades-personals', 'questionari-inversor'])
-    const { wrapper, router } = await mountAt('questionari-inversor')
-
-    await clickComplete(wrapper)
-
-    expect(apiGet).toHaveBeenCalledWith('/users/me')
-    expect(router.currentRoute.value.fullPath).toBe('/onboarding/verificacio-identitat')
-  })
-
   it('torna a un pas anterior si encara està pendent', async () => {
     mockBackend(['questionari-inversor', 'verificacio-identitat'])
-    const { wrapper, router } = await mountAt('questionari-inversor')
+    const { wrapper, router } = await mountQuestionnaire()
 
-    await clickComplete(wrapper)
+    await completeQuestionnaire(wrapper)
 
     expect(router.currentRoute.value.fullPath).toBe('/onboarding/dades-personals')
   })
 
   it('es queda al mateix pas si el backend encara el té pendent', async () => {
     mockBackend(['dades-personals'])
-    const { wrapper, router } = await mountAt('questionari-inversor')
+    const { wrapper, router } = await mountQuestionnaire()
 
-    await clickComplete(wrapper)
+    await completeQuestionnaire(wrapper)
 
     expect(router.currentRoute.value.fullPath).toBe('/onboarding/questionari-inversor')
   })
 
   it('amb tots els passos fets torna a la benvinguda', async () => {
     mockBackend(ONBOARDING_STEPS.map((s) => s.id))
-    const { wrapper, router } = await mountAt('questionari-inversor')
+    const { wrapper, router } = await mountQuestionnaire()
 
-    await clickComplete(wrapper)
+    await completeQuestionnaire(wrapper)
 
     expect(router.currentRoute.value.path).toBe('/onboarding')
   })
 
   it('si el backend falla mostra un error i no canvia de pas', async () => {
     apiGet.mockRejectedValue(new Error('Error de xarxa'))
-    const { wrapper, router } = await mountAt('questionari-inversor')
+    const { wrapper, router } = await mountQuestionnaire()
 
-    await clickComplete(wrapper)
+    await completeQuestionnaire(wrapper)
 
     expect(wrapper.text()).toContain("No s'ha pogut comprovar el progrés.")
     expect(router.currentRoute.value.fullPath).toBe('/onboarding/questionari-inversor')
+  })
+
+  describe('pas del qüestionari', () => {
+    it('mostra el qüestionari en lloc dels botons provisionals', async () => {
+      mockBackend()
+      const { wrapper } = await mountAt('questionari-inversor')
+
+      expect(wrapper.findAll('[data-test="question"]')).toHaveLength(5)
+      expect(completeButton(wrapper)).toBeUndefined()
+    })
+
+    it('envia les respostes al backend i mostra el perfil que retorna', async () => {
+      mockBackend()
+      apiPost.mockResolvedValue({ profile: 'intermedi' })
+      const { wrapper } = await mountAt('questionari-inversor', { InvestorQuestionnaire: QuestionnaireStub })
+
+      await wrapper.get('[data-test="questionnaire-stub"]').trigger('click')
+      await flushPromises()
+
+      expect(apiPost).toHaveBeenCalledWith('/profile/investor-questionnaire', { experiencia: 'cap' })
+      expect(wrapper.get('[data-test="result"]').text()).toContain('Intermedi')
+      expect(wrapper.find('[data-test="questionnaire-stub"]').exists()).toBe(false)
+    })
+
+    it("en continuar torna a carregar l'estat i passa al següent pas", async () => {
+      mockBackend(['dades-personals', 'questionari-inversor'])
+      apiPost.mockResolvedValue({ profile: 'principiant' })
+      const { wrapper, router } = await mountAt('questionari-inversor', { InvestorQuestionnaire: QuestionnaireStub })
+
+      await wrapper.get('[data-test="questionnaire-stub"]').trigger('click')
+      await flushPromises()
+      await continueButton(wrapper).trigger('click')
+      await flushPromises()
+
+      expect(apiGet).toHaveBeenCalledWith('/users/me')
+      expect(router.currentRoute.value.fullPath).toBe('/onboarding/verificacio-identitat')
+    })
+
+    it('si el backend rebutja les respostes mostra un error i es queda al qüestionari', async () => {
+      mockBackend()
+      apiPost.mockRejectedValue(new ApiError(422, 'Resposta no vàlida'))
+      const { wrapper } = await mountAt('questionari-inversor', { InvestorQuestionnaire: QuestionnaireStub })
+
+      await wrapper.get('[data-test="questionnaire-stub"]').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.text()).toContain("No s'ha pogut desar el teu perfil.")
+      expect(wrapper.find('[data-test="result"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="questionnaire-stub"]').exists()).toBe(true)
+    })
   })
 
   describe('pas de dades personals', () => {
