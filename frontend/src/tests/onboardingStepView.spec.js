@@ -97,7 +97,7 @@ describe('OnboardingStepView', () => {
 
   it('amb tots els passos fets torna a la benvinguda', async () => {
     mockBackend(ONBOARDING_STEPS.map((s) => s.id))
-    const { wrapper, router } = await mountAt('verificacio-identitat')
+    const { wrapper, router } = await mountAt('questionari-inversor')
 
     await clickComplete(wrapper)
 
@@ -144,6 +144,18 @@ describe('OnboardingStepView', () => {
       await flushPromises()
 
       expect(router.currentRoute.value.fullPath).toBe('/onboarding/dades-personals')
+    })
+  })
+
+  describe('pas de verificació del DNI', () => {
+    it('mostra la pujada del document en lloc del botó provisional', async () => {
+      const { wrapper } = await mountAt('verificacio-identitat', {
+        IdentityDocumentUpload: { template: '<div data-test="dni-stub" />' },
+      })
+
+      expect(wrapper.find('[data-test="dni-stub"]').exists()).toBe(true)
+      expect(completeButton(wrapper)).toBeUndefined()
+      expect(wrapper.findAll('button').some((b) => b.text() === 'Torna')).toBe(true)
     })
   })
 })
