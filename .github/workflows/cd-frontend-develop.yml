@@ -1,0 +1,67 @@
+name: CI/CD Frontend a Vercel (Develop)
+
+on:
+  push:
+    branches: ["develop"]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+    steps:
+      - name: Descarregar repositori
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: ./frontend/package-lock.json
+
+      - name: Instalar dependencies
+        run: npm ci
+
+      - name: Instalar Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Comprovar que VITE_API_URL arriba al backend
+        run: |
+          url="$VITE_API_URL/health"
+          for i in $(seq 1 12); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "$url" || true)
+            if [ "$code" = "200" ]; then echo "API OK: $url"; exit 0; fi
+            echo "Intent $i: $code. S'espera 10 s..."; sleep 10
+          done
+          echo "VITE_API_URL no arriba al backend ($url): revisa el secret"; exit 1
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL_DEV }}
+
+      - name: Descarregar configuració de Vercel
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_DEV }}
+
+      - name: Construir projecte amb Vercel
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_DEV }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL_DEV }}
+
+      - name: Desplegar a Vercel
+        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_DEV }}
+
+      - name: Smoke test del frontend desplegat
+        run: |
+          url="https://tradeub-dev.vercel.app"
+          code=$(curl -s -o /dev/null -w '%{http_code}' "$url")
+          if [ "$code" = "200" ]; then echo "Frontend OK: $url"; else echo "El frontend no respon a $url: $code"; exit 1; fi

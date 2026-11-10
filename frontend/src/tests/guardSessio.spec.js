@@ -66,9 +66,11 @@ describe('protecció de rutes en carregar la pàgina (F5)', () => {
       expect(await carregarApp('/perfil')).toBe('/perfil')
     })
 
-    it('es queda a /cartera', async () => {
-      expect(await carregarApp('/cartera')).toBe('/cartera')
-    })
+    for (const path of ['/cartera', '/historial', '/bustia', '/compte-efectiu']) {
+      it(`${path} redirigeix a /actius`, async () => {
+        expect(await carregarApp(path)).toBe('/actius')
+      })
+    }
 
     it('sense 2FA, es queda a /reset-password', async () => {
       expect(await carregarApp('/reset-password')).toBe('/reset-password')

@@ -1,18 +1,29 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api import users
+from api import account, health, profile, users
 
 app = FastAPI(title="TradeUB API")
+
+# Origens permesos (producció, desenvolupament i local)
+origins = [
+    "https://tradeub.vercel.app",        # Frontend de producció (main)
+    "https://tradeub-dev.vercel.app",    # Frontend de desenvolupament (develop)
+    "http://localhost:5173",              # Local amb Vite
+    "http://localhost:3000",              # Local (alternatiu)
+]
 
 # Configuració CORS perquè el Vue s'hi pugui connectar
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Posar "http://localhost:5173"
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],                  # Permet GET, POST, PUT, DELETE, etc.
+    allow_headers=["*"],                  # Permet tots els encapçalaments (Authorization, Content-Type, etc.)
 )
 
 # Registrem les rutes
 app.include_router(users.router, prefix="/api/v1/users", tags=["Users"])
+app.include_router(account.router, prefix="/api/v1/account", tags=["Account"])
+app.include_router(health.router, prefix="/api/v1/health", tags=["Health"])
+app.include_router(profile.router, prefix="/api/v1/profile", tags=["Profile"])

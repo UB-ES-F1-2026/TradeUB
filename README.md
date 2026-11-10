@@ -92,6 +92,56 @@ Cal comprovar el següent:
 
 **Important:** Cal executar les ordres de cada secció dins del directori corresponent (`/backend` o `/frontend`).
 
+## Després de fer PR cap a `develop` o `main` (Backend)
+
+Un cop la Pull Request d'una feature (p.ex. `feature/US1.1`) s'hagi aprovat i s'hagi fet el *merge* cap a `develop` o `main`, cal provar el desplegament del backend al núvol seguint aquests passos:
+
+### 1. Desplegament automàtic a GitHub
+En fer el *merge* de la Pull Request a les branques `develop` o `main`, s'activarà automàticament el pipeline de CI/CD a GitHub Actions per construir i desplegar la nova versió.
+
+### 2. Supervisar el workflow a GitHub Actions
+Ves al repositori a GitHub i entra a la pestanya **Actions**.
+Espera que tots els passos de les GitHub Actions (construcció de la imatge Docker i desplegament a Azure App Service) finalitzin amb un tic.
+
+![alt text](docs/images/readme_exemple2.png)
+
+### 3. Smoke test automàtic
+L'últim pas del workflow crida `GET /api/v1/health` del backend desplegat i falla si no respon 200. Si el workflow queda en vermell en aquest pas, el backend no arrenca: el motiu habitual és una variable d'entorn nova. **Tota variable que s'afegeixi a `backend/.env.example` s'ha d'afegir també a l'App Service d'Azure (Environment variables) abans de fer merge a `develop` o `main`.**
+
+### 4. Verificar l'API a producció
+Obre el navegador i accedeix a la documentació a la URL pública assignada per Azure:
+
+[https://apptradeub-ceaje7dhhrdzgmc0.francecentral-01.azurewebsites.net/docs](https://apptradeub-ceaje7dhhrdzgmc0.francecentral-01.azurewebsites.net/docs)
+
+![alt text](docs/images/readme_exemple1.png)
+
+Si la pàgina carrega correctament i mostra tots els endpoints (com `/api/v1/users`), el desplegament del backend ha estat un èxit i està llest per rebre peticions del frontend.
+
+## Després de fer PR cap a `develop` o `main` (Frontend)
+
+Un cop la Pull Request de la feature s'hagi aprovat i s'hagi fet el *merge* cap a `develop` o `main`, cal provar el desplegament del frontend a Netlify seguint aquests passos:
+
+### 1. Desplegament automàtic a GitHub
+En fer el *merge* a la branca corresponent, s'activarà el workflow de CI/CD a GitHub Actions per instal·lar les dependències, construir els fitxers estàtics (`npm run build`) i enviar-los a Netlify.
+
+### 2. Supervisar el workflow a GitHub Actions
+Ves a la pestanya **Actions** del repositori a GitHub.
+Selecciona l'execució del workflow `CI/CD Frontend a Netlify` i assegura me que tots els passos (Node.js, instal·lació, build i deploy) es completin correctament en verd.
+
+### 3. Verificar l'aplicació web desplegada
+Accedeix a la URL pública assignada per Netlify segons l'entorn:
+* **Entorn de Producció (`main`):** `https://tradeub.netlify.app`
+* **Entorn de Desenvolupament (`develop`):** `https://tradeub-dev.netlify.app`
+
+### 4. Smoke test automàtic
+El workflow comprova abans del build que el secret `VITE_API_URL_DEV` / `VITE_API_URL_MAIN` arriba al backend (`GET <VITE_API_URL>/health` ha de respondre 200; si el secret no porta el prefix de l'API, les peticions van a rutes que no existeixen) i, després del deploy, que la URL de Netlify respon 200.
+
+### 5. Comprovar la connexió amb el Backend i Supabase
+1. Obre la web desplegada i activa les eines de desenvolupador del navegador prement **F12**.
+2. Entra a la pestanya **Xarxa** (*Network*) i filtra per **Fetch/XHR**.
+3. Realitza una acció (com iniciar sessió o carregar dades). 
+4. *Verificació:* Comprova que les peticions s'envien correctament a la URL d'Azure (`https://apptradeub-ceaje7dhhrdzgmc0.francecentral-01.azurewebsites.net`) i retornen un estat **200 OK** sense errors de CORS a la consola.
+
 ## Treball amb agents de codi
 
 Les instruccions i plantilles del projecte per treballar amb agents de codi són a:

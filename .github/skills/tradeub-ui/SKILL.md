@@ -20,7 +20,7 @@ modificar-la.
 |---|---|---|
 | Colors, tipografia, espais, radis, ombres | `frontend/src/styles/tokens.css` | Variables CSS `--tub-*`; únic lloc amb valors hex |
 | Reset i estils globals | `frontend/src/styles/base.css` | Només consumeix tokens |
-| Components base | `frontend/src/components/ui/` | `UiButton`, `UiInput`, `UiCard`, `UiAlert`, `UiBadge`, `UiLogo` |
+| Components base | `frontend/src/components/ui/` | `UiButton`, `UiInput`, `UiSelect`, `UiFileInput`, `UiCheckbox`, `UiCard`, `UiAlert`, `UiBadge`, `UiLogo`, `UiRadioGroup` |
 | Mostra visual | `frontend/src/views/StyleguideView.vue` | Ruta `/ui` |
 
 ## Regles
@@ -45,10 +45,23 @@ modificar-la.
 <UiInput v-model="email" label="Correu electrònic" type="email" autocomplete="email"
          placeholder="nom@exemple.com" :error="errors.email" hint="Opcional" />
 
+<UiSelect v-model="country" label="País de residència fiscal" placeholder="Selecciona un país"
+          :options="[{ value: 'ES', label: 'Espanya' }]" :error="errors.country" hint="Opcional" />
+
+<!-- Emet el File a "change"; el pare el valida i passa el nom a file-name. El slot és per a una previsualització -->
+<UiFileInput label="Selecciona una imatge" accept=".jpg,.png" :file-name="file?.name"
+             :error="errors.file" hint="JPG o PNG." @change="onFile"><img :src="preview"></UiFileInput>
+<UiCheckbox v-model="accepted" label="Accepto els termes i condicions" :disabled="bool"
+            :error="errors.terms" hint="Opcional" />  <!-- o el text de l'etiqueta al slot per defecte -->
+
 <UiCard variant="default|glass" padding="sm|md|lg">...</UiCard>
 <UiAlert variant="info|success|warning|error">Missatge</UiAlert>
 <UiBadge variant="neutral|success|danger|info|on-dark">+4,82 %</UiBadge>
 <UiLogo to="/" size="sm|md|lg" :mark-only="bool" />
+
+<!-- Resposta tancada (una sola opció). Si va dins d'un <fieldset> amb <legend>, no cal label -->
+<UiRadioGroup v-model="resposta" name="pregunta-1" label="Nom accessible del grup"
+              :options="[{ id: 'a', label: 'Opció A' }, { id: 'b', label: 'Opció B' }]" />
 ```
 
 ## Com canviar l'estil de tota l'app

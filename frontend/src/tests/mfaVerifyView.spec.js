@@ -21,12 +21,27 @@ vi.mock('../services/supabase', () => ({
   },
 }))
 
+// API falsa: l'estat de l'onboarding es demana al backend després del codi
+vi.mock('../services/api', () => ({ apiGet: vi.fn() }))
+
 import { supabase } from '../services/supabase'
+import { apiGet } from '../services/api'
 import { useAuthStore } from '../stores/auth'
+import { ONBOARDING_STEPS } from '../stores/onboarding'
 import MfaVerifyView from '../views/MfaVerifyView.vue'
 
 const verifiedFactor = { id: 'f1', factor_type: 'totp', status: 'verified' }
-const session = { access_token: 'token', user: { id: 'u1', factors: [verifiedFactor] } }
+const session = {
+  access_token: 'token',
+  user: { id: 'u1', factors: [verifiedFactor] },
+}
+
+// Resposta de GET /users/me amb tots els passos en l'estat indicat
+function mockOnboarding(status) {
+  apiGet.mockResolvedValue({
+    onboarding: { steps: ONBOARDING_STEPS.map((s) => ({ id: s.id, status })) },
+  })
+}
 
 function makeRouter() {
   return createRouter({
@@ -36,6 +51,7 @@ function makeRouter() {
       { path: '/login', name: 'login', component: { render: () => null } },
       { path: '/actius', name: 'actius', component: { render: () => null } },
       { path: '/perfil', name: 'perfil', component: { render: () => null } },
+      { path: '/onboarding', name: 'onboarding', component: { render: () => null } },
     ],
   })
 }
@@ -61,6 +77,8 @@ describe('MfaVerifyView', () => {
     useAuthStore().session = session
     supabase.auth.mfa.listFactors.mockResolvedValue({ data: { all: [verifiedFactor], totp: [verifiedFactor] }, error: null })
     supabase.auth.getSession.mockResolvedValue({ data: { session } })
+    // Per defecte, un usuari que ja ha acabat l'onboarding
+    mockOnboarding('completat')
   })
 
   it('no envia el codi si no té 6 xifres', async () => {
@@ -79,6 +97,7 @@ describe('MfaVerifyView', () => {
     await submitCode(wrapper, '123 456')
 
     expect(supabase.auth.mfa.challengeAndVerify).toHaveBeenCalledWith({ factorId: 'f1', code: '123456' })
+    expect(apiGet).toHaveBeenCalledWith('/users/me')
     expect(router.currentRoute.value.path).toBe('/perfil')
   })
 
@@ -89,6 +108,27 @@ describe('MfaVerifyView', () => {
     await submitCode(wrapper, '123456')
 
     expect(router.currentRoute.value.path).toBe('/actius')
+  })
+
+  it("sense l'onboarding acabat va a la pantalla de benvinguda", async () => {
+    mockOnboarding('pendent')
+    supabase.auth.mfa.challengeAndVerify.mockResolvedValue({ data: {}, error: null })
+    const { wrapper, router } = await mountMfa('/mfa?redirect=/perfil')
+
+    await submitCode(wrapper, '123456')
+
+    expect(router.currentRoute.value.path).toBe('/onboarding')
+  })
+
+  it('si el backend no respon va a la benvinguda sense mostrar error de codi', async () => {
+    apiGet.mockRejectedValue(new Error('Error de xarxa'))
+    supabase.auth.mfa.challengeAndVerify.mockResolvedValue({ data: {}, error: null })
+    const { wrapper, router } = await mountMfa('/mfa?redirect=/perfil')
+
+    await submitCode(wrapper, '123456')
+
+    expect(router.currentRoute.value.path).toBe('/onboarding')
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
   })
 
   it('amb un codi incorrecte mostra l\'error i es queda a /mfa', async () => {

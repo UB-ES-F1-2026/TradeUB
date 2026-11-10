@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { useOnboardingStore } from '../stores/onboarding'
+import { INCOMPLETE_FEATURES_ENABLED } from '../config/features'
 import RegisterView from '../views/RegisterView.vue'
 
 // meta.requiresAuth: ruta privada, cal sessió
@@ -21,31 +23,55 @@ const routes = [
         path: '/cartera',
         name: 'cartera',
         component: () => import('../views/CarteraView.vue'),
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true, enabled: INCOMPLETE_FEATURES_ENABLED }
     },
     {
         path: '/historial',
         name: 'historial',
         component: () => import('../views/HistorialView.vue'),
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true, enabled: INCOMPLETE_FEATURES_ENABLED }
     },
     {
         path: '/bustia',
         name: 'bustia',
         component: () => import('../views/BustiaView.vue'),
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true, enabled: INCOMPLETE_FEATURES_ENABLED }
     },
     {
         path: '/compte-efectiu',
         name: 'compte-efectiu',
         component: () => import('../views/CompteEfectiuView.vue'),
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true, enabled: INCOMPLETE_FEATURES_ENABLED }
     },
     {
         path: '/perfil',
         name: 'perfil',
         component: () => import('../views/PerfilView.vue'),
         meta: { requiresAuth: true }
+    },
+    {
+        // Pantalla de benvinguda de l'onboarding amb els passos per completar
+        path: '/onboarding',
+        name: 'onboarding',
+        component: () => import('../views/OnboardingView.vue'),
+        meta: { requiresAuth: true, hideNav: true }
+    },
+    {
+        path: '/onboarding/:step',
+        name: 'onboarding-step',
+        component: () => import('../views/OnboardingStepView.vue'),
+        meta: { requiresAuth: true, hideNav: true },
+        // Un pas que no existeix torna a la pantalla de benvinguda
+        beforeEnter: (to) => {
+            if (!useOnboardingStore().getStep(to.params.step)) return { name: 'onboarding' }
+        }
+    },
+    {
+        // Acceptació dels termes (US2.4), després de verificar el DNI. La vista comprova l'estat al backend
+        path: '/onboarding/verificacio-identitat/termes',
+        name: 'onboarding-termes',
+        component: () => import('../views/TermsView.vue'),
+        meta: { requiresAuth: true, hideNav: true }
     },
     {
         path: '/login',
@@ -80,8 +106,7 @@ const routes = [
         name: 'mfa',
         component: () => import('../views/MfaVerifyView.vue'),
         meta: { hideNav: true }
-    }
-
+    },
 ]
 
 const router = createRouter({
@@ -92,6 +117,8 @@ const router = createRouter({
 // Protecció de rutes: s'executa abans de cada navegació
 router.beforeEach((to) => {
     const authStore = useAuthStore()
+
+    if (to.meta.enabled === false) return { path: '/actius' }
 
     if (to.name === 'mfa') {
         if (!authStore.isAuthenticated) return { name: 'login' }
