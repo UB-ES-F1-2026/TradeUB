@@ -69,14 +69,14 @@ describe('PerfilView', () => {
     store.session = { access_token: 'token', user }
   })
 
-  it('mostra el saldo del compte com a patrimoni', async () => {
+  it('carrega el saldo encara que la cartera no sigui visible', async () => {
     backend['/account/balance'] = { balance: '10000', currency: 'EUR', updated_at: null }
 
     const { wrapper } = await mountPerfil()
     await flushPromises()
 
     expect(apiGet).toHaveBeenCalledWith('/account/balance')
-    expect(wrapper.text().replace(/\s/g, ' ')).toContain('10.000,00 €')
+    expect(wrapper.text()).not.toContain('Patrimoni')
   })
 
   it('mostra el correu i les dates de l\'usuari', async () => {
@@ -166,10 +166,11 @@ describe('PerfilView', () => {
     expect(wrapper.text()).toContain('No verificat')
   })
 
-  it('mostra els ajustes com a pròximament, sense enllaç', async () => {
+  it('oculta la configuració encara no disponible', async () => {
     const { wrapper } = await mountPerfil()
 
-    expect(wrapper.text()).toContain('Pròximament')
+    expect(wrapper.text()).not.toContain('Pròximament')
+    expect(wrapper.text()).not.toContain('Configuració')
     expect(wrapper.findAll('a').some((a) => a.attributes('href') === '/ajustes')).toBe(false)
   })
 

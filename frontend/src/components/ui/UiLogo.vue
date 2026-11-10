@@ -17,19 +17,19 @@ defineProps({
     <template v-if="markOnly">
       <img
         class="ui-logo__img"
-        src="/brand/mark.svg"
+        :src="'/brand/mark.svg'"
         alt=""
       >
     </template>
     <template v-else>
       <img
         class="ui-logo__img ui-logo__img--light"
-        src="/brand/logo.svg"
+        :src="'/brand/logo.svg'"
         alt=""
       >
       <img
         class="ui-logo__img ui-logo__img--dark"
-        src="/brand/logo-white.svg"
+        :src="'/brand/logo-white.svg'"
         alt=""
       >
     </template>

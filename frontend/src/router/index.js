@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useOnboardingStore } from '../stores/onboarding'
+import { INCOMPLETE_FEATURES_ENABLED } from '../config/features'
 import RegisterView from '../views/RegisterView.vue'
 
 // meta.requiresAuth: ruta privada, cal sessió
@@ -22,25 +23,25 @@ const routes = [
         path: '/cartera',
         name: 'cartera',
         component: () => import('../views/CarteraView.vue'),
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true, enabled: INCOMPLETE_FEATURES_ENABLED }
     },
     {
         path: '/historial',
         name: 'historial',
         component: () => import('../views/HistorialView.vue'),
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true, enabled: INCOMPLETE_FEATURES_ENABLED }
     },
     {
         path: '/bustia',
         name: 'bustia',
         component: () => import('../views/BustiaView.vue'),
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true, enabled: INCOMPLETE_FEATURES_ENABLED }
     },
     {
         path: '/compte-efectiu',
         name: 'compte-efectiu',
         component: () => import('../views/CompteEfectiuView.vue'),
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true, enabled: INCOMPLETE_FEATURES_ENABLED }
     },
     {
         path: '/perfil',
@@ -116,6 +117,8 @@ const router = createRouter({
 // Protecció de rutes: s'executa abans de cada navegació
 router.beforeEach((to) => {
     const authStore = useAuthStore()
+
+    if (to.meta.enabled === false) return { path: '/actius' }
 
     if (to.name === 'mfa') {
         if (!authStore.isAuthenticated) return { name: 'login' }
