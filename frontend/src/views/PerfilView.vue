@@ -6,6 +6,7 @@ import { useAuthStore } from '../stores/auth'
 import { useProfileStore } from '../stores/profile'
 import { useVerificationStore } from '../stores/verification'
 import { formatCurrency } from '../utils/currency'
+import { INCOMPLETE_FEATURES_ENABLED } from '../config/features'
 import { UiAlert, UiBadge, UiButton, UiCard } from '../components/ui'
 import TwoFactorCard from '../components/TwoFactorCard.vue'
 
@@ -109,6 +110,7 @@ async function handleLogout() {
 
     <div class="page__tiles">
       <RouterLink
+        v-if="INCOMPLETE_FEATURES_ENABLED"
         to="/cartera"
         class="page__tile"
       >
@@ -118,6 +120,7 @@ async function handleLogout() {
         </UiCard>
       </RouterLink>
       <RouterLink
+        v-if="INCOMPLETE_FEATURES_ENABLED"
         to="/bustia"
         class="page__tile"
       >
@@ -174,7 +177,10 @@ async function handleLogout() {
 
     <TwoFactorCard />
 
-    <UiCard class="page__card">
+    <UiCard
+      v-if="INCOMPLETE_FEATURES_ENABLED"
+      class="page__card"
+    >
       <div class="page__settings">
         <div>
           <h2 class="page__section-title">

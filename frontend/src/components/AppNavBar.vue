@@ -1,16 +1,19 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { INCOMPLETE_FEATURES_ENABLED } from '../config/features'
 import { UiLogo } from './ui'
 
 const links = [
   { to: '/actius', label: 'Actius' },
-  { to: '/cartera', label: 'Cartera' },
-  { to: '/historial', label: 'Historial' },
-  { to: '/bustia', label: 'Bústia' },
-  { to: '/compte-efectiu', label: "Compte d'efectiu" },
+  { to: '/cartera', label: 'Cartera', enabled: INCOMPLETE_FEATURES_ENABLED },
+  { to: '/historial', label: 'Historial', enabled: INCOMPLETE_FEATURES_ENABLED },
+  { to: '/bustia', label: 'Bústia', enabled: INCOMPLETE_FEATURES_ENABLED },
+  { to: '/compte-efectiu', label: "Compte d'efectiu", enabled: INCOMPLETE_FEATURES_ENABLED },
   { to: '/perfil', label: 'Perfil' },
 ]
+
+const visibleLinks = links.filter((link) => link.enabled !== false)
 
 const open = ref(false)
 const route = useRoute()
@@ -59,7 +62,7 @@ watch(() => route.path, () => { open.value = false })
         aria-label="Navegació principal"
       >
         <RouterLink
-          v-for="link in links"
+          v-for="link in visibleLinks"
           :key="link.to"
           :to="link.to"
           class="navbar__link"
