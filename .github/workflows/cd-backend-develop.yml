@@ -1,4 +1,4 @@
-name: CI/CD Backend Docker a Azure (Develop)
+name: CD Backend Docker a Azure (Develop)
 
 on:
   push:
