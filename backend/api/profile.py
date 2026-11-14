@@ -7,17 +7,23 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, StringConstraints
 from supabase import Client, PostgrestAPIError
 
+from core.iban import IBAN_ERROR, is_valid_iban, mask_iban, normalize_iban
 from core.investor_profile import INVESTOR_QUESTIONS, calculate_investor_profile
 from core.nif_nie import NIF_NIE_ERROR, is_valid_nif_nie, normalize_nif_nie
 from core.onboarding import INVESTOR_PROFILE_COLUMN
-from core.profiles import get_own_profile, to_public_profile, update_own_profile
+from core.profiles import (
+    IBAN_COLUMN,
+    get_own_profile,
+    to_public_profile,
+    update_own_profile,
+)
 from core.verification import (
     TERMS_VERSION,
     get_verification_status,
     is_identity_verified,
 )
 
-from .deps import get_admin_client, get_current_user
+from .deps import get_admin_client, get_current_user, require_verified_user
 
 router = APIRouter()
 
@@ -224,3 +230,40 @@ def accept_terms(
         admin, user["sub"], values, "No s'ha pogut desar l'acceptació dels termes"
     )
     return {"verificacio": get_verification_status(row)}
+
+
+class IbanLink(BaseModel):
+    """IBAN que l'usuari vincula per a les retirades simulades.
+
+    El format i els dígits de control es validen a l'endpoint, per retornar el
+    missatge exacte del 422 en lloc de la llista de Pydantic.
+    """
+
+    iban: str
+
+
+@router.put("/iban")
+def link_iban(
+    data: IbanLink,
+    user=Depends(require_verified_user),
+    admin: Client = Depends(get_admin_client),
+):
+    """Vincula l'IBAN de l'usuari verificat o substitueix el que tenia (US3.3).
+
+    Només hi ha un IBAN per usuari: si ja en tenia un, se substitueix
+    directament. Es desa normalitzat (sense espais i en majúscules).
+
+    Returns:
+        ``{"iban_emmascarat": ...}``, mai l'IBAN sencer.
+
+    Raises:
+        HTTPException: 422 si l'IBAN no és un IBAN espanyol vàlid, 403 si
+            l'usuari no està verificat, 404 si no té fila a profiles i 500 si
+            no s'ha pogut desar.
+    """
+    if not is_valid_iban(data.iban):
+        raise HTTPException(status_code=422, detail=IBAN_ERROR)
+
+    iban = normalize_iban(data.iban)
+    _save_own_profile(admin, user["sub"], {IBAN_COLUMN: iban}, "No s'ha pogut desar l'IBAN")
+    return {"iban_emmascarat": mask_iban(iban)}
