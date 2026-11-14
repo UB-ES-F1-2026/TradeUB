@@ -10,7 +10,7 @@ from supabase import Client, PostgrestAPIError
 from core.investor_profile import INVESTOR_QUESTIONS, calculate_investor_profile
 from core.nif_nie import NIF_NIE_ERROR, is_valid_nif_nie, normalize_nif_nie
 from core.onboarding import INVESTOR_PROFILE_COLUMN
-from core.profiles import get_own_profile, update_own_profile
+from core.profiles import get_own_profile, to_public_profile, update_own_profile
 from core.verification import (
     TERMS_VERSION,
     get_verification_status,
@@ -54,7 +54,8 @@ def save_personal_data(
     """Valida i desa les dades personals de l'usuari autenticat a profiles.
 
     Returns:
-        ``{"perfil": ...}`` amb la fila de profiles tal com ha quedat desada.
+        ``{"perfil": ...}`` amb la fila de profiles tal com ha quedat desada
+        (amb l'IBAN emmascarat).
 
     Raises:
         HTTPException: 422 si el NIF/NIE no és vàlid (els camps que falten o
@@ -76,7 +77,7 @@ def save_personal_data(
         ) from e
     if not rows:
         raise HTTPException(status_code=404, detail="Perfil no trobat")
-    return {"perfil": rows[0]}
+    return {"perfil": to_public_profile(rows[0])}
 
 
 # Columna de profiles amb les respostes del qüestionari
