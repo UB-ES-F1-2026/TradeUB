@@ -74,6 +74,19 @@ describe('account store', () => {
     expect(store.hasBalance).toBe(false)
   })
 
+  it("sense verificar buida el saldo i mostra el missatge del servidor", async () => {
+    apiGet.mockResolvedValueOnce(account)
+    await store.fetchBalance()
+    const detail = 'Cal verificar la identitat i acceptar els termes per operar'
+    apiGet.mockRejectedValueOnce(new ApiError(403, detail))
+
+    await store.fetchBalance()
+
+    expect(store.hasBalance).toBe(false)
+    expect(store.error).toBe(detail)
+    expect(store.loading).toBe(false)
+  })
+
   it("si falla manté l'últim saldo i mostra l'error", async () => {
     apiGet.mockResolvedValueOnce(account)
     await store.fetchBalance()
