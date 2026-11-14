@@ -16,13 +16,17 @@ create table if not exists public.cash_movements (
     id uuid primary key default gen_random_uuid(),
     user_id uuid not null references public.accounts(user_id) on delete cascade,
     type text not null,
-    amount numeric(12, 2) not null check (amount <> 0),
-    balance_after numeric(12, 2) not null,
+    amount numeric(14, 2) not null check (amount <> 0),
+    balance_after numeric(14, 2) not null,
     created_at timestamptz not null default now(),
     constraint cash_movements_type_check check (
         type in ('ingres', 'retirada', 'compra', 'venda')
     )
 );
+
+-- Índex per optimitzar les consultes de l'historial ordenades per data recent.
+create index if not exists cash_movements_user_created_at_idx
+    on public.cash_movements (user_id, created_at desc);
 
 -- Activació de la seguretat a nivell de fila (RLS) per a l'historial.
 alter table public.cash_movements enable row level security;
@@ -33,8 +37,9 @@ create policy "Users can read their own cash movements"
     on public.cash_movements for select
     using (auth.uid() = user_id);
 
--- No hi ha polítiques d'INSERT, UPDATE ni DELETE per seguretat.
--- Cap client pot modificar l'historial directament.
+-- Deliberadament no hi ha polítiques d'INSERT, UPDATE ni DELETE. El llibre
+-- major només es pot escriure mitjançant aquesta funció, que també valida
+-- qui fa la crida i la coherència del signe de l'import.
 create or replace function public.process_cash_movement(
     p_user_id uuid,
     p_type text,
@@ -46,30 +51,34 @@ security definer
 set search_path = public
 as $$
 declare
-    v_current_balance numeric(12, 2);
-    v_new_balance numeric(12, 2);
+    v_current_balance numeric(14, 2);
+    v_new_balance numeric(14, 2);
     v_type text := lower(trim(p_type));
 begin
-    -- Impedeix que un usuari operi sobre el compte d'un altre
+    -- Defensa addicional: impedeix que un usuari operi sobre el compte d'un altre
     -- si la funció fos invocada fora del context de service_role.
     if auth.role() <> 'service_role' and auth.uid() is distinct from p_user_id then
         raise exception 'User cannot modify another user account'
             using errcode = '42501';
     end if;
 
-    -- Un moviment sense import no té sentit.
+    -- Un moviment sense import no té sentit comptable.
     if p_amount = 0 then
-        raise exception 'Amount cannot be zero';
+        raise exception 'Amount cannot be zero'
+            using errcode = '22023';
     end if;
 
     -- Validació estricta entre el tipus d'operació i el signe de l'import:
     -- ingressos/vendes sumen (+), retirades/compres resten (-).
     if v_type in ('ingres', 'venda') and p_amount <= 0 then
-        raise exception 'This movement type requires a positive amount';
+        raise exception 'This movement type requires a positive amount'
+            using errcode = '22023';
     elsif v_type in ('retirada', 'compra') and p_amount >= 0 then
-        raise exception 'This movement type requires a negative amount';
+        raise exception 'This movement type requires a negative amount'
+            using errcode = '22023';
     elsif v_type not in ('ingres', 'retirada', 'compra', 'venda') then
-        raise exception 'Unsupported movement type: %', p_type;
+        raise exception 'Unsupported movement type: %', p_type
+            using errcode = '22023';
     end if;
 
     -- Bloqueig exclusiu de la fila de l'usuari (FOR UPDATE) fins que acabi la
@@ -80,14 +89,16 @@ begin
     for update;
 
     if not found then
-        raise exception 'Account not found for user %', p_user_id;
+        raise exception 'Account not found for user %', p_user_id
+            using errcode = 'P0002';
     end if;
 
     -- Càlcul del saldo resultant i comprovació que mai quedi en descobert.
     v_new_balance := v_current_balance + p_amount;
     if v_new_balance < 0 then
         raise exception 'Insufficient balance: current %, requested %',
-            v_current_balance, abs(p_amount);
+            v_current_balance, abs(p_amount)
+            using errcode = 'P0003';
     end if;
 
     -- Actualització atòmica del saldo i registre del moviment en la mateixa transacció.
@@ -102,7 +113,7 @@ begin
 end;
 $$;
 
--- Blindatge de permisos: es revoca l'execució a qualsevol usuari públic o
+-- Blindatge de permisos: es revoca l'execució a qualsevol usuari públic, anònim o
 -- autenticat des del client i s'atorga únicament al backend (service_role).
-revoke all on function public.process_cash_movement(uuid, text, numeric) from public, authenticated;
+revoke all on function public.process_cash_movement(uuid, text, numeric) from public, anon, authenticated;
 grant execute on function public.process_cash_movement(uuid, text, numeric) to service_role;
