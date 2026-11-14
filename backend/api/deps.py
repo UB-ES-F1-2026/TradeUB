@@ -8,13 +8,15 @@ un factor MFA verificat han d'accedir amb autenticació de nivell aal2.
 from functools import lru_cache
 
 import jwt
-from fastapi import Depends, HTTPException
+from fastapi import Depends, Header, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt import ExpiredSignatureError, InvalidTokenError, PyJWKClient, PyJWKClientError
 from supabase import Client, PostgrestAPIError
 from supabase_auth.errors import AuthApiError
 
 from core.config import SUPABASE_URL, create_admin_client, create_user_client
+from core.pin import verify_pin
+from core.profile_pins import get_pin_hash
 from core.verification import is_fully_verified
 
 security = HTTPBearer()
@@ -159,4 +161,53 @@ def require_verified_user(
             status_code=403,
             detail="Cal verificar la identitat i acceptar els termes per operar",
         )
+    return user
+
+
+# Capçalera on el frontend envia el PIN en les operacions que el demanen
+PIN_HEADER = "X-PIN"
+
+
+def require_pin(
+    pin: str | None = Header(default=None, alias=PIN_HEADER),
+    user: dict = Depends(require_verified_user),
+    admin: Client = Depends(get_admin_client),
+) -> dict:
+    """Exigeix el PIN de seguretat correcte a la capçalera ``X-PIN`` (US1.5).
+
+    És la dependència dels endpoints d'operació que demanen el PIN: la
+    retirada (#116) i, si es fan, la compra (#126) i la venda (#128). Inclou
+    ``require_verified_user``, així que l'endpoint no l'ha de repetir. Si
+    falla, l'operació no s'executa.
+
+    No hi ha bloqueig per intents fallits (US1.6, al backlog).
+
+    Returns:
+        Els claims del token, igual que ``get_current_user``.
+
+    Raises:
+        HTTPException: 403 si l'usuari no està verificat, no té PIN
+            configurat o el PIN no és correcte (també si falta la capçalera),
+            i 500 si no es pot llegir o comprovar el PIN desat.
+    """
+    try:
+        pin_hash = get_pin_hash(admin, user["sub"])
+    except PostgrestAPIError as e:
+        raise HTTPException(
+            status_code=500, detail="No s'ha pogut recuperar el PIN"
+        ) from e
+    if pin_hash is None:
+        raise HTTPException(
+            status_code=403,
+            detail="Cal configurar el PIN de seguretat al perfil per fer aquesta operació.",
+        )
+
+    try:
+        matches = verify_pin(pin, pin_hash)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=500, detail="No s'ha pogut comprovar el PIN"
+        ) from e
+    if not matches:
+        raise HTTPException(status_code=403, detail="El PIN introduït és incorrecte.")
     return user

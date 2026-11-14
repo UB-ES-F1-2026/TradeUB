@@ -203,3 +203,68 @@ def fake_admin():
 
     yield install
     main.app.dependency_overrides.clear()
+
+
+class FakePinsClient:
+    """Doble de la taula profile_pins amb el client d'administració.
+
+    Imita table().select().eq().execute() i table().upsert().execute(). Guarda
+    el hash de l'usuari (o cap) i hi aplica l'upsert, com faria PostgREST.
+    """
+
+    def __init__(self, pin_hash=None, error=None, upsert_error=None):
+        self.pin_hash = pin_hash
+        self.error = error
+        self.upsert_error = upsert_error
+        self.eq_args = []
+        self.upserted = None
+        self.on_conflict = None
+        self._pending_upsert = None
+
+    def table(self, name):
+        assert name == "profile_pins"
+        return self
+
+    def select(self, *columns):
+        self._pending_upsert = None
+        return self
+
+    def eq(self, column, value):
+        self.eq_args.append((column, value))
+        return self
+
+    def upsert(self, data, on_conflict=""):
+        self._pending_upsert = data
+        self.on_conflict = on_conflict
+        return self
+
+    def execute(self):
+        if self.error is not None:
+            raise self.error
+        if self._pending_upsert is not None:
+            if self.upsert_error is not None:
+                raise self.upsert_error
+            self.upserted = self._pending_upsert
+            self.pin_hash = self.upserted["pin_hash"]
+            self._pending_upsert = None
+            return SimpleNamespace(data=[self.upserted])
+        rows = [{"pin_hash": self.pin_hash}] if self.pin_hash else []
+        return SimpleNamespace(data=rows)
+
+
+@pytest.fixture
+def fake_pins():
+    """Substitueix get_admin_client per un doble de profile_pins.
+
+    Yields:
+        Funció install(pin_hash=None, error=None, upsert_error=None) que
+        retorna el doble per inspeccionar què s'ha llegit i desat.
+    """
+
+    def install(pin_hash=None, error=None, upsert_error=None):
+        pins = FakePinsClient(pin_hash, error, upsert_error)
+        main.app.dependency_overrides[deps.get_admin_client] = lambda: pins
+        return pins
+
+    yield install
+    main.app.dependency_overrides.clear()
