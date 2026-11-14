@@ -1,17 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException
 from supabase import Client, PostgrestAPIError
 
-from .deps import get_current_user, get_user_client
+from .deps import get_user_client, require_verified_user
 
 router = APIRouter()
 
 
 @router.get("/balance")
 def get_balance(
-    user=Depends(get_current_user),
+    user=Depends(require_verified_user),
     db: Client = Depends(get_user_client),
 ):
-    """Retorna el saldo simulat del compte virtual de l'usuari autenticat."""
+    """Retorna el saldo simulat del compte virtual de l'usuari verificat (US2.4)."""
     try:
         response = (
             db.table("accounts")
