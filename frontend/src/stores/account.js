@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
-import { apiGet } from '../services/api';
+import { apiGet, apiPost } from '../services/api';
 import { useAuthStore } from './auth';
 
 // Saldo simulat del compte virtual. El backend el llegeix de la taula accounts (només lectura per a l'usuari)
@@ -42,10 +42,18 @@ export const useAccountStore = defineStore('account', () => {
         }
     };
 
+    // Ingressa diners ficticis (US3.2). L'import arriba com a text ("50.25") perquè el backend el llegeixi exacte.
+    // El saldo nou és el que retorna el backend; si falla, llança l'ApiError i el saldo no canvia
+    const deposit = async (amount) => {
+        const data = await apiPost('/account/deposits', { amount });
+        balance.value = Number(data.balance);
+        error.value = '';
+    };
+
     // En tancar sessió o canviar d'usuari no es pot quedar el saldo de l'anterior
     watch(() => authStore.user?.id, (id, previousId) => {
         if (id !== previousId) reset();
     });
 
-    return { balance, currency, updatedAt, loading, error, hasBalance, fetchBalance, reset };
+    return { balance, currency, updatedAt, loading, error, hasBalance, fetchBalance, deposit, reset };
 });
