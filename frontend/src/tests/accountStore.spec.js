@@ -7,9 +7,10 @@ vi.mock('../services/supabase', () => ({ supabase: { auth: {} } }))
 vi.mock('../services/api', async (importOriginal) => ({
   ...(await importOriginal()),
   apiGet: vi.fn(),
+  apiPost: vi.fn(),
 }))
 
-import { apiGet, ApiError } from '../services/api'
+import { apiGet, apiPost, ApiError } from '../services/api'
 import { useAccountStore } from '../stores/account'
 import { useAuthStore } from '../stores/auth'
 
@@ -83,6 +84,27 @@ describe('account store', () => {
 
     expect(store.balance).toBe(10000)
     expect(store.error).toBe("No s'ha pogut carregar el saldo. Torna-ho a provar.")
+  })
+
+  it("ingressa l'import i desa el saldo que retorna el backend", async () => {
+    apiGet.mockResolvedValue(account)
+    await store.fetchBalance()
+    apiPost.mockResolvedValue({ balance: '10050.25' })
+
+    await store.deposit('50.25')
+
+    expect(apiPost).toHaveBeenCalledWith('/account/deposits', { amount: '50.25' })
+    expect(store.balance).toBe(10050.25)
+  })
+
+  it("si l'ingrés falla, llança l'error i el saldo no canvia", async () => {
+    apiGet.mockResolvedValue(account)
+    await store.fetchBalance()
+    const failure = new ApiError(500, "No s'ha pogut processar el dipòsit. El teu saldo no ha canviat.")
+    apiPost.mockRejectedValue(failure)
+
+    await expect(store.deposit('50')).rejects.toBe(failure)
+    expect(store.balance).toBe(10000)
   })
 
   it("buida el saldo quan es tanca la sessió o canvia l'usuari", async () => {
