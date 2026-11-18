@@ -1,4 +1,4 @@
-from datetime import UTC, date, datetime, time, timedelta
+from datetime import UTC, date, datetime, time
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -42,8 +42,11 @@ def movement_concept(row: dict) -> str:
     """
     if row["type"] == "ingres":
         return "Ingrés de diners"
-    iban = row.get("iban_masked")
-    return f"Retirada a ES•• {iban[-4:]}" if iban else "Retirada de diners"
+    if row["type"] == "retirada":
+        iban = row.get("iban_masked")
+        return f"Retirada a ES•• {iban[-4:]}" if iban else "Retirada de diners"
+    # Compra i venda: les afegiran US6.1 i US6.2
+    return "Moviment d'efectiu"
 
 
 @router.get("/movements")
@@ -85,15 +88,20 @@ def list_movements(
             "created_at", datetime.combine(date_from, time(tzinfo=UTC)).isoformat()
         )
     if date_to:
-        next_day = datetime.combine(date_to + timedelta(days=1), time(tzinfo=UTC))
-        query = query.lt("created_at", next_day.isoformat())
+        # time.max i no el dia següent: amb 9999-12-31 sumar un dia desborda
+        end_of_day = datetime.combine(date_to, time.max, tzinfo=UTC)
+        query = query.lte("created_at", end_of_day.isoformat())
     if movement_type:
         query = query.eq("type", movement_type)
 
     try:
         # Es demana una fila de més per saber si hi ha pàgina següent.
         response = (
-            query.order("created_at", desc=True).range(offset, offset + limit).execute()
+            query.order("created_at", desc=True)
+            # Desempat perquè dues files amb la mateixa data no canviïn de pàgina
+            .order("id", desc=True)
+            .range(offset, offset + limit)
+            .execute()
         )
     except PostgrestAPIError as e:
         raise HTTPException(

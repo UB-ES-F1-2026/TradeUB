@@ -146,6 +146,7 @@ def test_default_query_filters_by_token_subject_newest_first(
         ("select", "*"),
         ("eq", "user_id", SUBJECT),
         ("order", "created_at", True),
+        ("order", "id", True),
         ("range", 0, 20),
     ]
 
@@ -163,7 +164,7 @@ def test_filters_reach_the_query(client, make_token, fake_movements):
     )
 
     assert ("gte", "created_at", "2026-11-01T00:00:00+00:00") in fake.calls
-    assert ("lt", "created_at", "2026-11-16T00:00:00+00:00") in fake.calls
+    assert ("lte", "created_at", "2026-11-15T23:59:59.999999+00:00") in fake.calls
     assert ("eq", "type", "retirada") in fake.calls
     assert ("range", 10, 15) in fake.calls
 
@@ -187,6 +188,24 @@ def test_withdrawal_without_saved_iban_has_generic_concept(
     body = get(client, make_token).json()
 
     assert body["movements"][0]["concept"] == "Retirada de diners"
+
+
+def test_last_possible_date_is_accepted(client, make_token, fake_movements):
+    """El final del dia no es calcula sumant un dia, que desbordaria."""
+    fake_movements()
+
+    response = get(client, make_token, to="9999-12-31")
+
+    assert response.status_code == 200
+
+
+def test_future_movement_types_have_generic_concept(client, make_token, fake_movements):
+    """Una compra (US6.1) no es mostra com a retirada."""
+    fake_movements(rows=[{**WITHDRAWAL, "type": "compra", "iban_masked": None}])
+
+    body = get(client, make_token).json()
+
+    assert body["movements"][0]["concept"] == "Moviment d'efectiu"
 
 
 @pytest.mark.parametrize(
