@@ -34,6 +34,12 @@ export const useAccountStore = defineStore('account', () => {
             currency.value = data.currency ?? 'EUR';
             updatedAt.value = data.updated_at ?? null;
         } catch (e) {
+            // Sense identitat verificada ni termes acceptats el backend no dona el saldo
+            if (e.status === 403) {
+                balance.value = null;
+                error.value = e.message;
+                return;
+            }
             error.value = e.status === 404
                 ? 'Encara no tens cap compte virtual.'
                 : "No s'ha pogut carregar el saldo. Torna-ho a provar.";
