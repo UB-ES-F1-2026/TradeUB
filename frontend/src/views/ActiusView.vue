@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import AssetSearch from '../components/AssetSearch.vue'
 import BalanceCard from '../components/BalanceCard.vue'
 import { UiAlert, UiButton, UiCard } from '../components/ui'
 import { useVerificationStore } from '../stores/verification'
@@ -56,6 +57,9 @@ onMounted(async () => {
         </UiButton>
       </div>
     </UiCard>
+
+    <!-- Cercar actius no és operar: el cercador surt a tots els usuaris registrats (US5.1) -->
+    <AssetSearch />
   </section>
 </template>
 
