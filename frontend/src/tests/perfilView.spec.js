@@ -150,6 +150,17 @@ describe('PerfilView', () => {
     expect(wrapper.text()).not.toContain("Verifica't")
   })
 
+  it('mostra la targeta del PIN només als usuaris verificats', async () => {
+    const { wrapper: noVerificat } = await mountPerfil()
+    await flushPromises()
+    expect(noVerificat.text()).not.toContain('PIN de seguretat')
+
+    backend['/users/me'] = { perfil: {}, verificacio: { estat: 'verificat', termes_acceptats: true } }
+    const { wrapper: verificat } = await mountPerfil()
+    await flushPromises()
+    expect(verificat.text()).toContain('PIN de seguretat')
+  })
+
   it('no el dona per verificat sense els termes acceptats', async () => {
     backend['/users/me'] = { perfil: {}, verificacio: { estat: 'verificat', termes_acceptats: false } }
     const { wrapper } = await mountPerfil()
