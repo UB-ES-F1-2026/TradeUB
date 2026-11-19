@@ -3,6 +3,8 @@ export const MIN_QUERY_LENGTH = 2
 export const SEARCH_DELAY_MS = 300
 
 export const ASSETS_LOAD_ERROR = "No s'ha pogut carregar el catàleg d'actius. Torna-ho a provar."
+// Text literal del criteri d'acceptació de la US5.1
+export const NO_ASSETS_FOUND = "No s'han trobat actius"
 
 // El backend desa el tipus com a 'accio' o 'etf'; el text visible el posa el frontend
 const ASSET_TYPE_LABELS = { accio: 'Acció', etf: 'ETF' }

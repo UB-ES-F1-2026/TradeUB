@@ -68,7 +68,7 @@ describe('AssetSearch', () => {
     expect(apiGet).toHaveBeenCalledWith('/assets?q=app')
   })
 
-  it('sense resultats indica el text cercat', async () => {
+  it('sense resultats mostra el missatge del criteri', async () => {
     apiGet.mockResolvedValue([APPLE])
     const wrapper = mount(AssetSearch)
     await flushPromises()
@@ -76,7 +76,7 @@ describe('AssetSearch', () => {
 
     await typeAndWait(wrapper, 'zzz')
 
-    expect(wrapper.get('[data-test="no-results"]').text()).toBe('No hem trobat cap actiu per «zzz».')
+    expect(wrapper.get('[data-test="no-results"]').text()).toBe("No s'han trobat actius")
   })
 
   it('si el backend falla mostra un error', async () => {

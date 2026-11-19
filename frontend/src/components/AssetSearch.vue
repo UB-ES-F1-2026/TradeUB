@@ -2,7 +2,7 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { apiGet } from '../services/api'
 import { UiAlert, UiBadge, UiCard, UiInput } from './ui'
-import { ASSETS_LOAD_ERROR, SEARCH_DELAY_MS, assetTypeLabel, assetsSearchPath } from '../utils/assets'
+import { ASSETS_LOAD_ERROR, NO_ASSETS_FOUND, SEARCH_DELAY_MS, assetTypeLabel, assetsSearchPath } from '../utils/assets'
 
 // Cercador d'actius (US5.1). Cerca mentre s'escriu pel nom, el ticker o l'ISIN; sense text mostra tot el catàleg.
 // Cercar no és operar: es mostra a tots els usuaris registrats, encara que no estiguin verificats
@@ -10,8 +10,6 @@ const query = ref('')
 const assets = ref([])
 const loading = ref(false)
 const error = ref('')
-// Text de l'última cerca que ha respost, per al missatge sense resultats
-const searchedText = ref('')
 
 let timer = null
 let lastRequest = 0
@@ -26,7 +24,6 @@ async function search() {
     // Si mentrestant s'ha fet una altra cerca, aquesta resposta ja no s'aplica
     if (request !== lastRequest) return
     assets.value = Array.isArray(data) ? data : []
-    searchedText.value = text
   } catch {
     if (request !== lastRequest) return
     assets.value = []
@@ -80,7 +77,7 @@ onBeforeUnmount(() => clearTimeout(timer))
         class="assets__muted"
         data-test="no-results"
       >
-        {{ searchedText ? `No hem trobat cap actiu per «${searchedText}».` : 'No hi ha actius al catàleg.' }}
+        {{ NO_ASSETS_FOUND }}
       </p>
 
       <ul
