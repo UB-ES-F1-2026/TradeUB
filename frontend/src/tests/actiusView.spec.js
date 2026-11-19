@@ -28,8 +28,10 @@ async function mountActius() {
   })
   router.push('/actius')
   await router.isReady()
-  // El saldo té els seus propis tests (balanceCard.spec.js)
-  const wrapper = mount(ActiusView, { global: { plugins: [router], stubs: { BalanceCard: true } } })
+  // El saldo i el cercador tenen els seus propis tests (balanceCard.spec.js i assetSearch.spec.js)
+  const wrapper = mount(ActiusView, {
+    global: { plugins: [router], stubs: { BalanceCard: true, AssetSearch: true } },
+  })
   await flushPromises()
   return { wrapper, router }
 }
@@ -82,5 +84,18 @@ describe('ActiusView', () => {
 
     expect(wrapper.text()).toContain("No s'ha pogut comprovar l'estat de la verificació")
     expect(wrapper.findComponent({ name: 'BalanceCard' }).exists()).toBe(false)
+  })
+
+  it('mostra el cercador als usuaris verificats', async () => {
+    const { wrapper } = await mountActius()
+
+    expect(wrapper.findComponent({ name: 'AssetSearch' }).exists()).toBe(true)
+  })
+
+  it('mostra el cercador encara que la identitat no estigui verificada', async () => {
+    backend['/users/me'] = { verificacio: { estat: 'pendent', termes_acceptats: false } }
+    const { wrapper } = await mountActius()
+
+    expect(wrapper.findComponent({ name: 'AssetSearch' }).exists()).toBe(true)
   })
 })

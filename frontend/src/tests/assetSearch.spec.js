@@ -1,0 +1,107 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { mount, flushPromises } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
+
+vi.mock('../services/supabase', () => ({ supabase: { auth: {} } }))
+vi.mock('../services/api', async (importOriginal) => ({
+  ...(await importOriginal()),
+  apiGet: vi.fn(),
+}))
+
+import { apiGet, ApiError } from '../services/api'
+import AssetSearch from '../components/AssetSearch.vue'
+import { SEARCH_DELAY_MS } from '../utils/assets'
+
+const APPLE = { name: 'Apple Inc.', ticker: 'AAPL', type: 'accio' }
+const MSCI = { name: 'iShares Core MSCI World', ticker: 'IWDA', type: 'etf' }
+
+// Espera que passi el retard de la cerca i que arribi la resposta
+async function typeAndWait(wrapper, text) {
+  await wrapper.get('[data-test="asset-search"]').setValue(text)
+  await new Promise((resolve) => setTimeout(resolve, SEARCH_DELAY_MS + 20))
+  await flushPromises()
+}
+
+function results(wrapper) {
+  return wrapper.findAll('[data-test="asset-result"]').map((r) => r.text())
+}
+
+describe('AssetSearch', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    setActivePinia(createPinia())
+  })
+
+  it('en obrir-se mostra tot el catàleg amb el tipus traduït', async () => {
+    apiGet.mockResolvedValue([APPLE, MSCI])
+    const wrapper = mount(AssetSearch)
+    await flushPromises()
+
+    expect(apiGet).toHaveBeenCalledWith('/assets')
+    expect(results(wrapper)).toEqual(['Apple Inc.AAPLAcció', 'iShares Core MSCI WorldIWDAETF'])
+  })
+
+  it('cerca el text escrit quan l\'usuari para d\'escriure', async () => {
+    apiGet.mockResolvedValue([APPLE, MSCI])
+    const wrapper = mount(AssetSearch)
+    await flushPromises()
+    apiGet.mockResolvedValue([APPLE])
+
+    await typeAndWait(wrapper, 'aapl')
+
+    expect(apiGet).toHaveBeenLastCalledWith('/assets?q=aapl')
+    expect(results(wrapper)).toEqual(['Apple Inc.AAPLAcció'])
+  })
+
+  it('fa una sola petició encara que s\'escrigui de pressa', async () => {
+    apiGet.mockResolvedValue([])
+    const wrapper = mount(AssetSearch)
+    await flushPromises()
+    apiGet.mockClear()
+
+    const input = wrapper.get('[data-test="asset-search"]')
+    await input.setValue('a')
+    await input.setValue('ap')
+    await typeAndWait(wrapper, 'app')
+
+    expect(apiGet).toHaveBeenCalledTimes(1)
+    expect(apiGet).toHaveBeenCalledWith('/assets?q=app')
+  })
+
+  it('sense resultats indica el text cercat', async () => {
+    apiGet.mockResolvedValue([APPLE])
+    const wrapper = mount(AssetSearch)
+    await flushPromises()
+    apiGet.mockResolvedValue([])
+
+    await typeAndWait(wrapper, 'zzz')
+
+    expect(wrapper.get('[data-test="no-results"]').text()).toBe('No hem trobat cap actiu per «zzz».')
+  })
+
+  it('si el backend falla mostra un error', async () => {
+    apiGet.mockRejectedValue(new ApiError(500, "No s'ha pogut recuperar el catàleg d'actius"))
+    const wrapper = mount(AssetSearch)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain("No s'ha pogut carregar el catàleg d'actius. Torna-ho a provar.")
+    expect(results(wrapper)).toEqual([])
+  })
+
+  it('una resposta antiga no substitueix la de la cerca més nova', async () => {
+    apiGet.mockResolvedValue([])
+    const wrapper = mount(AssetSearch)
+    await flushPromises()
+
+    let resolveOld
+    apiGet.mockReturnValueOnce(new Promise((resolve) => { resolveOld = resolve }))
+    await typeAndWait(wrapper, 'ms')
+    apiGet.mockResolvedValueOnce([APPLE])
+    await typeAndWait(wrapper, 'apple')
+
+    resolveOld([MSCI])
+    await flushPromises()
+
+    expect(results(wrapper)).toEqual(['Apple Inc.AAPLAcció'])
+  })
+})
