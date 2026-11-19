@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useProfileStore } from '../stores/profile'
 import {
+  PIN_ALREADY_SET_NOTICE,
   PIN_CURRENT_ERROR,
   PIN_FORMAT_ERROR,
   PIN_LENGTH,
@@ -25,11 +26,13 @@ const errors = ref({})
 const busy = ref(false)
 const error = ref('')
 const notice = ref('')
+const warning = ref('')
 
 function resetForm() {
   form.value = { currentPin: '', newPin: '', repeatPin: '' }
   errors.value = {}
   error.value = ''
+  warning.value = ''
 }
 
 function startEdit() {
@@ -47,7 +50,13 @@ function cancel() {
 // Els errors de format i del PIN actual (el detail del backend, a ApiError.message) van al seu camp;
 // qualsevol altre error, a l'alerta de la targeta
 function showApiError(err) {
-  if (err?.message === PIN_CURRENT_ERROR) {
+  if (err?.message === PIN_CURRENT_ERROR && !changing.value) {
+    // Es volia crear un PIN però ja n'hi havia un: el formulari passa a canviar-lo i conserva el PIN nou escrit
+    profileStore.pinConfigured = true
+    changing.value = true
+    errors.value = {}
+    warning.value = PIN_ALREADY_SET_NOTICE
+  } else if (err?.message === PIN_CURRENT_ERROR) {
     errors.value = { currentPin: PIN_CURRENT_ERROR }
     form.value.currentPin = ''
   } else if (err?.message === PIN_FORMAT_ERROR) {
@@ -59,6 +68,7 @@ function showApiError(err) {
 
 async function save() {
   error.value = ''
+  warning.value = ''
   errors.value = validatePinForm(form.value, { changing: changing.value })
   if (Object.keys(errors.value).length) return
 
@@ -105,14 +115,39 @@ async function save() {
       {{ notice }}
     </UiAlert>
     <UiAlert
+      v-if="warning"
+      variant="warning"
+    >
+      {{ warning }}
+    </UiAlert>
+    <UiAlert
       v-if="error || profileStore.pinError"
       variant="error"
     >
       {{ error || profileStore.pinError }}
     </UiAlert>
 
+    <p
+      v-if="profileStore.pinLoading"
+      class="pin-card__muted"
+    >
+      Comprovant el PIN…
+    </p>
+
     <div
-      v-if="!editing && pinKnown"
+      v-else-if="!pinKnown && profileStore.pinError"
+      class="pin-card__actions"
+    >
+      <UiButton
+        variant="secondary"
+        @click="profileStore.loadPinStatus()"
+      >
+        Torna-ho a provar
+      </UiButton>
+    </div>
+
+    <div
+      v-else-if="!editing && pinKnown"
       class="pin-card__actions"
     >
       <UiButton
@@ -135,7 +170,7 @@ async function save() {
         label="PIN actual"
         type="password"
         inputmode="numeric"
-        autocomplete="off"
+        autocomplete="new-password"
         :maxlength="PIN_LENGTH"
         class="tabular"
         :error="errors.currentPin"
@@ -145,7 +180,7 @@ async function save() {
         :label="changing ? 'PIN nou' : 'PIN'"
         type="password"
         inputmode="numeric"
-        autocomplete="off"
+        autocomplete="new-password"
         :maxlength="PIN_LENGTH"
         class="tabular"
         :error="errors.newPin"
@@ -156,7 +191,7 @@ async function save() {
         :label="changing ? 'Repeteix el PIN nou' : 'Repeteix el PIN'"
         type="password"
         inputmode="numeric"
-        autocomplete="off"
+        autocomplete="new-password"
         :maxlength="PIN_LENGTH"
         class="tabular"
         :error="errors.repeatPin"

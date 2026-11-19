@@ -99,6 +99,28 @@ describe('profile store', () => {
     expect(store.pinError).toBe("No s'ha pogut comprovar el PIN. Torna-ho a provar.")
   })
 
+  it('pinLoading està actiu mentre es comprova el PIN', async () => {
+    let resolve
+    apiGet.mockReturnValue(new Promise((r) => { resolve = r }))
+
+    const pending = store.loadPinStatus()
+    expect(store.pinLoading).toBe(true)
+
+    resolve({ configurat: false })
+    await pending
+    expect(store.pinLoading).toBe(false)
+  })
+
+  it('pinLoading es desactiva també quan falla', async () => {
+    apiGet.mockRejectedValue(new ApiError(500, "No s'ha pogut recuperar el PIN"))
+
+    const pending = store.loadPinStatus()
+    expect(store.pinLoading).toBe(true)
+
+    await pending
+    expect(store.pinLoading).toBe(false)
+  })
+
   it('savePin crea el PIN amb POST /profile/pin i el marca com a configurat', async () => {
     apiPost.mockResolvedValue({})
 

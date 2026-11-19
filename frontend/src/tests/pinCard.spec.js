@@ -105,6 +105,24 @@ describe('PinCard', () => {
       expect(wrapper.find('form').exists()).toBe(true)
     })
 
+    it('si ja hi havia un PIN, passa a canviar-lo sense perdre el PIN nou', async () => {
+      apiPost.mockRejectedValue(new ApiError(403, 'El PIN actual és incorrecte.'))
+      const wrapper = await mountCard()
+      await button(wrapper, 'Configurar el PIN').trigger('click')
+
+      await fill(wrapper, { PIN: '1234', 'Repeteix el PIN': '1234' })
+
+      expect(wrapper.text()).toContain('Ja tens un PIN configurat. Escriu el PIN actual per canviar-lo.')
+      expect(wrapper.text()).toContain('Configurat')
+      expect(field(wrapper, 'PIN actual').exists()).toBe(true)
+      expect(field(wrapper, 'PIN nou').element.value).toBe('1234')
+      expect(field(wrapper, 'Repeteix el PIN nou').element.value).toBe('1234')
+
+      apiPost.mockResolvedValue({})
+      await fill(wrapper, { 'PIN actual': '5678' })
+      expect(apiPost).toHaveBeenLastCalledWith('/profile/pin', { pin: '1234', pin_actual: '5678' })
+    })
+
     it('cancel·lar tanca el formulari sense enviar res', async () => {
       const wrapper = await mountCard()
       await button(wrapper, 'Configurar el PIN').trigger('click')
@@ -113,6 +131,33 @@ describe('PinCard', () => {
 
       expect(wrapper.find('form').exists()).toBe(false)
       expect(apiPost).not.toHaveBeenCalled()
+    })
+  })
+
+  describe("estat del PIN", () => {
+    it('mostra que està comprovant el PIN mentre el backend respon', async () => {
+      apiGet.mockReturnValue(new Promise(() => {}))
+      const wrapper = mount(PinCard)
+      await flushPromises()
+
+      expect(wrapper.text()).toContain('Comprovant el PIN…')
+      expect(button(wrapper, 'Configurar el PIN')).toBeUndefined()
+    })
+
+    it('si no es pot comprovar, "Torna-ho a provar" ho torna a demanar', async () => {
+      apiGet.mockRejectedValueOnce(new ApiError(500, "No s'ha pogut recuperar el PIN"))
+      const wrapper = mount(PinCard)
+      await flushPromises()
+
+      expect(wrapper.text()).toContain("No s'ha pogut comprovar el PIN. Torna-ho a provar.")
+      apiGet.mockResolvedValue({ configurat: false })
+      await button(wrapper, 'Torna-ho a provar').trigger('click')
+      await flushPromises()
+
+      expect(apiGet).toHaveBeenCalledTimes(2)
+      expect(apiGet).toHaveBeenLastCalledWith('/profile/pin')
+      expect(button(wrapper, 'Configurar el PIN')).toBeTruthy()
+      expect(wrapper.text()).not.toContain("No s'ha pogut comprovar el PIN")
     })
   })
 

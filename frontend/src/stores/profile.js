@@ -13,6 +13,7 @@ export const useProfileStore = defineStore('profile', () => {
     // PIN de seguretat (US1.5): null fins que el backend diu si n'hi ha un de configurat
     const pinConfigured = ref(null);
     const pinError = ref('');
+    const pinLoading = ref(false);
 
     const reset = () => {
         perfil.value = {};
@@ -20,6 +21,7 @@ export const useProfileStore = defineStore('profile', () => {
         error.value = '';
         pinConfigured.value = null;
         pinError.value = '';
+        pinLoading.value = false;
     };
 
     // Llegeix el perfil del backend (GET /users/me); si falla, mostra l'error i no es toca el que ja hi havia
@@ -55,11 +57,14 @@ export const useProfileStore = defineStore('profile', () => {
 
     const loadPinStatus = async () => {
         pinError.value = '';
+        pinLoading.value = true;
         try {
             const data = await apiGet('/profile/pin');
             pinConfigured.value = data?.configurat === true;
         } catch {
             pinError.value = "No s'ha pogut comprovar el PIN. Torna-ho a provar.";
+        } finally {
+            pinLoading.value = false;
         }
     };
 
@@ -75,5 +80,8 @@ export const useProfileStore = defineStore('profile', () => {
         if (id !== previousId) reset();
     });
 
-    return { perfil, loading, error, pinConfigured, pinError, hasPin, load, loadPinStatus,savePersonalData, saveInvestorQuestionnaire, savePin, reset };
+    return {
+        perfil, loading, error, pinConfigured, pinError, pinLoading, hasPin,
+        load, loadPinStatus, savePersonalData, saveInvestorQuestionnaire, savePin, reset,
+    };
 });
