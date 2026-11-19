@@ -1,4 +1,4 @@
-name: CI/CD Frontend a Vercel (Main)
+name: CD Frontend a Vercel (Main)
 
 on:
   push:
