@@ -80,6 +80,51 @@ describe('profile store', () => {
     expect(store.perfil.perfil_inversor).toBe('avancat')
   })
 
+  it('loadPinStatus llegeix de GET /profile/pin si hi ha PIN configurat', async () => {
+    apiGet.mockResolvedValue({ configurat: true })
+    expect(store.hasPin).toBe(false)
+
+    await store.loadPinStatus()
+
+    expect(apiGet).toHaveBeenCalledWith('/profile/pin')
+    expect(store.hasPin).toBe(true)
+  })
+
+  it('si no es pot comprovar el PIN, mostra l\'error i no se sap si n\'hi ha', async () => {
+    apiGet.mockRejectedValue(new ApiError(500, "No s'ha pogut recuperar el PIN"))
+
+    await store.loadPinStatus()
+
+    expect(store.pinConfigured).toBeNull()
+    expect(store.pinError).toBe("No s'ha pogut comprovar el PIN. Torna-ho a provar.")
+  })
+
+  it('savePin crea el PIN amb POST /profile/pin i el marca com a configurat', async () => {
+    apiPost.mockResolvedValue({})
+
+    await store.savePin({ pin: '1234' })
+
+    expect(apiPost).toHaveBeenCalledWith('/profile/pin', { pin: '1234' })
+    expect(store.hasPin).toBe(true)
+  })
+
+  it('savePin envia també el PIN actual quan es canvia', async () => {
+    apiPost.mockResolvedValue({})
+
+    await store.savePin({ pin: '5678', currentPin: '1234' })
+
+    expect(apiPost).toHaveBeenCalledWith('/profile/pin', { pin: '5678', pin_actual: '1234' })
+  })
+
+  it('si el backend rebutja el PIN, llança l\'error i no el marca com a configurat', async () => {
+    const apiError = new ApiError(403, 'Cal verificar la identitat i acceptar els termes per operar')
+    apiPost.mockRejectedValue(apiError)
+
+    await expect(store.savePin({ pin: '1234' })).rejects.toBe(apiError)
+
+    expect(store.hasPin).toBe(false)
+  })
+
   it('en canviar d\'usuari s\'esborra el perfil de l\'anterior', async () => {
     const auth = useAuthStore()
     auth.user = { id: 'u1' }
