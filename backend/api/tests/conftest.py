@@ -158,7 +158,11 @@ def fake_profile():
 
 
 class FakeAdminClient:
-    """Doble encadenable de table().update().eq().execute() amb la clau secreta."""
+    """Doble encadenable de la clau secreta.
+
+    Imita table().update().eq().execute() i rpc(nom, params).execute(). Amb
+    rpc, execute() retorna ``rows`` com a ``data`` (el valor de la funció).
+    """
 
     def __init__(self, rows=None, error=None):
         self.rows = rows
@@ -166,6 +170,11 @@ class FakeAdminClient:
         self.table_name = None
         self.update_data = None
         self.eq_args = None
+        self.rpc_call = None
+
+    def rpc(self, name, params):
+        self.rpc_call = (name, params)
+        return self
 
     def table(self, name):
         self.table_name = name
