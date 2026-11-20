@@ -10,6 +10,8 @@ from supabase import Client, PostgrestAPIError
 from core.investor_profile import INVESTOR_QUESTIONS, calculate_investor_profile
 from core.nif_nie import NIF_NIE_ERROR, is_valid_nif_nie, normalize_nif_nie
 from core.onboarding import INVESTOR_PROFILE_COLUMN
+from core.pin import PIN_FORMAT_ERROR, hash_pin, is_valid_pin, verify_pin
+from core.profile_pins import get_pin_hash, save_pin_hash
 from core.profiles import get_own_profile, update_own_profile
 from core.verification import (
     TERMS_VERSION,
@@ -17,7 +19,7 @@ from core.verification import (
     is_identity_verified,
 )
 
-from .deps import get_admin_client, get_current_user
+from .deps import get_admin_client, get_current_user, require_verified_user
 
 router = APIRouter()
 
@@ -223,3 +225,88 @@ def accept_terms(
         admin, user["sub"], values, "No s'ha pogut desar l'acceptació dels termes"
     )
     return {"verificacio": get_verification_status(row)}
+
+
+def _read_pin_hash(admin: Client, user_id: str) -> str | None:
+    """Llegeix el hash del PIN i converteix els errors de la base de dades en 500."""
+    try:
+        return get_pin_hash(admin, user_id)
+    except PostgrestAPIError as e:
+        raise HTTPException(
+            status_code=500, detail="No s'ha pogut recuperar el PIN"
+        ) from e
+
+
+@router.get("/pin")
+def get_pin_status(
+    user=Depends(get_current_user),
+    admin: Client = Depends(get_admin_client),
+):
+    """Indica si l'usuari ja té PIN, perquè el perfil mostri "crear" o "canviar".
+
+    No retorna mai el hash: la taula profile_pins no és llegible des del
+    client. Només demana sessió, perquè la resposta no revela res.
+
+    Returns:
+        ``{"configurat": bool}``.
+
+    Raises:
+        HTTPException: 500 si no s'ha pogut llegir el PIN.
+    """
+    return {"configurat": _read_pin_hash(admin, user["sub"]) is not None}
+
+
+class PinChange(BaseModel):
+    """PIN nou i, si l'usuari ja en té, el PIN actual.
+
+    El format es valida a l'endpoint, per retornar el missatge exacte del 422
+    en lloc de la llista de Pydantic. La comprovació que el PIN nou s'ha
+    escrit dues vegades igual es fa al frontend (#113).
+    """
+
+    pin: str
+    pin_actual: str | None = None
+
+
+@router.post("/pin")
+def save_pin(
+    data: PinChange,
+    user=Depends(require_verified_user),
+    admin: Client = Depends(get_admin_client),
+):
+    """Crea el PIN de seguretat o el canvia si ja en tenia (US1.5).
+
+    Només per a usuaris verificats. Per canviar-lo cal el PIN actual; per
+    crear-lo, ``pin_actual`` s'ignora. El PIN es desa només com a hash.
+
+    Returns:
+        ``{"configurat": True}``.
+
+    Raises:
+        HTTPException: 422 si el PIN nou no té 4 dígits, 403 si l'usuari no
+            està verificat o el PIN actual no és correcte, i 500 si no s'ha
+            pogut llegir o desar el PIN.
+    """
+    if not is_valid_pin(data.pin):
+        raise HTTPException(status_code=422, detail=PIN_FORMAT_ERROR)
+
+    current_hash = _read_pin_hash(admin, user["sub"])
+    if current_hash is not None:
+        try:
+            matches = verify_pin(data.pin_actual, current_hash)
+        except ValueError as e:
+            raise HTTPException(
+                status_code=500, detail="No s'ha pogut comprovar el PIN"
+            ) from e
+        if not matches:
+            raise HTTPException(
+                status_code=403, detail="El PIN actual és incorrecte."
+            )
+
+    try:
+        save_pin_hash(admin, user["sub"], hash_pin(data.pin))
+    except PostgrestAPIError as e:
+        raise HTTPException(
+            status_code=500, detail="No s'ha pogut desar el PIN"
+        ) from e
+    return {"configurat": True}
