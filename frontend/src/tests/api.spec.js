@@ -3,7 +3,7 @@ import { setActivePinia, createPinia } from 'pinia'
 
 vi.mock('../services/supabase', () => ({ supabase: { auth: {} } }))
 
-import { apiGet, apiPost, ApiError } from '../services/api'
+import { apiGet, apiPatch, apiPost, ApiError } from '../services/api'
 import { useAuthStore } from '../stores/auth'
 
 const jsonResponse = (body, status = 200) =>
@@ -100,5 +100,33 @@ describe('apiPost', () => {
 
     await expect(apiPost('/profile/personal-data', {})).rejects.toMatchObject({ status: 401 })
     expect(fetchSpy).not.toHaveBeenCalled()
+  })
+})
+
+describe('apiPatch', () => {
+  let fetchSpy
+
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    useAuthStore().session = { access_token: 'token-prova' }
+    fetchSpy = vi.spyOn(globalThis, 'fetch')
+  })
+
+  afterEach(() => {
+    fetchSpy.mockRestore()
+  })
+
+  it('envia el cos en JSON amb el mètode PATCH i el token', async () => {
+    fetchSpy.mockResolvedValue(jsonResponse({ nom: 'Anna' }))
+
+    const body = await apiPatch('/profile/personal-data', { nom: 'Anna' })
+
+    expect(body).toEqual({ nom: 'Anna' })
+    const [url, options] = fetchSpy.mock.calls[0]
+    expect(url).toMatch(/\/profile\/personal-data$/)
+    expect(options.method).toBe('PATCH')
+    expect(options.headers.Authorization).toBe('Bearer token-prova')
+    expect(options.headers['Content-Type']).toBe('application/json')
+    expect(JSON.parse(options.body)).toEqual({ nom: 'Anna' })
   })
 })

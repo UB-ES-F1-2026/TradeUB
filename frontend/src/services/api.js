@@ -32,9 +32,14 @@ async function request(path, init = {}) {
 
 export const apiGet = (path) => request(path)
 
-export const apiPost = (path, data) =>
+// Envia el cos en JSON. Les capçaleres extra són per a dades que no van al cos, com el PIN (X-PIN)
+const sendJson = (method) => (path, data, headers = {}) =>
   request(path, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method,
+    headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(data),
   })
+
+export const apiPost = sendJson('POST')
+
+export const apiPatch = sendJson('PATCH')
