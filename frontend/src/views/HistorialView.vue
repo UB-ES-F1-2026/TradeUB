@@ -223,7 +223,9 @@ watch(() => ({ ...movements.filters }), () => movements.applyFilters())
 .page {
   display: grid;
   gap: var(--tub-space-5);
-  max-width: 1040px;
+  /* Centrat com Perfil */
+  width: min(100%, 960px);
+  margin-inline: auto;
   padding: var(--tub-space-6) var(--tub-space-5);
 }
 .page__muted {
@@ -282,16 +284,17 @@ watch(() => ({ ...movements.filters }), () => movements.applyFilters())
   text-align: right;
   white-space: nowrap;
 }
-.movements__date,
-.movements__concept {
-  display: grid;
-  gap: var(--tub-space-1);
+/* Les cel·les es queden com a table-cell; només el text de dins s'apila */
+.movements__main,
+.movements__sub {
+  display: block;
 }
 .movements__main {
   font-weight: 600;
   color: var(--tub-text);
 }
 .movements__sub {
+  margin-top: var(--tub-space-1);
   font-size: var(--tub-text-sm);
   color: var(--tub-text-muted);
 }
@@ -353,16 +356,22 @@ watch(() => ({ ...movements.filters }), () => movements.applyFilters())
     padding: 0;
     border-bottom: 0;
   }
+  .movements td {
+    display: block;
+  }
   .movements__concept {
     grid-area: concept;
   }
   .movements__amount {
     grid-area: amount;
   }
-  .movements__date {
+  .movements .movements__date {
     grid-area: date;
     display: flex;
     gap: var(--tub-space-2);
+  }
+  .movements__date .movements__sub {
+    margin-top: 0;
   }
   .movements__date .movements__main {
     font-size: var(--tub-text-sm);
