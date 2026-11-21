@@ -86,6 +86,10 @@ def save_personal_data(
             buits també retornen 422, amb el format de Pydantic), 404 si
             l'usuari no té fila a profiles i 500 si no s'han pogut desar.
     """
+    normalized_nif = normalize_nif_nie(data.nif)
+    if not is_valid_nif_nie(data.nif):
+        raise HTTPException(status_code=422, detail=NIF_NIE_ERROR)
+
     try:
         current_profile = get_own_profile(admin, user["sub"])
     except PostgrestAPIError as e:
@@ -93,7 +97,6 @@ def save_personal_data(
             status_code=500, detail="No s'han pogut desar les dades personals"
         ) from e
 
-    normalized_nif = normalize_nif_nie(data.nif)
     if current_profile and is_identity_verified(current_profile):
         stored_nif = normalize_nif_nie(str(current_profile.get("nif") or ""))
         stored_birth_date = str(current_profile.get("data_naixement") or "")
@@ -102,9 +105,6 @@ def save_personal_data(
             or data.data_naixement.isoformat() != stored_birth_date
         ):
             raise HTTPException(status_code=403, detail=KYC_FIELDS_ERROR)
-
-    if not is_valid_nif_nie(data.nif):
-        raise HTTPException(status_code=422, detail=NIF_NIE_ERROR)
 
     # mode="json" converteix la data a text "AAAA-MM-DD" per enviar-la a PostgREST
     values = data.model_dump(mode="json")
