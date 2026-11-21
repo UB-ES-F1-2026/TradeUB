@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { apiGet, apiPost } from '../services/api';
 import { useAuthStore } from './auth';
 
@@ -10,11 +10,18 @@ export const useProfileStore = defineStore('profile', () => {
     const perfil = ref({});
     const loading = ref(false);
     const error = ref('');
+    // PIN de seguretat (US1.5): null fins que el backend diu si n'hi ha un de configurat
+    const pinConfigured = ref(null);
+    const pinError = ref('');
+    const pinLoading = ref(false);
 
     const reset = () => {
         perfil.value = {};
         loading.value = false;
         error.value = '';
+        pinConfigured.value = null;
+        pinError.value = '';
+        pinLoading.value = false;
     };
 
     // Llegeix el perfil del backend (GET /users/me); si falla, mostra l'error i no es toca el que ja hi havia
@@ -45,10 +52,36 @@ export const useProfileStore = defineStore('profile', () => {
         return profile;
     };
 
+    // El backend no retorna mai el PIN ni el hash, només si n'hi ha un de configurat (GET /profile/pin)
+    const hasPin = computed(() => pinConfigured.value === true);
+
+    const loadPinStatus = async () => {
+        pinError.value = '';
+        pinLoading.value = true;
+        try {
+            const data = await apiGet('/profile/pin');
+            pinConfigured.value = data?.configurat === true;
+        } catch {
+            pinError.value = "No s'ha pogut comprovar el PIN. Torna-ho a provar.";
+        } finally {
+            pinLoading.value = false;
+        }
+    };
+
+    // Crea el PIN o, si ja n'hi ha un, el canvia (cal el PIN actual). Si el backend el rebutja, llança l'ApiError
+    const savePin = async ({ pin, currentPin }) => {
+        const body = currentPin ? { pin, pin_actual: currentPin } : { pin };
+        await apiPost('/profile/pin', body);
+        pinConfigured.value = true;
+    };
+
     // En tancar sessió o canviar d'usuari no es pot quedar el perfil de l'anterior
     watch(() => authStore.user?.id, (id, previousId) => {
         if (id !== previousId) reset();
     });
 
-    return { perfil, loading, error, load, savePersonalData, saveInvestorQuestionnaire, reset };
+    return {
+        perfil, loading, error, pinConfigured, pinError, pinLoading, hasPin,
+        load, loadPinStatus, savePersonalData, saveInvestorQuestionnaire, savePin, reset,
+    };
 });
