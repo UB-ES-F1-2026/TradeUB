@@ -1,6 +1,8 @@
+from datetime import UTC, date, datetime, time
 from decimal import Decimal
+from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from supabase import Client, PostgrestAPIError
 
@@ -184,3 +186,96 @@ def _insufficient_balance_message(admin: Client, user: dict, data: Withdrawal) -
         raise HTTPException(status_code=500, detail=WITHDRAWAL_ERROR)
     missing = max(data.amount - current, Decimal("0.01"))
     return INSUFFICIENT_BALANCE_ERROR.format(missing=format_euros(missing))
+
+
+MOVEMENTS_PAGE_SIZE = 20
+
+
+def movement_concept(row: dict) -> str:
+    """Concepte de l'historial (US3.5), generat al servidor i no desat.
+
+    La retirada mostra l'IBAN emmascarat que #116 desa al moviment, perquè el
+    concepte no canviï si l'usuari canvia d'IBAN més endavant.
+    """
+    if row["type"] == "ingres":
+        return "Ingrés de diners"
+    if row["type"] == "retirada":
+        iban = row.get("iban_masked")
+        return f"Retirada a ES•• {iban[-4:]}" if iban else "Retirada de diners"
+    # Compra i venda: les afegiran US6.1 i US6.2
+    return "Moviment d'efectiu"
+
+
+@router.get("/movements")
+def list_movements(
+    date_from: date | None = Query(None, alias="from"),
+    date_to: date | None = Query(None, alias="to"),
+    movement_type: Literal["ingres", "retirada"] | None = Query(None, alias="type"),
+    limit: int = Query(MOVEMENTS_PAGE_SIZE, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    user=Depends(require_verified_user),
+    db: Client = Depends(get_user_client),
+):
+    """Historial de moviments d'efectiu de l'usuari verificat (US3.5).
+
+    Del més nou al més antic. ``from`` i ``to`` són dates incloses i es poden
+    combinar amb ``type``.
+
+    Returns:
+        ``{"movements": [...], "has_more": bool}``. Cada moviment té
+        ``created_at``, ``concept``, ``amount``, ``type`` i ``balance_after``.
+
+    Raises:
+        HTTPException: 422 si ``from`` és posterior a ``to``, 403 si l'usuari
+            no està verificat i 500 si no es pot llegir l'historial.
+    """
+    if date_from and date_to and date_from > date_to:
+        raise HTTPException(
+            status_code=422,
+            detail="La data d'inici no pot ser posterior a la data de fi.",
+        )
+
+    # select("*") i no les columnes: iban_masked l'afegeix #116 i, mentre no
+    # existeixi, demanar-la faria fallar la consulta.
+    query = db.table("cash_movements").select("*").eq("user_id", user["sub"])
+    # shortcut: les dates es tallen a mitjanit UTC, no a l'hora de Madrid;
+    # un moviment entre les 00:00 i la 01:00/02:00 local cau al dia anterior.
+    if date_from:
+        query = query.gte(
+            "created_at", datetime.combine(date_from, time(tzinfo=UTC)).isoformat()
+        )
+    if date_to:
+        # time.max i no el dia següent: amb 9999-12-31 sumar un dia desborda
+        end_of_day = datetime.combine(date_to, time.max, tzinfo=UTC)
+        query = query.lte("created_at", end_of_day.isoformat())
+    if movement_type:
+        query = query.eq("type", movement_type)
+
+    try:
+        # Es demana una fila de més per saber si hi ha pàgina següent.
+        response = (
+            query.order("created_at", desc=True)
+            # Desempat perquè dues files amb la mateixa data no canviïn de pàgina
+            .order("id", desc=True)
+            .range(offset, offset + limit)
+            .execute()
+        )
+    except PostgrestAPIError as e:
+        raise HTTPException(
+            status_code=500, detail="No s'ha pogut recuperar l'historial"
+        ) from e
+
+    rows = response.data
+    return {
+        "movements": [
+            {
+                "created_at": row["created_at"],
+                "concept": movement_concept(row),
+                "amount": row["amount"],
+                "type": row["type"],
+                "balance_after": row["balance_after"],
+            }
+            for row in rows[:limit]
+        ],
+        "has_more": len(rows) > limit,
+    }
