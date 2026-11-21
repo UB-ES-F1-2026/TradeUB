@@ -118,6 +118,25 @@ describe('WithdrawalForm', () => {
 
       expect(wrapper.text()).toContain("No s'ha pogut carregar l'IBAN vinculat.")
     })
+
+    it("torna a provar de llegir l'IBAN", async () => {
+      const { wrapper } = await mountForm({ loadError: new ApiError(500, 'Error del servidor') })
+      apiGet.mockResolvedValue({ perfil: { iban_emmascarat: MASKED } })
+
+      await wrapper.get('[data-test="withdrawal-iban-retry"]').trigger('click')
+      await flushPromises()
+
+      expect(apiGet).toHaveBeenCalledTimes(2)
+      expect(wrapper.get('[data-test="withdrawal-iban-masked"]').text()).toBe(MASKED)
+    })
+
+    it('"Canvia" no es pot fer servir durant el pas del PIN', async () => {
+      const { wrapper } = await mountForm()
+
+      await continueWith(wrapper, '10')
+
+      expect(wrapper.get('[data-test="withdrawal-change-iban"]').attributes('disabled')).toBeDefined()
+    })
   })
 
   describe('import', () => {
@@ -246,13 +265,14 @@ describe('WithdrawalForm', () => {
     it("si el backend diu que no hi ha IBAN, ho avisa i torna a demanar l'IBAN", async () => {
       apiPost.mockRejectedValue(new ApiError(422, 'Cal vincular un IBAN per retirar diners.'))
       const { wrapper } = await mountForm()
-      apiGet.mockResolvedValue({ perfil: { iban_emmascarat: null } })
 
       await continueWith(wrapper, '10')
       await confirmWith(wrapper, '1234')
 
       expect(wrapper.get('[data-test="withdrawal-error"]').text()).toBe('Cal vincular un IBAN per retirar diners.')
       expect(wrapper.find('[data-test="withdrawal-iban-form"]').exists()).toBe(true)
+      // No depèn de tornar a llegir el perfil: el backend ja ha dit que no n'hi ha
+      expect(apiGet).toHaveBeenCalledTimes(1)
     })
 
     it('si falla la base de dades avisa a dalt que el saldo no ha canviat', async () => {

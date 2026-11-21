@@ -48,14 +48,17 @@ const ibanError = computed(() => {
   return ibanSubmitted.value && !isValidIban(ibanText.value) ? IBAN_INVALID_ERROR : ''
 })
 
-onMounted(async () => {
+async function loadIban() {
+  ibanStatus.value = 'loading'
   try {
     await account.loadIban()
     ibanStatus.value = 'ready'
   } catch {
     ibanStatus.value = 'error'
   }
-})
+}
+
+onMounted(loadIban)
 
 function startChangeIban() {
   changingIban.value = true
@@ -161,9 +164,9 @@ function showWithdrawalError(e) {
   if (message === WITHDRAWAL_MIN_ERROR || message.startsWith(INSUFFICIENT_BALANCE_PREFIX)) {
     amountServerError.value = message
   } else if (message === NO_IBAN_ERROR) {
-    // La targeta creia que hi havia IBAN: es torna a llegir perquè el demani
+    // La targeta creia que hi havia IBAN i el backend diu que no: es torna a demanar
     serverError.value = message
-    account.loadIban().catch(() => {})
+    account.ibanMasked = null
   } else if (e instanceof ApiError && e.status === 422) {
     amountServerError.value = WITHDRAWAL_FORMAT_ERROR
   } else if (e instanceof ApiError && e.status === 403) {
@@ -231,12 +234,20 @@ function goToProfile() {
       Carregant el compte bancari…
     </p>
 
-    <UiAlert
-      v-else-if="ibanStatus === 'error'"
-      variant="error"
-    >
-      {{ IBAN_LOAD_ERROR }}
-    </UiAlert>
+    <template v-else-if="ibanStatus === 'error'">
+      <UiAlert variant="error">
+        {{ IBAN_LOAD_ERROR }}
+      </UiAlert>
+      <div class="withdrawal__actions">
+        <UiButton
+          variant="secondary"
+          data-test="withdrawal-iban-retry"
+          @click="loadIban"
+        >
+          Torna-ho a provar
+        </UiButton>
+      </div>
+    </template>
 
     <form
       v-else-if="showIbanForm"
@@ -294,7 +305,7 @@ function goToProfile() {
         <UiButton
           variant="ghost"
           size="sm"
-          :disabled="withdrawing"
+          :disabled="step === 'pin'"
           data-test="withdrawal-change-iban"
           @click="startChangeIban"
         >
