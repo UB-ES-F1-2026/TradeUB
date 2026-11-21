@@ -243,6 +243,18 @@ describe('WithdrawalForm', () => {
       expect(wrapper.find('[data-test="withdrawal-error"]').exists()).toBe(false)
     })
 
+    it("si el backend diu que no hi ha IBAN, ho avisa i torna a demanar l'IBAN", async () => {
+      apiPost.mockRejectedValue(new ApiError(422, 'Cal vincular un IBAN per retirar diners.'))
+      const { wrapper } = await mountForm()
+      apiGet.mockResolvedValue({ perfil: { iban_emmascarat: null } })
+
+      await continueWith(wrapper, '10')
+      await confirmWith(wrapper, '1234')
+
+      expect(wrapper.get('[data-test="withdrawal-error"]').text()).toBe('Cal vincular un IBAN per retirar diners.')
+      expect(wrapper.find('[data-test="withdrawal-iban-form"]').exists()).toBe(true)
+    })
+
     it('si falla la base de dades avisa a dalt que el saldo no ha canviat', async () => {
       apiPost.mockRejectedValue(new ApiError(500, 'Error del servidor'))
       const { wrapper } = await mountForm()

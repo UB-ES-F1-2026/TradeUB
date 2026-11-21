@@ -23,7 +23,9 @@ const PIN_SERVER_ERRORS = ["No s'ha pogut recuperar el PIN", "No s'ha pogut comp
 export const IBAN_HINT = 'És una simulació: fes servir un IBAN de prova.'
 export const IBAN_INVALID_ERROR = "El codi IBAN no és vàlid."
 export const IBAN_SAVE_FAILED_ERROR = "No s'ha pogut desar l'IBAN. Torna-ho a provar."
-export const IBAN_LOAD_ERROR = "No s'ha pogut carregar l'IBAN vinculat. Torna-ho a provar."
+// El backend rebutja la retirada si no hi ha IBAN vinculat (per exemple, si s'ha esborrat des d'una altra pestanya)
+export const NO_IBAN_ERROR = 'Cal vincular un IBAN per retirar diners.'
+export const IBAN_LOAD_ERROR ="No s'ha pogut carregar l'IBAN vinculat. Torna-ho a provar."
 
 // Text literal del criteri d'acceptació, sense punt final
 export function insufficientBalanceError(missing, currency = 'EUR') {

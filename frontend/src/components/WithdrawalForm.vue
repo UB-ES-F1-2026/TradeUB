@@ -12,6 +12,7 @@ import {
   IBAN_LOAD_ERROR,
   IBAN_SAVE_FAILED_ERROR,
   INSUFFICIENT_BALANCE_PREFIX,
+  NO_IBAN_ERROR,
   PIN_CHECK_FAILED_ERROR,
   PIN_FORMAT_ERROR,
   PIN_INCORRECT_ERROR,
@@ -76,6 +77,7 @@ async function submitIban() {
   ibanSaving.value = true
   try {
     await account.linkIban(normalizeIban(ibanText.value))
+    serverError.value = ''
     changingIban.value = false
     ibanText.value = ''
     ibanSubmitted.value = false
@@ -158,6 +160,10 @@ function showWithdrawalError(e) {
   const message = e instanceof ApiError ? e.message : ''
   if (message === WITHDRAWAL_MIN_ERROR || message.startsWith(INSUFFICIENT_BALANCE_PREFIX)) {
     amountServerError.value = message
+  } else if (message === NO_IBAN_ERROR) {
+    // La targeta creia que hi havia IBAN: es torna a llegir perquè el demani
+    serverError.value = message
+    account.loadIban().catch(() => {})
   } else if (e instanceof ApiError && e.status === 422) {
     amountServerError.value = WITHDRAWAL_FORMAT_ERROR
   } else if (e instanceof ApiError && e.status === 403) {
