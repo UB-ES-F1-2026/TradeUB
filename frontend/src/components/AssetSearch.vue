@@ -2,7 +2,17 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { apiGet } from '../services/api'
 import { UiAlert, UiBadge, UiCard, UiInput } from './ui'
-import { ASSETS_LOAD_ERROR, NO_ASSETS_FOUND, SEARCH_DELAY_MS, assetTypeLabel, assetsSearchPath } from '../utils/assets'
+import {
+  ASSETS_LOAD_ERROR,
+  NO_ASSETS_FOUND,
+  SEARCH_DELAY_MS,
+  assetTypeLabel,
+  assetsSearchPath,
+  dailyChangeTrend,
+  formatClosePrice,
+  formatDailyChange,
+  formatPriceDate,
+} from '../utils/assets'
 
 // Cercador d'actius (US5.1). Cerca mentre s'escriu pel nom, el ticker o l'ISIN; sense text mostra tot el catàleg.
 // Cercar no és operar: es mostra a tots els usuaris registrats, encara que no estiguin verificats
@@ -45,9 +55,15 @@ onBeforeUnmount(() => clearTimeout(timer))
 
 <template>
   <UiCard class="assets">
-    <p class="eyebrow">
-      Cercar actius
-    </p>
+    <div class="assets__header">
+      <p class="eyebrow">
+        Cercar actius
+      </p>
+      <!-- El catàleg és simulat: els preus no són de mercat (US5.3) -->
+      <UiBadge data-test="simulated-prices">
+        Preus simulats
+      </UiBadge>
+    </div>
 
     <UiInput
       v-model="query"
@@ -100,6 +116,28 @@ onBeforeUnmount(() => clearTimeout(timer))
             </p>
           </div>
           <UiBadge>{{ assetTypeLabel(asset.type) }}</UiBadge>
+          <!-- Últim preu de tancament, variació diària i data de la cotització del catàleg simulat (US5.3) -->
+          <div class="assets__quote tabular">
+            <p
+              class="assets__price"
+              data-test="asset-price"
+            >
+              {{ formatClosePrice(asset.close_price_eur) }}
+            </p>
+            <p
+              class="assets__change"
+              :class="`assets__change--${dailyChangeTrend(asset.daily_change_pct)}`"
+              data-test="asset-change"
+            >
+              {{ formatDailyChange(asset.daily_change_pct) }}
+            </p>
+            <p
+              class="assets__date"
+              data-test="asset-date"
+            >
+              {{ formatPriceDate(asset.price_date) }}
+            </p>
+          </div>
         </li>
       </ul>
     </div>
@@ -129,6 +167,7 @@ onBeforeUnmount(() => clearTimeout(timer))
   border-top: 1px solid var(--tub-border);
 }
 .assets__info {
+  flex: 1;
   min-width: 0;
 }
 .assets__name {
@@ -138,6 +177,36 @@ onBeforeUnmount(() => clearTimeout(timer))
 }
 .assets__ticker {
   font-size: var(--tub-text-sm);
+  color: var(--tub-text-muted);
+}
+.assets__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tub-space-3);
+}
+.assets__quote {
+  text-align: right;
+  white-space: nowrap;
+}
+.assets__price {
+  font-weight: 600;
+  color: var(--tub-text);
+}
+.assets__change {
+  font-size: var(--tub-text-sm);
+}
+.assets__date {
+  font-size: var(--tub-text-xs);
+  color: var(--tub-text-muted);
+}
+.assets__change--up {
+  color: var(--tub-green-dark);
+}
+.assets__change--down {
+  color: var(--tub-danger-text);
+}
+.assets__change--flat {
   color: var(--tub-text-muted);
 }
 </style>
