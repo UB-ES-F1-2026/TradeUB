@@ -6,7 +6,7 @@ import pytest
 
 from api import deps
 from core import config
-from core.profiles import update_own_profile
+from core.profiles import to_public_profile, update_own_profile
 
 SUBJECT = "11111111-2222-3333-4444-555555555555"
 
@@ -94,3 +94,41 @@ def test_get_admin_client_reuses_single_client(monkeypatch):
         assert deps.get_admin_client({"sub": SUBJECT}) is sentinel
     finally:
         deps._admin_client.cache_clear()
+
+
+# --- to_public_profile ---
+
+VALID_IBAN = "ES9121000418450200051332"
+
+
+def test_public_profile_masks_iban():
+    """La columna iban es substitueix per iban_emmascarat."""
+    public = to_public_profile({"id": SUBJECT, "nom": "Anna", "iban": VALID_IBAN})
+
+    assert public == {
+        "id": SUBJECT,
+        "nom": "Anna",
+        "iban_emmascarat": "ES•• •••• •••• •••• •••• 1332",
+    }
+
+
+def test_public_profile_without_linked_iban():
+    """Amb la columna buida, l'usuari no té IBAN: iban_emmascarat és None."""
+    public = to_public_profile({"id": SUBJECT, "iban": None})
+
+    assert public == {"id": SUBJECT, "iban_emmascarat": None}
+
+
+def test_public_profile_without_iban_column_is_unchanged():
+    assert to_public_profile({"id": SUBJECT, "nom": "Anna"}) == {
+        "id": SUBJECT,
+        "nom": "Anna",
+    }
+
+
+def test_public_profile_does_not_modify_the_row():
+    row = {"id": SUBJECT, "iban": VALID_IBAN}
+
+    to_public_profile(row)
+
+    assert row == {"id": SUBJECT, "iban": VALID_IBAN}
