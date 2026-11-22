@@ -167,3 +167,17 @@ def test_database_error_returns_500(client, auth_headers, fake_admin):
 def test_model_fields_match_onboarding_rule():
     """L'endpoint desa exactament les columnes que la regla de l'onboarding comprova."""
     assert set(PersonalData.model_fields) == set(PERSONAL_DATA_COLUMNS)
+
+
+def test_saved_profile_returns_iban_only_masked(client, auth_headers, fake_admin):
+    """La fila desada pot portar l'IBAN vinculat: només surt emmascarat."""
+    iban = "ES9121000418450200051332"
+    fake_admin(rows=[{"id": SUBJECT, **VALID_BODY, "iban": iban}])
+
+    response = client.post(ENDPOINT, json=VALID_BODY, headers=auth_headers)
+
+    assert response.status_code == 200
+    perfil = response.json()["perfil"]
+    assert "iban" not in perfil
+    assert perfil["iban_emmascarat"] == "ES•• •••• •••• •••• •••• 1332"
+    assert iban not in response.text

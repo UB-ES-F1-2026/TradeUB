@@ -3,7 +3,7 @@ import { setActivePinia, createPinia } from 'pinia'
 
 vi.mock('../services/supabase', () => ({ supabase: { auth: {} } }))
 
-import { apiGet, apiPost, ApiError } from '../services/api'
+import { apiGet, apiPost, apiPut, ApiError } from '../services/api'
 import { useAuthStore } from '../stores/auth'
 
 const jsonResponse = (body, status = 200) =>
@@ -100,5 +100,42 @@ describe('apiPost', () => {
 
     await expect(apiPost('/profile/personal-data', {})).rejects.toMatchObject({ status: 401 })
     expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it('afegeix les capçaleres extra sense treure el token', async () => {
+    fetchSpy.mockResolvedValue(jsonResponse({ balance: '50.00' }))
+
+    await apiPost('/account/withdrawals', { amount: '10' }, { 'X-PIN': '1234', Authorization: 'Bearer altre' })
+
+    const [, options] = fetchSpy.mock.calls[0]
+    expect(options.headers['X-PIN']).toBe('1234')
+    expect(options.headers.Authorization).toBe('Bearer token-prova')
+  })
+})
+
+describe('apiPut', () => {
+  let fetchSpy
+
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    useAuthStore().session = { access_token: 'token-prova' }
+    fetchSpy = vi.spyOn(globalThis, 'fetch')
+  })
+
+  afterEach(() => {
+    fetchSpy.mockRestore()
+  })
+
+  it('envia el cos en JSON amb el mètode PUT', async () => {
+    fetchSpy.mockResolvedValue(jsonResponse({ iban_emmascarat: 'ES•• 1332' }))
+
+    const body = await apiPut('/profile/iban', { iban: 'ES9121000418450200051332' })
+
+    expect(body).toEqual({ iban_emmascarat: 'ES•• 1332' })
+    const [url, options] = fetchSpy.mock.calls[0]
+    expect(url).toMatch(/\/profile\/iban$/)
+    expect(options.method).toBe('PUT')
+    expect(options.headers.Authorization).toBe('Bearer token-prova')
+    expect(JSON.parse(options.body)).toEqual({ iban: 'ES9121000418450200051332' })
   })
 })
