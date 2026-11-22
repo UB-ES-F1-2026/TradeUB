@@ -91,6 +91,8 @@ const submitted = ref(false)
 const amountServerError = ref('')
 // Avís a dalt de la targeta: error de base de dades o usuari sense permís
 const serverError = ref('')
+// Confirmació de l'última retirada, com la del formulari d'ingrés
+const success = ref('')
 
 // Amb el saldo carregat, el saldo insuficient s'avisa abans d'arribar al PIN
 const amountError = computed(() => {
@@ -104,6 +106,7 @@ const formattedAmount = computed(() => formatCurrency(Number(parseAmount(amount.
 function clearAmountMessages() {
   amountServerError.value = ''
   serverError.value = ''
+  success.value = ''
 }
 
 // --- PIN -----------------------------------------------------------------------------------------------------
@@ -129,6 +132,7 @@ const withdraw = (pin) => account.withdraw(parseAmount(amount.value), pin)
 // El saldo ja s'ha actualitzat al store; el moviment es veurà a l'historial (US3.5)
 function onWithdrawn() {
   pinOpen.value = false
+  success.value = `S'han retirat ${formattedAmount.value} del compte.`
   amount.value = ''
   submitted.value = false
 }
@@ -165,6 +169,13 @@ function showWithdrawalError(e) {
       data-test="withdrawal-error"
     >
       {{ serverError }}
+    </UiAlert>
+    <UiAlert
+      v-if="success"
+      variant="success"
+      data-test="withdrawal-success"
+    >
+      {{ success }}
     </UiAlert>
 
     <p

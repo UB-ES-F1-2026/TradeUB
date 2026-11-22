@@ -189,6 +189,31 @@ describe('WithdrawalForm', () => {
       expect(wrapper.get('[data-test="withdrawal-amount"]').element.value).toBe('')
     })
 
+    it("confirma la retirada amb l'import i el missatge desapareix en tornar a escriure", async () => {
+      apiPost.mockResolvedValue({ balance: '49.75' })
+      const { wrapper } = await mountForm()
+
+      await continueWith(wrapper, '50,25')
+      await confirmWith(wrapper, '1234')
+
+      expect(wrapper.get('[data-test="withdrawal-success"]').text().replace(/\s/g, ' '))
+        .toBe("S'han retirat 50,25 € del compte.")
+
+      await wrapper.get('[data-test="withdrawal-amount"]').setValue('10')
+
+      expect(wrapper.find('[data-test="withdrawal-success"]').exists()).toBe(false)
+    })
+
+    it('si la retirada falla no mostra cap confirmació', async () => {
+      apiPost.mockRejectedValue(new ApiError(500, 'Error del servidor'))
+      const { wrapper } = await mountForm()
+
+      await continueWith(wrapper, '10')
+      await confirmWith(wrapper, '1234')
+
+      expect(wrapper.find('[data-test="withdrawal-success"]').exists()).toBe(false)
+    })
+
     it('un PIN de menys de 4 xifres no arriba al backend', async () => {
       const { wrapper } = await mountForm()
 
