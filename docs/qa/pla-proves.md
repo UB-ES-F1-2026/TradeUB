@@ -151,6 +151,53 @@ Casos escrits a partir de Trello; cal revisar-los quan la implementació sigui a
 
 ---
 
+## Acceptació: Sprint 2 (tests automàtics)
+
+Criteris de Trello del Sprint 2 convertits en tests que s'executen a la CI (QA 5, #133). Els tests escriuen els
+missatges literals del criteri, sense importar les constants del codi, perquè un canvi de text faci fallar el test.
+
+- **Back:** `backend/api/tests/test_acceptance_sprint2.py`.
+- **Integració:** `frontend/src/tests/integration/sprint2.spec.js` (App, router i stores reals; només se simulen
+  Supabase i el backend).
+- **Unitari:** test que ja existia de la mateixa US.
+
+| ID | Criteri | Test |
+|---|---|---|
+| US1.5-01 | No verificat: no pot crear el PIN ("Cal verificar la identitat…") | Back: `test_unverified_user_cannot_operate[crear-pin]` |
+| US1.5-02 | "El PIN ha de tenir 4 dígits." | Back: `test_pin_must_have_four_digits`; unitari: `pinCard.spec.js` |
+| US1.5-03 | "Els PIN no coincideixen." (només frontend) | Unitari: `pinCard.spec.js` |
+| US1.5-04 | "El PIN actual és incorrecte." | Back: `test_pin_change_with_wrong_current_pin`; unitari: `pinCard.spec.js` |
+| US3.2-01 | El saldo s'incrementa a l'instant | Integració: `un ingrés actualitza el saldo…` |
+| US3.2-02 | "L'import mínim d'ingrés és d'1 €." | Back: `test_deposit_limits[US3.2-minim]`; integració: `un ingrés de 0,99 €…` |
+| US3.2-03 | "L'import màxim per operació és de 10.000 €." | Back: `test_deposit_limits[US3.2-maxim]`; integració: `un ingrés de 10000,01 €…` |
+| US3.2-04 | Falla la BD: "No s'ha pogut processar el dipòsit…" | Back: `test_deposit_database_failure`; integració: `si la base de dades falla…` |
+| US3.2-05 | No verificat: veu el component per verificar-se | Back: `test_unverified_user_cannot_operate[ingres]`; integració: `l'usuari no verificat veu a /compte-efectiu…` |
+| US3.5-01 | Data, concepte, import, tipus i saldo resultant | Integració: `un ingrés actualitza el saldo… i apareix a l'historial`; unitari: `historialView.spec.js` |
+| US3.5-02 | Import en verd si suma i en vermell si resta | Integració (verd); unitari: `historialView.spec.js` |
+| US3.5-03 | Filtres de dates i tipus, pàgines de 20 | Unitari: `historialView.spec.js`, `movementsStore.spec.js` |
+| US3.5-04 | "No s'han trobat moviments per als filtres seleccionats." | Integració: `sense moviments, l'historial…` |
+| US3.5-05 | No verificat: avís "Compte no verificat" amb "Verifica't" | Back: `test_unverified_user_cannot_operate[historial]`; integració: `l'usuari no verificat veu a /historial…` |
+| US5.1-01 | Sense estar verificat també pot cercar | Integració: tot el bloc de cerca s'executa amb un usuari no verificat |
+| US5.1-02 | Sense text, tot el catàleg ordenat per nom, amb ticker i tipus | Integració: `sense text mostra tot el catàleg…` |
+| US5.1-03 | Filtra per nom i ticker, sense espais ni majúscules | Integració: `filtra pel nom o el ticker…` |
+| US5.1-04 | "No s'han trobat actius" | Integració: `filtra pel nom o el ticker…`; unitari: `assetSearch.spec.js` |
+| US5.3-01 | Preu, data, variació amb signe i "Preus simulats" | ⏳ Integració en `skip` fins que entri #125 |
+| US3.3 | Retirada: PIN correcte i incorrecte, saldo insuficient, mínim | ⏳ Pendent que US3.3 sigui a `develop` (#157) |
+
+Fora d'abast: el bloqueig del PIN per intents fallits és la US1.6, al backlog.
+
+### Casos manuals per a la demo
+
+Es fan a l'entorn desplegat amb un usuari verificat, perquè depenen de Supabase real.
+
+| ID | Passos | Resultat esperat | Resultat obtingut |
+|---|---|---|---|
+| S2-M01 | Compte d'efectiu → ingressar 50 € → Historial | El saldo puja 50 € i el moviment "Ingrés de diners" és el primer de la llista | |
+| S2-M02 | Perfil → crear el PIN → canviar-lo amb el PIN actual equivocat | "El PIN actual és incorrecte." i el PIN no canvia | |
+| S2-M03 | Actius → escriure "app" | Surt Apple; amb "zzz" surt "No s'han trobat actius" | |
+
+---
+
 ## Discrepàncies detectades
 
 Diferències entre Trello i el que hi ha implementat, trobades en preparar el pla.
