@@ -32,6 +32,8 @@ const CATALOG = [
 const json = (status, body) => ({ ok: status < 400, status, json: async () => body })
 const NOT_VERIFIED = json(403, { detail: 'Cal verificar la identitat i acceptar els termes per operar' })
 
+const API_URL = String(import.meta.env.VITE_API_URL)
+
 // Backend fals amb estat, amb el mateix contracte que l'API
 let backend
 function createBackend({ verified = true, balance = 100 } = {}) {
@@ -39,8 +41,9 @@ function createBackend({ verified = true, balance = 100 } = {}) {
 }
 
 const fetchMock = vi.fn(async (url, init = {}) => {
-  const { pathname, searchParams } = new URL(url, 'http://api')
-  const route = `${init.method ?? 'GET'} ${pathname.replace(/^.*\/api\/v1/, '')}`
+  // api.js crida `${VITE_API_URL}${path}`; a la CI la variable no existeix i l'URL comença per "undefined"
+  const { pathname, searchParams } = new URL(String(url).slice(API_URL.length), 'http://api')
+  const route = `${init.method ?? 'GET'} ${pathname}`
 
   if (route === 'GET /users/me') {
     const verificacio = backend.verified
