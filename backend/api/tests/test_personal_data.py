@@ -27,6 +27,9 @@ VALID_BODY = {
     "residencia_fiscal": "ES",
 }
 
+COMPLETE_PROFILE = {"id": SUBJECT, **VALID_BODY}
+VERIFIED_PROFILE = {**COMPLETE_PROFILE, "dni_enviat_at": "2026-11-20T10:00:00+00:00"}
+
 
 @pytest.fixture
 def auth_headers(make_token):
@@ -143,6 +146,151 @@ def test_no_profile_row_returns_404(client, auth_headers, fake_admin):
     response = client.post(ENDPOINT, json=VALID_BODY, headers=auth_headers)
 
     assert response.status_code == 404
+
+
+def test_patch_updates_editable_personal_data(client, auth_headers, fake_admin):
+    admin = fake_admin(rows=[COMPLETE_PROFILE])
+    body = {
+        "nom": "  Marta  ",
+        "cognoms": "Puig Soler",
+        "telefon": "+34 611 111 111",
+        "carrer": "Carrer Nou, 2",
+        "codi_postal": "08002",
+        "poblacio": "Barcelona",
+    }
+
+    response = client.patch(ENDPOINT, json=body, headers=auth_headers)
+
+    assert response.status_code == 200
+    assert admin.update_data == {**body, "nom": "Marta"}
+    assert response.json() == {"perfil": {**COMPLETE_PROFILE, **body, "nom": "Marta"}}
+
+
+def test_patch_rejects_explicit_null(client, auth_headers, fake_admin):
+    admin = fake_admin(rows=[COMPLETE_PROFILE])
+
+    response = client.patch(
+        ENDPOINT, json={"nom": None}, headers=auth_headers
+    )
+
+    assert response.status_code == 422
+    assert admin.update_data is None
+
+
+@pytest.mark.parametrize("field", [
+    "nom",
+    "cognoms",
+    "telefon",
+    "carrer",
+    "codi_postal",
+    "poblacio",
+])
+@pytest.mark.parametrize("value", ["", "   "], ids=["empty", "spaces"])
+def test_patch_rejects_empty_editable_fields(
+    client, auth_headers, fake_admin, field, value
+):
+    admin = fake_admin(rows=[COMPLETE_PROFILE])
+
+    response = client.patch(ENDPOINT, json={field: value}, headers=auth_headers)
+
+    assert response.status_code == 422
+    assert admin.update_data is None
+
+
+def test_patch_rejects_kyc_fields(client, auth_headers, fake_admin):
+    admin = fake_admin(rows=[COMPLETE_PROFILE])
+
+    response = client.patch(
+        ENDPOINT,
+        json={"telefon": "+34 611 111 111", "nif": "12345678Z"},
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 403
+    assert response.json() == {
+        "detail": "Les dades verificades per KYC no es poden modificar directament."
+    }
+    assert admin.update_data is None
+
+
+def test_patch_rejects_body_with_only_kyc_fields(client, auth_headers, fake_admin):
+    admin = fake_admin(rows=[COMPLETE_PROFILE])
+    body = {
+        "nif": "12345678Z",
+        "data_naixement": "1990-05-17",
+        "residencia_fiscal": "ES",
+    }
+
+    response = client.patch(ENDPOINT, json=body, headers=auth_headers)
+
+    assert response.status_code == 403
+    assert response.json() == {
+        "detail": "Les dades verificades per KYC no es poden modificar directament."
+    }
+    assert admin.update_data is None
+
+
+def test_patch_requires_completed_personal_data_step(client, auth_headers, fake_admin):
+    admin = fake_admin(rows=[{"id": SUBJECT}])
+
+    response = client.patch(
+        ENDPOINT, json={"telefon": "+34 611 111 111"}, headers=auth_headers
+    )
+
+    assert response.status_code == 409
+    assert admin.update_data is None
+
+
+def test_post_verified_profile_rejects_changed_nif(client, auth_headers, fake_admin):
+    admin = fake_admin(rows=[VERIFIED_PROFILE])
+
+    response = client.post(
+        ENDPOINT, json={**VALID_BODY, "nif": "X0000000T"}, headers=auth_headers
+    )
+
+    assert response.status_code == 403
+    assert response.json() == {
+        "detail": "Les dades verificades per KYC no es poden modificar directament."
+    }
+    assert admin.update_data is None
+
+
+def test_post_verified_profile_accepts_same_nif(client, auth_headers, fake_admin):
+    admin = fake_admin(rows=[VERIFIED_PROFILE])
+
+    response = client.post(ENDPOINT, json=VALID_BODY, headers=auth_headers)
+
+    assert response.status_code == 200
+    assert admin.update_data == VALID_BODY
+
+
+def test_post_verified_profile_rejects_changed_birth_date(
+    client, auth_headers, fake_admin
+):
+    admin = fake_admin(rows=[VERIFIED_PROFILE])
+
+    response = client.post(
+        ENDPOINT,
+        json={**VALID_BODY, "data_naixement": "1991-01-01"},
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 403
+    assert response.json() == {
+        "detail": "Les dades verificades per KYC no es poden modificar directament."
+    }
+    assert admin.update_data is None
+
+
+def test_post_unverified_profile_accepts_changed_nif(client, auth_headers, fake_admin):
+    admin = fake_admin(rows=[COMPLETE_PROFILE])
+
+    response = client.post(
+        ENDPOINT, json={**VALID_BODY, "nif": "X0000000T"}, headers=auth_headers
+    )
+
+    assert response.status_code == 200
+    assert admin.update_data["nif"] == "X0000000T"
 
 
 def test_database_error_returns_500(client, auth_headers, fake_admin):
