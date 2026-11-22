@@ -7,17 +7,22 @@ La taula criteri → test és a docs/qa/pla-proves.md.
 """
 
 from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
 
 import pytest
 from supabase import PostgrestAPIError
 
+import main
+from api import deps
 from core.pin import hash_pin
 from core.verification import REVIEW_SECONDS, TERMS_VERSION
 
 SUBJECT = "11111111-2222-3333-4444-555555555555"
 
 DEPOSITS = "/api/v1/account/deposits"
+WITHDRAWALS = "/api/v1/account/withdrawals"
 PIN = "/api/v1/profile/pin"
+IBAN = "/api/v1/profile/iban"
 
 
 def _ago(seconds: int) -> str:
@@ -82,11 +87,12 @@ def test_deposit_database_failure(client, auth, verified, fake_admin):
     ("method", "path", "body"),
     [
         ("post", DEPOSITS, {"amount": "50"}),
+        ("post", WITHDRAWALS, {"amount": "50"}),
         ("get", "/api/v1/account/balance", None),
         ("get", "/api/v1/account/movements", None),
         ("post", PIN, {"pin": "1234"}),
     ],
-    ids=["ingres", "saldo", "historial", "crear-pin"],
+    ids=["ingres", "retirada", "saldo", "historial", "crear-pin"],
 )
 def test_unverified_user_cannot_operate(
     client, auth, fake_profile, fake_admin, method, path, body
@@ -130,3 +136,126 @@ def test_pin_change_with_wrong_current_pin(client, auth, verified, fake_pins):
     assert response.status_code == 403
     assert response.json()["detail"] == "El PIN actual és incorrecte."
     assert pins.upserted is None
+
+
+# --- US3.3 Retirar diners ficticis ---
+
+
+class FakeWithdrawalAdmin:
+    """Client d'administració amb el PIN, l'IBAN i el saldo de l'usuari.
+
+    La funció process_cash_movement retorna el saldo nou o llança l'error
+    ``rpc_error`` (P0003 és el saldo insuficient de la migració).
+    """
+
+    def __init__(self, pin_hash, balance, rpc_error):
+        self.rows = {
+            "profile_pins": [{"pin_hash": pin_hash}] if pin_hash else [],
+            "profiles": [{**VERIFIED_PROFILE, "iban": "ES9121000418450200051332"}],
+            "accounts": [{"balance": balance}],
+        }
+        self.rpc_error = rpc_error
+        self.rpc_call = None
+        self._table = None
+
+    def table(self, name):
+        self._table = name
+        return self
+
+    def select(self, *columns):
+        return self
+
+    def eq(self, column, value):
+        return self
+
+    def rpc(self, name, params):
+        self.rpc_call = (name, params)
+        self._table = "rpc"
+        return self
+
+    def execute(self):
+        if self._table != "rpc":
+            return SimpleNamespace(data=self.rows[self._table])
+        if self.rpc_error is not None:
+            raise self.rpc_error
+        balance = self.rows["accounts"][0]["balance"]
+        return SimpleNamespace(data=balance + float(self.rpc_call[1]["p_amount"]))
+
+
+@pytest.fixture
+def withdrawal_admin():
+    def install(pin_hash=hash_pin("1234"), balance=50, rpc_error=None):
+        admin = FakeWithdrawalAdmin(pin_hash, balance, rpc_error)
+        main.app.dependency_overrides[deps.get_admin_client] = lambda: admin
+        return admin
+
+    yield install
+    main.app.dependency_overrides.clear()
+
+
+INSUFFICIENT = PostgrestAPIError({"message": "Insufficient balance", "code": "P0003"})
+DB_ERROR = PostgrestAPIError({"message": "boom"})
+
+
+@pytest.mark.parametrize(
+    ("pin", "admin_kwargs", "amount", "status", "detail"),
+    [
+        ("1234", {}, "0.99", 422, "L'import mínim de retirada és d'1 €."),
+        (
+            "1234",
+            {"rpc_error": INSUFFICIENT},
+            "80",
+            422,
+            "Saldo insuficient. Et falten 30,00 € per completar l'operació",
+        ),
+        ("0000", {}, "10", 403, "El PIN introduït és incorrecte."),
+        (
+            "1234",
+            {"pin_hash": None},
+            "10",
+            403,
+            "Cal configurar el PIN de seguretat al perfil per fer aquesta operació.",
+        ),
+        (
+            "1234",
+            {"rpc_error": DB_ERROR},
+            "10",
+            500,
+            "No s'ha pogut processar la retirada. El teu saldo no ha canviat.",
+        ),
+    ],
+    ids=["minim", "saldo-insuficient", "pin-incorrecte", "sense-pin", "fallada-bd"],
+)
+def test_withdrawal_errors(
+    client, auth, verified, withdrawal_admin, pin, admin_kwargs, amount, status, detail
+):
+    withdrawal_admin(**admin_kwargs)
+
+    response = client.post(
+        WITHDRAWALS, headers={**auth, "X-PIN": pin}, json={"amount": amount}
+    )
+
+    assert response.status_code == status
+    assert response.json()["detail"] == detail
+
+
+def test_withdrawal_with_correct_pin_returns_new_balance(
+    client, auth, verified, withdrawal_admin
+):
+    """US3.3: en confirmar la retirada, el saldo es redueix."""
+    admin = withdrawal_admin(balance=50)
+
+    response = client.post(
+        WITHDRAWALS, headers={**auth, "X-PIN": "1234"}, json={"amount": "10"}
+    )
+
+    assert response.status_code == 201
+    assert response.json() == {"balance": 40}
+    assert admin.rpc_call[1]["p_amount"] == "-10"
+
+
+def test_invalid_iban(client, auth, verified, fake_admin):
+    response = client.put(IBAN, headers=auth, json={"iban": "ES0000000000000000000000"})
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == "El codi IBAN no és vàlid."

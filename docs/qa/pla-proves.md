@@ -171,7 +171,7 @@ missatges literals del criteri, sense importar les constants del codi, perquè u
 | US3.2-02 | "L'import mínim d'ingrés és d'1 €." | Back: `test_deposit_limits[US3.2-minim]`; integració: `un ingrés de 0,99 €…` |
 | US3.2-03 | "L'import màxim per operació és de 10.000 €." | Back: `test_deposit_limits[US3.2-maxim]`; integració: `un ingrés de 10000,01 €…` |
 | US3.2-04 | Falla la BD: "No s'ha pogut processar el dipòsit…" | Back: `test_deposit_database_failure`; integració: `si la base de dades falla…` |
-| US3.2-05 | No verificat: veu el component per verificar-se | Back: `test_unverified_user_cannot_operate[ingres]`; integració: `l'usuari no verificat veu a /compte-efectiu…` |
+| US3.2-05 | No verificat: veu el component per verificar-se | Back: `test_unverified_user_cannot_operate[ingres]` i `[retirada]`; integració: `l'usuari no verificat veu a /compte-efectiu…` |
 | US3.5-01 | Data, concepte, import, tipus i saldo resultant | Integració: `un ingrés actualitza el saldo… i apareix a l'historial`; unitari: `historialView.spec.js` |
 | US3.5-02 | Import en verd si suma i en vermell si resta | Integració (verd); unitari: `historialView.spec.js` |
 | US3.5-03 | Filtres de dates i tipus, pàgines de 20 | Unitari: `historialView.spec.js`, `movementsStore.spec.js` |
@@ -182,7 +182,17 @@ missatges literals del criteri, sense importar les constants del codi, perquè u
 | US5.1-03 | Filtra per nom i ticker, sense espais ni majúscules | Integració: `filtra pel nom o el ticker…` |
 | US5.1-04 | "No s'han trobat actius" | Integració: `filtra pel nom o el ticker…`; unitari: `assetSearch.spec.js` |
 | US5.3-01 | Preu, data, variació amb signe i "Preus simulats" | ⏳ Integració en `skip` fins que entri #125 |
-| US3.3 | Retirada: PIN correcte i incorrecte, saldo insuficient, mínim | ⏳ Pendent que US3.3 sigui a `develop` (#157) |
+| US3.3-01 | Sense IBAN, la targeta el demana amb l'ajuda "És una simulació…" | Integració: `sense IBAN la targeta el demana primer…` |
+| US3.3-02 | "El codi IBAN no és vàlid." | Back: `test_invalid_iban`; integració: `sense IBAN la targeta el demana primer…` |
+| US3.3-03 | IBAN emmascarat (ES•• … 1332) amb el botó "Canvia" | Integració: `sense IBAN la targeta el demana primer…` |
+| US3.3-04 | "L'import mínim de retirada és d'1 €." | Back: `test_withdrawal_errors[minim]`; integració: `una retirada de 0,99 €…` |
+| US3.3-05 | "Saldo insuficient. Et falten X € per completar l'operació" | Back: `test_withdrawal_errors[saldo-insuficient]`; integració: `una retirada de 150 €…` |
+| US3.3-06 | "El PIN introduït és incorrecte." i no s'executa | Back: `test_withdrawal_errors[pin-incorrecte]`; integració: `amb el PIN incorrecte…` |
+| US3.3-07 | Sense PIN: "Cal configurar el PIN…" amb enllaç al perfil | Back: `test_withdrawal_errors[sense-pin]`; integració: `sense PIN configurat…` |
+| US3.3-08 | "No s'ha pogut validar el PIN de seguretat…" | Integració: `si no es pot validar el PIN…` |
+| US3.3-09 | El saldo es redueix a l'instant | Back: `test_withdrawal_with_correct_pin_returns_new_balance`; integració: `amb el PIN correcte…` |
+| US3.3-10 | Falla la BD: "No s'ha pogut processar la retirada…" | Back: `test_withdrawal_errors[fallada-bd]` |
+| US3.5-06 | Concepte "Retirada a ES•• 1332" i import en vermell | Integració: `amb el PIN correcte… apareix a l'historial` |
 
 Fora d'abast: el bloqueig del PIN per intents fallits és la US1.6, al backlog.
 
@@ -195,6 +205,7 @@ Es fan a l'entorn desplegat amb un usuari verificat, perquè depenen de Supabase
 | S2-M01 | Compte d'efectiu → ingressar 50 € → Historial | El saldo puja 50 € i el moviment "Ingrés de diners" és el primer de la llista | |
 | S2-M02 | Perfil → crear el PIN → canviar-lo amb el PIN actual equivocat | "El PIN actual és incorrecte." i el PIN no canvia | |
 | S2-M03 | Actius → escriure "app" | Surt Apple; amb "zzz" surt "No s'han trobat actius" | |
+| S2-M04 | Compte d'efectiu → retirar 10 € amb el PIN correcte → Historial | El saldo baixa 10 € i surt "Retirada a ES•• …" en vermell | |
 
 ---
 

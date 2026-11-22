@@ -37,7 +37,23 @@ const API_URL = String(import.meta.env.VITE_API_URL)
 // Backend fals amb estat, amb el mateix contracte que l'API
 let backend
 function createBackend({ verified = true, balance = 100 } = {}) {
-  return { verified, balance, movements: [], failDeposits: false, catalog: structuredClone(CATALOG) }
+  return {
+    verified, balance, movements: [], failDeposits: false, catalog: structuredClone(CATALOG),
+    iban: MASKED_IBAN, pin: '1234', pinCheckFails: false,
+  }
+}
+
+const MASKED_IBAN = 'ES•• •••• •••• •••• •••• 1332'
+
+function addMovement(type, concept, amount) {
+  backend.balance += amount
+  backend.movements.unshift({
+    created_at: '2026-11-22T10:42:00Z',
+    concept,
+    type,
+    amount: amount.toFixed(2),
+    balance_after: backend.balance.toFixed(2),
+  })
 }
 
 const fetchMock = vi.fn(async (url, init = {}) => {
@@ -49,7 +65,7 @@ const fetchMock = vi.fn(async (url, init = {}) => {
     const verificacio = backend.verified
       ? { estat: 'verificat', termes_acceptats: true }
       : { estat: 'pendent', termes_acceptats: false }
-    return json(200, { verificacio, onboarding: { steps: [] }, perfil: {} })
+    return json(200, { verificacio, onboarding: { steps: [] }, perfil: { iban_emmascarat: backend.iban } })
   }
   if (route === 'GET /assets') {
     const q = (searchParams.get('q') ?? '').toLowerCase()
@@ -60,15 +76,21 @@ const fetchMock = vi.fn(async (url, init = {}) => {
   if (route === 'GET /account/balance') return json(200, { balance: backend.balance.toFixed(2), currency: 'EUR' })
   if (route === 'POST /account/deposits') {
     if (backend.failDeposits) return json(500, { detail: 'boom' })
-    const amount = Number(JSON.parse(init.body).amount)
-    backend.balance += amount
-    backend.movements.unshift({
-      created_at: '2026-11-22T10:42:00Z',
-      concept: 'Ingrés de diners',
-      type: 'ingres',
-      amount: amount.toFixed(2),
-      balance_after: backend.balance.toFixed(2),
-    })
+    addMovement('ingres', 'Ingrés de diners', Number(JSON.parse(init.body).amount))
+    return json(201, { balance: backend.balance })
+  }
+  if (route === 'PUT /profile/iban') {
+    backend.iban = MASKED_IBAN
+    return json(200, { iban_emmascarat: backend.iban })
+  }
+  if (route === 'POST /account/withdrawals') {
+    // Mateix ordre que l'endpoint: primer el PIN (require_pin) i després el saldo
+    if (backend.pinCheckFails) return json(500, { detail: "No s'ha pogut comprovar el PIN" })
+    if (!backend.pin) {
+      return json(403, { detail: 'Cal configurar el PIN de seguretat al perfil per fer aquesta operació.' })
+    }
+    if (init.headers['X-PIN'] !== backend.pin) return json(403, { detail: 'El PIN introduït és incorrecte.' })
+    addMovement('retirada', `Retirada a ES•• ${backend.iban.slice(-4)}`, -Number(JSON.parse(init.body).amount))
     return json(201, { balance: backend.balance })
   }
   if (route === 'GET /account/movements') return json(200, { movements: backend.movements, has_more: false })
@@ -99,7 +121,23 @@ async function deposit(amount) {
   // Les vistes es carreguen amb import(): s'espera el formulari en comptes de comptar ticks
   const input = await vi.waitFor(() => wrapper.get('[data-test="deposit-amount"]'))
   await input.setValue(amount)
-  await wrapper.find('form').trigger('submit')
+  await formWith('[data-test="deposit-amount"]').trigger('submit')
+  await flushPromises()
+}
+
+// Compte d'efectiu té diversos formularis (ingrés, IBAN, retirada): es busca el que conté el camp
+const formWith = (selector) => wrapper.findAll('form').find((f) => f.find(selector).exists())
+const buttonText = (label) => wrapper.findAll('button').find((b) => b.text() === label)
+
+// Import → "Continua" → PIN → "Confirma", com ho fa l'usuari
+async function withdraw(amount, pin) {
+  const input = await vi.waitFor(() => wrapper.get('[data-test="withdrawal-amount"]'))
+  await input.setValue(amount)
+  await formWith('[data-test="withdrawal-amount"]').trigger('submit')
+  await flushPromises()
+  if (pin === undefined) return
+  await wrapper.get('[data-test="withdrawal-pin"]').setValue(pin)
+  await formWith('[data-test="withdrawal-pin"]').trigger('submit')
   await flushPromises()
 }
 
@@ -186,6 +224,109 @@ describe('Acceptació Sprint 2: ingrés i historial (US3.2 + US3.5)', () => {
       await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/onboarding'))
     }
   )
+})
+
+describe('Acceptació Sprint 2: retirada amb PIN (US3.3 + US1.5 + US3.5)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    setActivePinia(createPinia())
+    backend = createBackend()
+    vi.stubGlobal('fetch', fetchMock)
+  })
+
+  afterEach(() => {
+    wrapper?.unmount()
+    wrapper = null
+  })
+
+  it("sense IBAN la targeta el demana primer, rebutja un IBAN invàlid i mostra l'emmascarat", async () => {
+    backend.iban = null
+    await mountAt('/compte-efectiu')
+
+    const ibanInput = await vi.waitFor(() => wrapper.get('[data-test="withdrawal-iban"]'))
+    expect(wrapper.text()).toContain('És una simulació: fes servir un IBAN de prova.')
+    expect(wrapper.find('[data-test="withdrawal-amount"]').exists()).toBe(false)
+
+    await ibanInput.setValue('ES00 0000 0000 0000 0000 0000')
+    await formWith('[data-test="withdrawal-iban"]').trigger('submit')
+    expect(wrapper.text()).toContain('El codi IBAN no és vàlid.')
+    expect(calls('PUT', '/profile/iban')).toHaveLength(0)
+
+    // Amb espais també s'accepta, i s'envia net
+    await ibanInput.setValue('ES91 2100 0418 4502 0005 1332')
+    await formWith('[data-test="withdrawal-iban"]').trigger('submit')
+    await flushPromises()
+    expect(JSON.parse(calls('PUT', '/profile/iban')[0][1].body)).toEqual({ iban: 'ES9121000418450200051332' })
+    expect(wrapper.get('[data-test="withdrawal-iban-masked"]').text()).toBe(MASKED_IBAN)
+    expect(buttonText('Canvia').exists()).toBe(true)
+  })
+
+  it("amb el PIN correcte el saldo baixa a l'instant i la retirada apareix a l'historial", async () => {
+    await mountAt('/compte-efectiu')
+    await vi.waitFor(() => expect(total()).toBe('100,00 €'))
+
+    await withdraw('30', '1234')
+
+    expect(total()).toBe('70,00 €')
+    const [[, init]] = calls('POST', '/account/withdrawals')
+    expect(init.headers['X-PIN']).toBe('1234')
+    expect(JSON.parse(init.body)).toEqual({ amount: '30' })
+
+    await navLink('Historial').trigger('click')
+    await vi.waitFor(() => expect(wrapper.findAll('[data-test="movement-row"]')).toHaveLength(1))
+    const row = wrapper.find('[data-test="movement-row"]')
+    expect(row.text()).toContain('Retirada a ES•• 1332')
+    expect(text(row.find('[data-test="movement-amount"]'))).toBe('−30,00 €')
+    expect(row.find('[data-test="movement-amount"]').classes()).toContain('movements__amount--out')
+  })
+
+  it('amb el PIN incorrecte la retirada no es fa i es pot tornar a provar', async () => {
+    await mountAt('/compte-efectiu')
+
+    await withdraw('30', '0000')
+
+    expect(wrapper.text()).toContain('El PIN introduït és incorrecte.')
+    expect(total()).toBe('100,00 €')
+    expect(backend.movements).toHaveLength(0)
+    // El pas del PIN es queda obert i buit
+    expect(wrapper.get('[data-test="withdrawal-pin"]').element.value).toBe('')
+  })
+
+  it.each([
+    ['150', "Saldo insuficient. Et falten 50,00 € per completar l'operació"],
+    ['0,99', "L'import mínim de retirada és d'1 €."],
+  ])('una retirada de %s € es rebutja abans de demanar el PIN', async (amount, message) => {
+    await mountAt('/compte-efectiu')
+    await vi.waitFor(() => expect(total()).toBe('100,00 €'))
+
+    await withdraw(amount)
+
+    expect(text(wrapper)).toContain(message)
+    expect(wrapper.find('[data-test="withdrawal-pin"]').exists()).toBe(false)
+    expect(calls('POST', '/account/withdrawals')).toHaveLength(0)
+  })
+
+  it('sense PIN configurat no es pot confirmar i porta al perfil', async () => {
+    backend.pin = null
+    await mountAt('/compte-efectiu')
+
+    await withdraw('30', '1234')
+
+    expect(wrapper.text()).toContain('Cal configurar el PIN de seguretat al perfil per fer aquesta operació.')
+    expect(total()).toBe('100,00 €')
+    await wrapper.get('[data-test="withdrawal-go-profile"]').trigger('click')
+    await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/perfil'))
+  })
+
+  it('si no es pot validar el PIN, la retirada no es fa', async () => {
+    backend.pinCheckFails = true
+    await mountAt('/compte-efectiu')
+
+    await withdraw('30', '1234')
+
+    expect(wrapper.text()).toContain("No s'ha pogut validar el PIN de seguretat. Torna-ho a provar més tard.")
+    expect(total()).toBe('100,00 €')
+  })
 })
 
 describe('Acceptació Sprint 2: cercar actius (US5.1 + US5.3)', () => {
