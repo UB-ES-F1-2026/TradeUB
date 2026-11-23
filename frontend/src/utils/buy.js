@@ -31,8 +31,8 @@ export function unitsError(text) {
 }
 
 // Els imports es calculen en cèntims enters perquè 3 × 10.1 no doni 30.299999…
-// PostgREST pot retornar els numeric com a text, per això es passa per Number
-function toCents(amount) {
+// PostgREST pot retornar els numeric com a text, per això es passa per Number. També el fa servir la venda
+export function toCents(amount) {
   return Math.round(Number(amount) * 100)
 }
 
