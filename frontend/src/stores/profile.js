@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
-import { apiGet, apiPost } from '../services/api';
+import { apiGet, apiPatch, apiPost } from '../services/api';
 import { useAuthStore } from './auth';
 
 // Dades personals de l'usuari. Viuen a la taula profiles: el frontend les llegeix i les envia al backend, no les desa
@@ -45,6 +45,13 @@ export const useProfileStore = defineStore('profile', () => {
         return saved;
     };
 
+    // Edita les dades personals des del perfil (US4.1, PATCH /profile/personal-data). Només s'hi envien els camps
+    // editables; si el backend les rebutja, llança l'ApiError. Si es desen, es torna a llegir el perfil
+    const updatePersonalData = async (data) => {
+        await apiPatch('/profile/personal-data', data);
+        await load();
+    };
+
     // Envia les respostes del qüestionari; el backend calcula el perfil, el desa i el retorna
     const saveInvestorQuestionnaire = async (answers) => {
         const { profile } = await apiPost('/profile/investor-questionnaire', answers);
@@ -82,6 +89,6 @@ export const useProfileStore = defineStore('profile', () => {
 
     return {
         perfil, loading, error, pinConfigured, pinError, pinLoading, hasPin,
-        load, loadPinStatus, savePersonalData, saveInvestorQuestionnaire, savePin, reset,
+        load, loadPinStatus, savePersonalData, updatePersonalData, saveInvestorQuestionnaire, savePin, reset,
     };
 });

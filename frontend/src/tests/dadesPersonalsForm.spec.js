@@ -9,9 +9,11 @@ vi.mock('../services/api', async (importOriginal) => ({
   ...(await importOriginal()),
   apiGet: vi.fn(),
   apiPost: vi.fn(),
+  apiPatch: vi.fn(),
 }))
 
-import { apiGet, apiPost, ApiError } from '../services/api'
+import { apiGet, apiPatch, apiPost, ApiError } from '../services/api'
+import { useProfileStore } from '../stores/profile'
 import DadesPersonalsForm from '../components/DadesPersonalsForm.vue'
 
 const validData = {
@@ -204,5 +206,130 @@ describe('DadesPersonalsForm', () => {
 
     expect(wrapper.text()).toContain("No s'han pogut desar les dades.")
     expect(wrapper.emitted('saved')).toBeUndefined()
+  })
+})
+
+describe('DadesPersonalsForm en mode edició (US4.1)', () => {
+  const saved = {
+    nom: 'Cristian',
+    cognoms: 'Prado',
+    telefon: '600000000',
+    data_naixement: '1999-05-17',
+    nif: '12345678Z',
+    carrer: 'Carrer Gran Via 585',
+    codi_postal: '08007',
+    poblacio: 'Barcelona',
+    residencia_fiscal: 'ES',
+  }
+
+  async function mountEdit() {
+    useProfileStore().perfil = { ...saved }
+    const wrapper = mount(DadesPersonalsForm, { props: { mode: 'edit' } })
+    await flushPromises()
+    return wrapper
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    setActivePinia(createPinia())
+    apiGet.mockResolvedValue({ perfil: saved })
+    apiPatch.mockResolvedValue({})
+  })
+
+  it('només mostra els camps editables, amb les dades desades', async () => {
+    const wrapper = await mountEdit()
+
+    const labels = wrapper.findAll('label').map((l) => l.text())
+    expect(labels).toEqual(['Nom', 'Cognoms', 'Telèfon', 'Carrer i número', 'Codi postal', 'Població'])
+    expect(field(wrapper, 'Nom').find('input').element.value).toBe('Cristian')
+    expect(field(wrapper, 'Població').find('input').element.value).toBe('Barcelona')
+  })
+
+  it('no torna a demanar el perfil en obrir-se', async () => {
+    await mountEdit()
+
+    expect(apiGet).not.toHaveBeenCalled()
+  })
+
+  it('envia només els camps editables, nets, i avisa que s\'ha desat', async () => {
+    const wrapper = await mountEdit()
+    await field(wrapper, 'Telèfon').find('input').setValue(' 611111111 ')
+
+    await submit(wrapper)
+
+    expect(apiPatch).toHaveBeenCalledWith('/profile/personal-data', {
+      nom: 'Cristian',
+      cognoms: 'Prado',
+      telefon: '611111111',
+      carrer: 'Carrer Gran Via 585',
+      codi_postal: '08007',
+      poblacio: 'Barcelona',
+    })
+    expect(apiGet).toHaveBeenCalledWith('/users/me')
+    expect(wrapper.emitted('saved')).toHaveLength(1)
+    expect(apiPost).not.toHaveBeenCalled()
+  })
+
+  it('si falta un camp no envia res i mostra el missatge', async () => {
+    const wrapper = await mountEdit()
+    await field(wrapper, 'Cognoms').find('input').setValue('  ')
+
+    await submit(wrapper)
+
+    expect(apiPatch).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('Cal omplir tots els camps obligatoris.')
+  })
+
+  it("mostra l'error del servidor i conserva el que s'ha escrit", async () => {
+    apiPatch.mockRejectedValue(
+      new ApiError(403, 'Les dades verificades per KYC no es poden modificar directament.'),
+    )
+    const wrapper = await mountEdit()
+    await field(wrapper, 'Població').find('input').setValue('Girona')
+
+    await submit(wrapper)
+
+    expect(wrapper.text()).toContain('Les dades verificades per KYC no es poden modificar directament.')
+    expect(field(wrapper, 'Població').find('input').element.value).toBe('Girona')
+    expect(wrapper.emitted('saved')).toBeUndefined()
+  })
+
+  it("sense el pas de l'onboarding completat mostra el missatge del backend (409)", async () => {
+    apiPatch.mockRejectedValue(new ApiError(409, "Cal completar les dades personals de l'onboarding"))
+    const wrapper = await mountEdit()
+
+    await submit(wrapper)
+
+    expect(wrapper.text()).toContain("Cal completar les dades personals de l'onboarding")
+    expect(wrapper.emitted('saved')).toBeUndefined()
+  })
+
+  it("si Pydantic rebutja el cos (422 sense text), mostra l'error general", async () => {
+    // api.js converteix el detail en llista de Pydantic a 'Error del servidor'
+    apiPatch.mockRejectedValue(new ApiError(422, 'Error del servidor'))
+    const wrapper = await mountEdit()
+
+    await submit(wrapper)
+
+    expect(wrapper.text()).toContain("No s'han pogut desar les dades. Torna-ho a provar.")
+    expect(wrapper.text()).not.toContain('Error del servidor')
+  })
+
+  it("si el backend falla, mostra l'error general", async () => {
+    apiPatch.mockRejectedValue(new ApiError(500, 'Error del servidor'))
+    const wrapper = await mountEdit()
+
+    await submit(wrapper)
+
+    expect(wrapper.text()).toContain("No s'han pogut desar les dades. Torna-ho a provar.")
+  })
+
+  it('"Cancel·la" avisa sense enviar res', async () => {
+    const wrapper = await mountEdit()
+
+    await wrapper.findAll('button').find((b) => b.text() === 'Cancel·la').trigger('click')
+
+    expect(wrapper.emitted('cancel')).toHaveLength(1)
+    expect(apiPatch).not.toHaveBeenCalled()
   })
 })
