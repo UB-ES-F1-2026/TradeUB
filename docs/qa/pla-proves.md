@@ -202,7 +202,7 @@ Fora d'abast: el bloqueig del PIN per intents fallits és la US1.6, al backlog.
 
 El que els mocks no veuen (migracions, `VITE_API_URL`, CORS, permisos) es prova amb Playwright contra DEV, no a mà:
 ingrés → historial, retirada amb PIN incorrecte i correcte → historial, canvi de PIN amb el PIN actual equivocat i
-cerca d'actius amb i sense resultats.
+cerca d'actius amb preu i sense resultats.
 
 ---
 
