@@ -13,6 +13,32 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  sql-check:
+    name: SQL - Funcions de la base de dades
+    runs-on: ubuntu-latest
+    # Postgres buit: run.sh hi crea el mínim de Supabase i hi aplica les migracions
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Obtenir el codi
+        uses: actions/checkout@v4
+
+      - name: Executar els tests de les funcions SQL
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+        run: supabase/tests/run.sh
+
   backend-check:
     name: Backend - Validació
     runs-on: ubuntu-latest
