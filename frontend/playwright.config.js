@@ -1,5 +1,13 @@
 import { defineConfig, devices } from '@playwright/test'
 
+// En local, E2E_EMAIL, E2E_PASSWORD i E2E_PIN es llegeixen de frontend/.env.e2e (no es versiona per .gitignore).
+// A la CI venen dels secrets i el fitxer no hi és
+try {
+  process.loadEnvFile('.env.e2e')
+} catch {
+  // sense fitxer: les variables han de venir de l'entorn
+}
+
 // Tests E2E contra l'entorn de DEV (Vercel + Azure + Supabase reals). Vegeu e2e/sprint2.spec.js
 export default defineConfig({
   testDir: 'e2e',
