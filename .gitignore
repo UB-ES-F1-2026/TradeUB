@@ -34,6 +34,10 @@ yarn-error.log*
 *.sln
 *.sw?
 
+# Playwright
+test-results/
+playwright-report/
+
 # Cobertura i resultats dels tests (CI)
 .coverage
 coverage/
