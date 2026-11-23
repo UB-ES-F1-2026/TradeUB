@@ -52,6 +52,7 @@ function makeRouter() {
       { path: '/actius', name: 'actius', component: { render: () => null } },
       { path: '/perfil', name: 'perfil', component: { render: () => null } },
       { path: '/onboarding', name: 'onboarding', component: { render: () => null } },
+      { path: '/reset-password', name: 'reset-password', component: { render: () => null } },
     ],
   })
 }
@@ -118,6 +119,16 @@ describe('MfaVerifyView', () => {
     await submitCode(wrapper, '123456')
 
     expect(router.currentRoute.value.path).toBe('/onboarding')
+  })
+
+  it("sense l'onboarding acabat torna a /reset-password si venia de recuperar la contrasenya", async () => {
+    mockOnboarding('pendent')
+    supabase.auth.mfa.challengeAndVerify.mockResolvedValue({ data: {}, error: null })
+    const { wrapper, router } = await mountMfa('/mfa?redirect=/reset-password')
+
+    await submitCode(wrapper, '123456')
+
+    expect(router.currentRoute.value.path).toBe('/reset-password')
   })
 
   it('si el backend no respon va a la benvinguda sense mostrar error de codi', async () => {
