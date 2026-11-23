@@ -1,11 +1,17 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { apiGet } from '../services/api'
-import { UiAlert, UiBadge, UiCard, UiInput } from './ui'
+import { UiAlert, UiBadge, UiButton, UiCard, UiInput } from './ui'
 import { ASSETS_LOAD_ERROR, NO_ASSETS_FOUND, SEARCH_DELAY_MS, assetTypeLabel, assetsSearchPath } from '../utils/assets'
 
 // Cercador d'actius (US5.1). Cerca mentre s'escriu pel nom, el ticker o l'ISIN; sense text mostra tot el catàleg.
 // Cercar no és operar: es mostra a tots els usuaris registrats, encara que no estiguin verificats
+// Amb selectable (només si l'usuari pot operar), cada resultat es pot triar per comprar-lo (US6.1)
+defineProps({
+  selectable: { type: Boolean, default: false },
+})
+const emit = defineEmits(['select'])
+
 const query = ref('')
 const assets = ref([])
 const loading = ref(false)
@@ -89,6 +95,7 @@ onBeforeUnmount(() => clearTimeout(timer))
           v-for="asset in assets"
           :key="asset.ticker"
           class="assets__item"
+          :class="{ 'assets__item--selectable': selectable }"
           data-test="asset-result"
         >
           <div class="assets__info">
@@ -100,6 +107,16 @@ onBeforeUnmount(() => clearTimeout(timer))
             </p>
           </div>
           <UiBadge>{{ assetTypeLabel(asset.type) }}</UiBadge>
+          <UiButton
+            v-if="selectable"
+            variant="secondary"
+            size="sm"
+            :aria-label="`Comprar ${asset.name}`"
+            data-test="asset-select"
+            @click="emit('select', asset)"
+          >
+            Compra
+          </UiButton>
         </li>
       </ul>
     </div>
@@ -127,6 +144,10 @@ onBeforeUnmount(() => clearTimeout(timer))
   gap: var(--tub-space-4);
   padding: var(--tub-space-3) 0;
   border-top: 1px solid var(--tub-border);
+}
+/* Amb el botó "Compra", el nom ocupa l'espai lliure i el tipus i el botó queden a la dreta */
+.assets__item--selectable .assets__info {
+  flex: 1;
 }
 .assets__info {
   min-width: 0;

@@ -31,10 +31,13 @@ describe('ActiusView', () => {
     expect(wrapper.findComponent({ name: 'AssetSearch' }).exists()).toBe(true)
   })
 
-  it("no consulta la verificació: cercar no és operar", async () => {
-    await mountActius()
+  // Cercar no és operar: sense verificar es veu el cercador, però no es pot triar cap actiu per comprar (US6.1)
+  it('sense verificar mostra el cercador però no deixa triar actius', async () => {
+    apiGet.mockResolvedValue({ verificacio: { estat: 'pendent', termes_acceptats: false } })
+    const wrapper = await mountActius()
 
-    expect(apiGet).not.toHaveBeenCalledWith('/users/me')
+    expect(apiGet).toHaveBeenCalledWith('/users/me')
+    expect(wrapper.findComponent({ name: 'AssetSearch' }).props('selectable')).toBe(false)
   })
 
   it("ja no mostra el saldo ni l'avís de verificació", async () => {

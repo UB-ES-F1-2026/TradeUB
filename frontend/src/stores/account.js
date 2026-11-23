@@ -79,6 +79,16 @@ export const useAccountStore = defineStore('account', () => {
         error.value = '';
     };
 
+    // Compra unitats d'un actiu (US6.1). El PIN va a la capçalera X-PIN (require_pin al backend). El backend cobra
+    // el cost amb el preu del catàleg i retorna el saldo nou i el que s'ha cobrat (cost, commission i total).
+    // Si falla, llança l'ApiError i el saldo no canvia
+    const buy = async (assetId, units, pin) => {
+        const data = await apiPost('/orders/buy', { asset_id: assetId, units }, { 'X-PIN': pin });
+        balance.value = Number(data.balance);
+        error.value = '';
+        return data;
+    };
+
     // En tancar sessió o canviar d'usuari no es pot quedar el saldo de l'anterior
     watch(() => authStore.user?.id, (id, previousId) => {
         if (id !== previousId) reset();
@@ -86,6 +96,6 @@ export const useAccountStore = defineStore('account', () => {
 
     return {
         balance, currency, updatedAt, loading, error, ibanMasked, hasBalance,
-        fetchBalance, deposit, loadIban, linkIban, withdraw, reset,
+        fetchBalance, deposit, loadIban, linkIban, withdraw, buy, reset,
     };
 });
