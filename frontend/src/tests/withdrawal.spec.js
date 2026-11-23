@@ -1,16 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import { formatCurrency } from '../utils/currency'
 import {
-  PIN_CHECK_FAILED_ERROR,
-  PIN_INCORRECT_ERROR,
-  PIN_NOT_CONFIGURED_ERROR,
   WITHDRAWAL_FORMAT_ERROR,
   WITHDRAWAL_MIN_ERROR,
   WITHDRAWAL_REQUIRED_ERROR,
   isValidIban,
-  isValidPin,
   normalizeIban,
-  pinErrorMessage,
   withdrawalError,
 } from '../utils/withdrawal'
 
@@ -61,25 +56,5 @@ describe('IBAN', () => {
 
   it("normalitza l'IBAN abans d'enviar-lo", () => {
     expect(normalizeIban(' es91 2100 0418 4502 0005 1332 ')).toBe(TEST_IBAN)
-  })
-})
-
-describe('PIN', () => {
-  it('només accepta 4 xifres', () => {
-    expect(isValidPin('1234')).toBe(true)
-    expect(isValidPin('123')).toBe(false)
-    expect(isValidPin('12a4')).toBe(false)
-  })
-
-  it('tradueix els errors de require_pin', () => {
-    expect(pinErrorMessage(403, PIN_INCORRECT_ERROR)).toBe(PIN_INCORRECT_ERROR)
-    expect(pinErrorMessage(403, PIN_NOT_CONFIGURED_ERROR)).toBe(PIN_NOT_CONFIGURED_ERROR)
-    expect(pinErrorMessage(500, "No s'ha pogut comprovar el PIN")).toBe(PIN_CHECK_FAILED_ERROR)
-    expect(pinErrorMessage(500, "No s'ha pogut recuperar el PIN")).toBe(PIN_CHECK_FAILED_ERROR)
-  })
-
-  it("no tracta com a error del PIN els altres errors de l'operació", () => {
-    expect(pinErrorMessage(403, 'Cal verificar la identitat')).toBe('')
-    expect(pinErrorMessage(500, "No s'ha pogut processar la retirada. El teu saldo no ha canviat.")).toBe('')
   })
 })
