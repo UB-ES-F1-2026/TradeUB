@@ -127,4 +127,32 @@ describe('AssetSearch', () => {
 
     expect(wrapper.emitted('select')).toEqual([[MSCI]])
   })
+
+  // Venda (US6.2): "Ven" només surt als actius dels quals l'usuari té unitats
+  describe('"Ven"', () => {
+    const OWNED = { id: 7, ...APPLE }
+    const NOT_OWNED = { id: 9, ...MSCI }
+
+    it("només surt als actius amb unitats i emet l'actiu", async () => {
+      apiGet.mockResolvedValue([OWNED, NOT_OWNED])
+      const wrapper = mount(AssetSearch, { props: { selectable: true, holdings: { 7: 3 } } })
+      await flushPromises()
+
+      const buttons = wrapper.findAll('[data-test="asset-sell"]')
+      expect(buttons).toHaveLength(1)
+      expect(buttons[0].attributes('aria-label')).toBe('Vendre Apple Inc.')
+
+      await buttons[0].trigger('click')
+
+      expect(wrapper.emitted('sell')).toEqual([[OWNED]])
+    })
+
+    it('sense selectable no surt encara que hi hagi unitats', async () => {
+      apiGet.mockResolvedValue([OWNED])
+      const wrapper = mount(AssetSearch, { props: { holdings: { 7: 3 } } })
+      await flushPromises()
+
+      expect(wrapper.find('[data-test="asset-sell"]').exists()).toBe(false)
+    })
+  })
 })

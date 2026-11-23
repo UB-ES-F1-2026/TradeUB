@@ -14,8 +14,20 @@ export const useAccountStore = defineStore('account', () => {
     const error = ref('');
     // IBAN vinculat per a les retirades (US3.3), sempre emmascarat: el backend no retorna mai el complet
     const ibanMasked = ref(null);
+    // Posicions de l'usuari (US6.2): unitats enteres per id d'actiu. Un actiu sense posició no hi és
+    const positions = ref({});
 
     const hasBalance = computed(() => balance.value !== null);
+
+    const unitsHeld = (assetId) => positions.value[assetId] ?? 0;
+
+    // Les unitats que retornen la compra i la venda són les de la posició després de l'operació; 0 vol dir que
+    // s'ha venut tot i el backend ha esborrat la posició
+    const setPosition = (assetId, units) => {
+        const rest = { ...positions.value };
+        delete rest[assetId];
+        positions.value = units > 0 ? { ...rest, [assetId]: units } : rest;
+    };
 
     const reset = () => {
         balance.value = null;
@@ -24,6 +36,7 @@ export const useAccountStore = defineStore('account', () => {
         loading.value = false;
         error.value = '';
         ibanMasked.value = null;
+        positions.value = {};
     };
 
     // Demana el saldo al backend; si falla es manté l'últim valor conegut
@@ -85,6 +98,24 @@ export const useAccountStore = defineStore('account', () => {
     const buy = async (assetId, units, pin) => {
         const data = await apiPost('/orders/buy', { asset_id: assetId, units }, { 'X-PIN': pin });
         balance.value = Number(data.balance);
+        setPosition(assetId, Number(data.units));
+        error.value = '';
+        return data;
+    };
+
+    // Llegeix les posicions (GET /account/positions). Si falla, llança l'error i no es toca el que hi havia
+    const fetchPositions = async () => {
+        const data = await apiGet('/account/positions');
+        positions.value = Object.fromEntries((data ?? []).map((p) => [p.asset_id, Number(p.units)]));
+    };
+
+    // Ven unitats d'una posició (US6.2). El PIN va a la capçalera X-PIN (require_pin al backend). El backend ingressa
+    // l'import net amb el preu del catàleg i retorna el saldo nou, les unitats que queden i l'import (amount,
+    // commission i net). Si falla, llança l'ApiError i ni el saldo ni la posició canvien
+    const sell = async (assetId, units, pin) => {
+        const data = await apiPost('/orders/sell', { asset_id: assetId, units }, { 'X-PIN': pin });
+        balance.value = Number(data.balance);
+        setPosition(assetId, Number(data.units));
         error.value = '';
         return data;
     };
@@ -95,7 +126,7 @@ export const useAccountStore = defineStore('account', () => {
     });
 
     return {
-        balance, currency, updatedAt, loading, error, ibanMasked, hasBalance,
-        fetchBalance, deposit, loadIban, linkIban, withdraw, buy, reset,
+        balance, currency, updatedAt, loading, error, ibanMasked, positions, hasBalance,
+        fetchBalance, deposit, loadIban, linkIban, withdraw, buy, fetchPositions, unitsHeld, sell, reset,
     };
 });
