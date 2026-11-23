@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from supabase import Client, PostgrestAPIError
 
 from core.onboarding import get_onboarding_status
+from core.profiles import to_public_profile
 from core.verification import get_verification_status
 
 from .deps import get_current_user, get_user_client
@@ -16,7 +17,7 @@ def get_user_profile(
 ):
     """Aquest endpoint està protegit. Retorna el perfil de la taula profiles,
     l'estat de cada pas de l'onboarding i l'estat de la verificació, deduïts
-    d'aquest perfil."""
+    d'aquest perfil. L'IBAN només hi surt emmascarat."""
     try:
         response = db.table("profiles").select("*").eq("id", user["sub"]).execute()
     except PostgrestAPIError as e:
@@ -26,7 +27,7 @@ def get_user_profile(
     perfil = response.data[0] if response.data else {}
     return {
         "user": user,
-        "perfil": perfil,
+        "perfil": to_public_profile(perfil),
         "onboarding": get_onboarding_status(perfil),
         "verificacio": get_verification_status(perfil),
     }

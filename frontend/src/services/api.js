@@ -42,4 +42,6 @@ const sendJson = (method) => (path, data, headers = {}) =>
 
 export const apiPost = sendJson('POST')
 
+export const apiPut = sendJson('PUT')
+
 export const apiPatch = sendJson('PATCH')

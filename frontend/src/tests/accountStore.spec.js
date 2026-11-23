@@ -8,9 +8,10 @@ vi.mock('../services/api', async (importOriginal) => ({
   ...(await importOriginal()),
   apiGet: vi.fn(),
   apiPost: vi.fn(),
+  apiPut: vi.fn(),
 }))
 
-import { apiGet, apiPost, ApiError } from '../services/api'
+import { apiGet, apiPost, apiPut, ApiError } from '../services/api'
 import { useAccountStore } from '../stores/account'
 import { useAuthStore } from '../stores/auth'
 
@@ -120,14 +121,63 @@ describe('account store', () => {
     expect(store.balance).toBe(10000)
   })
 
-  it("buida el saldo quan es tanca la sessió o canvia l'usuari", async () => {
+  it("llegeix l'IBAN emmascarat del perfil", async () => {
+    apiGet.mockResolvedValue({ perfil: { iban_emmascarat: 'ES•• •••• •••• •••• •••• 1332' } })
+
+    await store.loadIban()
+
+    expect(apiGet).toHaveBeenCalledWith('/users/me')
+    expect(store.ibanMasked).toBe('ES•• •••• •••• •••• •••• 1332')
+  })
+
+  it('sense IBAN vinculat queda a null', async () => {
+    apiGet.mockResolvedValue({ perfil: { iban_emmascarat: null } })
+
+    await store.loadIban()
+
+    expect(store.ibanMasked).toBeNull()
+  })
+
+  it("vincula l'IBAN i desa l'emmascarat que retorna el backend", async () => {
+    apiPut.mockResolvedValue({ iban_emmascarat: 'ES•• •••• •••• •••• •••• 1332' })
+
+    await store.linkIban('ES9121000418450200051332')
+
+    expect(apiPut).toHaveBeenCalledWith('/profile/iban', { iban: 'ES9121000418450200051332' })
+    expect(store.ibanMasked).toBe('ES•• •••• •••• •••• •••• 1332')
+  })
+
+  it('retira amb el PIN a la capçalera i desa el saldo nou', async () => {
     apiGet.mockResolvedValue(account)
     await store.fetchBalance()
+    apiPost.mockResolvedValue({ balance: '9949.75' })
+
+    await store.withdraw('50.25', '1234')
+
+    expect(apiPost).toHaveBeenCalledWith('/account/withdrawals', { amount: '50.25' }, { 'X-PIN': '1234' })
+    expect(store.balance).toBe(9949.75)
+  })
+
+  it("si la retirada falla, llança l'error i el saldo no canvia", async () => {
+    apiGet.mockResolvedValue(account)
+    await store.fetchBalance()
+    const failure = new ApiError(403, 'El PIN introduït és incorrecte.')
+    apiPost.mockRejectedValue(failure)
+
+    await expect(store.withdraw('50', '0000')).rejects.toBe(failure)
+    expect(store.balance).toBe(10000)
+  })
+
+  it("buida el saldo i l'IBAN quan es tanca la sessió o canvia l'usuari", async () => {
+    apiGet.mockResolvedValue(account)
+    await store.fetchBalance()
+    store.ibanMasked = 'ES•• •••• •••• •••• •••• 1332'
 
     authStore.user = null
     await nextTick()
 
     expect(store.balance).toBeNull()
+    expect(store.ibanMasked).toBeNull()
     expect(store.error).toBe('')
   })
 })
