@@ -21,10 +21,11 @@ vi.mock('../services/supabase', () => ({
 vi.mock('../services/api', async (importOriginal) => ({
   ...(await importOriginal()),
   apiGet: vi.fn(),
+  apiPatch: vi.fn(),
 }))
 
 import { supabase } from '../services/supabase'
-import { apiGet } from '../services/api'
+import { apiGet, apiPatch } from '../services/api'
 import { useAuthStore } from '../stores/auth'
 import PerfilView from '../views/PerfilView.vue'
 
@@ -46,12 +47,16 @@ function makeRouter() {
   })
 }
 
-async function mountPerfil() {
+// attachTo: per als tests de focus, que necessiten el component dins del document
+async function mountPerfil(attachTo) {
   const router = makeRouter()
   router.push('/perfil')
   await router.isReady()
   // Les seccions de 2FA i de contrasenya tenen els seus propis tests (twoFactorCard.spec.js, passwordCard.spec.js)
-  const wrapper = mount(PerfilView, { global: { plugins: [router], stubs: { TwoFactorCard: true, PasswordCard: true } } })
+  const wrapper = mount(PerfilView, {
+    global: { plugins: [router], stubs: { TwoFactorCard: true, PasswordCard: true } },
+    attachTo,
+  })
   return { wrapper, router }
 }
 
@@ -215,5 +220,90 @@ describe('PerfilView', () => {
 
     expect(wrapper.text()).toContain("No s'ha pogut tancar la sessió")
     expect(router.currentRoute.value.path).toBe('/perfil')
+  })
+})
+
+describe('PerfilView: edició de les dades personals (US4.1)', () => {
+  const perfil = {
+    nom: 'Cristian',
+    cognoms: 'Prado',
+    telefon: '600000000',
+    data_naixement: '2003-01-11',
+    carrer: 'Carrer Gran Via 585',
+    codi_postal: '08007',
+    poblacio: 'Barcelona',
+  }
+  const completed = { steps: [{ id: 'dades-personals', status: 'completat' }] }
+
+  const editButton = (wrapper) => wrapper.find('[data-test="edit-personal-data"]')
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    backend = { '/users/me': { perfil, onboarding: completed } }
+    apiGet.mockImplementation(async (path) => backend[path])
+    setActivePinia(createPinia())
+    const store = useAuthStore()
+    store.user = user
+    store.session = { access_token: 'token', user }
+  })
+
+  it('sense el pas "Dades personals" completat no es pot editar', async () => {
+    backend['/users/me'] = { perfil, onboarding: { steps: [{ id: 'dades-personals', status: 'pendent' }] } }
+    const { wrapper } = await mountPerfil()
+    await flushPromises()
+
+    expect(editButton(wrapper).exists()).toBe(false)
+  })
+
+  it('amb el pas completat es pot editar encara que no estigui verificat', async () => {
+    const { wrapper } = await mountPerfil()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('No verificat')
+    expect(editButton(wrapper).exists()).toBe(true)
+  })
+
+  it('"Edita" obre el formulari i "Cancel·la" torna a la lectura', async () => {
+    const { wrapper } = await mountPerfil()
+    await flushPromises()
+
+    await editButton(wrapper).trigger('click')
+    expect(wrapper.find('form').exists()).toBe(true)
+    expect(editButton(wrapper).exists()).toBe(false)
+
+    await wrapper.findAll('button').find((b) => b.text() === 'Cancel·la').trigger('click')
+    expect(wrapper.find('form').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Carrer Gran Via 585, 08007 Barcelona')
+  })
+
+  it('en desar torna a la lectura amb les dades noves', async () => {
+    apiPatch.mockResolvedValue({})
+    const { wrapper } = await mountPerfil()
+    await flushPromises()
+    await editButton(wrapper).trigger('click')
+
+    const input = wrapper.findAll('.ui-field').find((f) => f.find('label').text() === 'Població').find('input')
+    await input.setValue('Girona')
+    backend['/users/me'] = { perfil: { ...perfil, poblacio: 'Girona' }, onboarding: completed }
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(apiPatch).toHaveBeenCalledWith('/profile/personal-data', expect.objectContaining({ poblacio: 'Girona' }))
+    expect(wrapper.find('form').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Carrer Gran Via 585, 08007 Girona')
+  })
+
+  it('el focus va al primer camp en editar i torna a "Edita" en cancel·lar', async () => {
+    const { wrapper } = await mountPerfil(document.body)
+    await flushPromises()
+
+    await editButton(wrapper).trigger('click')
+    await flushPromises()
+    expect(document.activeElement).toBe(wrapper.find('form input').element)
+
+    await wrapper.findAll('button').find((b) => b.text() === 'Cancel·la').trigger('click')
+    await flushPromises()
+    expect(document.activeElement).toBe(editButton(wrapper).element)
+    wrapper.unmount()
   })
 })

@@ -7,9 +7,10 @@ vi.mock('../services/api', async (importOriginal) => ({
   ...(await importOriginal()),
   apiGet: vi.fn(),
   apiPost: vi.fn(),
+  apiPatch: vi.fn(),
 }))
 
-import { apiGet, apiPost, ApiError } from '../services/api'
+import { apiGet, apiPatch, apiPost, ApiError } from '../services/api'
 import { useAuthStore } from '../stores/auth'
 import { useProfileStore } from '../stores/profile'
 
@@ -68,6 +69,25 @@ describe('profile store', () => {
     await expect(store.savePersonalData({ nif: 'mal' })).rejects.toBe(apiError)
 
     expect(store.perfil).toEqual({})
+  })
+
+  it('updatePersonalData envia els camps amb PATCH i torna a llegir el perfil', async () => {
+    apiPatch.mockResolvedValue({})
+    apiGet.mockResolvedValue({ perfil: { nom: 'Anna', poblacio: 'Girona' } })
+
+    await store.updatePersonalData({ nom: 'Anna', poblacio: 'Girona' })
+
+    expect(apiPatch).toHaveBeenCalledWith('/profile/personal-data', { nom: 'Anna', poblacio: 'Girona' })
+    expect(apiGet).toHaveBeenCalledWith('/users/me')
+    expect(store.perfil).toEqual({ nom: 'Anna', poblacio: 'Girona' })
+  })
+
+  it("si l'edició falla, llança l'error i no torna a llegir el perfil", async () => {
+    const apiError = new ApiError(403, 'Les dades verificades per KYC no es poden modificar directament.')
+    apiPatch.mockRejectedValue(apiError)
+
+    await expect(store.updatePersonalData({ nif: '12345678Z' })).rejects.toBe(apiError)
+    expect(apiGet).not.toHaveBeenCalled()
   })
 
   it('saveInvestorQuestionnaire envia les respostes a POST /profile/investor-questionnaire i retorna el perfil', async () => {

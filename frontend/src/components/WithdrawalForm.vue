@@ -1,8 +1,8 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { useAccountStore } from '../stores/account'
 import { ApiError } from '../services/api'
+import PinDialog from './PinDialog.vue'
 import { UiAlert, UiButton, UiCard, UiInput } from './ui'
 import { formatCurrency } from '../utils/currency'
 import { parseAmount } from '../utils/deposit'
@@ -13,24 +13,17 @@ import {
   IBAN_SAVE_FAILED_ERROR,
   INSUFFICIENT_BALANCE_PREFIX,
   NO_IBAN_ERROR,
-  PIN_CHECK_FAILED_ERROR,
-  PIN_FORMAT_ERROR,
-  PIN_INCORRECT_ERROR,
-  PIN_NOT_CONFIGURED_ERROR,
   WITHDRAWAL_FAILED_ERROR,
   WITHDRAWAL_FORMAT_ERROR,
   WITHDRAWAL_MIN_ERROR,
   isValidIban,
-  isValidPin,
   normalizeIban,
-  pinErrorMessage,
   withdrawalError,
 } from '../utils/withdrawal'
 
 // Targeta "Retirar diners" (US3.3): primer cal vincular un IBAN de prova i després es retira l'import confirmant
 // amb el PIN de seguretat. Les validacions d'aquí són per avisar abans; les definitives les fa el backend
 const account = useAccountStore()
-const router = useRouter()
 
 // --- IBAN ---------------------------------------------------------------------------------------------------
 const ibanStatus = ref('loading') // loading | error | ready
@@ -98,6 +91,8 @@ const submitted = ref(false)
 const amountServerError = ref('')
 // Avís a dalt de la targeta: error de base de dades o usuari sense permís
 const serverError = ref('')
+// Confirmació de l'última retirada, com la del formulari d'ingrés
+const success = ref('')
 
 // Amb el saldo carregat, el saldo insuficient s'avisa abans d'arribar al PIN
 const amountError = computed(() => {
@@ -111,55 +106,40 @@ const formattedAmount = computed(() => formatCurrency(Number(parseAmount(amount.
 function clearAmountMessages() {
   amountServerError.value = ''
   serverError.value = ''
+  success.value = ''
 }
 
 // --- PIN -----------------------------------------------------------------------------------------------------
-// shortcut: pas del PIN dins la targeta fins que hi hagi el PinDialog (issue 130). Quan existeixi, "Continua" l'ha
-// d'obrir amb el títol i el resum, i confirmPin és el que ha de fer quan el diàleg retorni el PIN
-const step = ref('amount') // amount | pin
-const pin = ref('')
-const pinSubmitted = ref(false)
-const pinError = ref('')
-const pinAlert = ref('')
-const pinMissing = ref(false)
-const withdrawing = ref(false)
-
-const pinFieldError = computed(() => {
-  if (pinError.value) return pinError.value
-  return pinSubmitted.value && !isValidPin(pin.value) ? PIN_FORMAT_ERROR : ''
-})
-
-function resetPinStep() {
-  pin.value = ''
-  pinSubmitted.value = false
-  pinError.value = ''
-  pinAlert.value = ''
-  pinMissing.value = false
-}
+// "Continua" obre el diàleg del PIN (PinDialog, issue 130) amb el resum de la retirada. Els errors del PIN els resol el
+// diàleg; la resta els rep showWithdrawalError
+const pinOpen = ref(false)
 
 function continueToPin() {
   submitted.value = true
   clearAmountMessages()
   if (amountError.value) return
-  resetPinStep()
-  step.value = 'pin'
+  pinOpen.value = true
 }
 
 // Cancel·lar no executa res i el formulari conserva l'import
 function cancelPin() {
-  step.value = 'amount'
-  resetPinStep()
+  pinOpen.value = false
 }
 
-function clearPinMessages() {
-  pinError.value = ''
-  pinAlert.value = ''
+// El diàleg la crida amb el PIN escrit
+const withdraw = (pin) => account.withdraw(parseAmount(amount.value), pin)
+
+// El saldo ja s'ha actualitzat al store; el moviment es veurà a l'historial (US3.5)
+function onWithdrawn() {
+  pinOpen.value = false
+  success.value = `S'han retirat ${formattedAmount.value} del compte.`
+  amount.value = ''
+  submitted.value = false
 }
 
-// Els errors que no són del PIN tanquen el pas del PIN i es mostren a la targeta
+// Els errors que no són del PIN tanquen el diàleg i es mostren a la targeta
 function showWithdrawalError(e) {
-  step.value = 'amount'
-  resetPinStep()
+  pinOpen.value = false
   const message = e instanceof ApiError ? e.message : ''
   if (message === WITHDRAWAL_MIN_ERROR || message.startsWith(INSUFFICIENT_BALANCE_PREFIX)) {
     amountServerError.value = message
@@ -175,42 +155,6 @@ function showWithdrawalError(e) {
     serverError.value = WITHDRAWAL_FAILED_ERROR
   }
 }
-
-async function confirmPin() {
-  pinSubmitted.value = true
-  clearPinMessages()
-  if (pinFieldError.value) return
-
-  withdrawing.value = true
-  try {
-    await account.withdraw(parseAmount(amount.value), pin.value)
-    // El saldo ja s'ha actualitzat al store; el moviment es veurà a l'historial (US3.5)
-    step.value = 'amount'
-    resetPinStep()
-    amount.value = ''
-    submitted.value = false
-  } catch (e) {
-    const pinMessage = e instanceof ApiError ? pinErrorMessage(e.status, e.message) : ''
-    if (pinMessage === PIN_INCORRECT_ERROR) {
-      // El pas es queda obert i el camp es buida
-      pinError.value = pinMessage
-      pin.value = ''
-      pinSubmitted.value = false
-    } else if (pinMessage === PIN_NOT_CONFIGURED_ERROR) {
-      pinMissing.value = true
-    } else if (pinMessage === PIN_CHECK_FAILED_ERROR) {
-      pinAlert.value = pinMessage
-    } else {
-      showWithdrawalError(e)
-    }
-  } finally {
-    withdrawing.value = false
-  }
-}
-
-function goToProfile() {
-  router.push({ name: 'perfil' })
-}
 </script>
 
 <template>
@@ -225,6 +169,13 @@ function goToProfile() {
       data-test="withdrawal-error"
     >
       {{ serverError }}
+    </UiAlert>
+    <UiAlert
+      v-if="success"
+      variant="success"
+      data-test="withdrawal-success"
+    >
+      {{ success }}
     </UiAlert>
 
     <p
@@ -305,7 +256,7 @@ function goToProfile() {
         <UiButton
           variant="ghost"
           size="sm"
-          :disabled="step === 'pin'"
+          :disabled="pinOpen"
           data-test="withdrawal-change-iban"
           @click="startChangeIban"
         >
@@ -314,7 +265,6 @@ function goToProfile() {
       </div>
 
       <form
-        v-if="step === 'amount'"
         class="withdrawal__form"
         novalidate
         data-test="withdrawal-amount-form"
@@ -339,82 +289,17 @@ function goToProfile() {
         </UiButton>
       </form>
 
-      <form
-        v-else
-        class="withdrawal__form"
-        novalidate
-        data-test="withdrawal-pin-step"
-        @submit.prevent="confirmPin"
+      <PinDialog
+        :open="pinOpen"
+        title="Confirma la retirada"
+        :confirm="withdraw"
+        @cancel="cancelPin"
+        @done="onWithdrawn"
+        @error="showWithdrawalError"
       >
-        <div>
-          <p class="withdrawal__title">
-            Confirma la retirada
-          </p>
-          <p class="withdrawal__muted">
-            <span class="tabular">{{ formattedAmount }}</span> a
-            <span class="tabular">{{ account.ibanMasked }}</span>
-          </p>
-        </div>
-
-        <template v-if="pinMissing">
-          <UiAlert
-            variant="warning"
-            data-test="withdrawal-pin-missing"
-          >
-            {{ PIN_NOT_CONFIGURED_ERROR }}
-          </UiAlert>
-          <div class="withdrawal__actions">
-            <UiButton
-              variant="secondary"
-              data-test="withdrawal-go-profile"
-              @click="goToProfile"
-            >
-              Ves al perfil
-            </UiButton>
-            <UiButton
-              variant="ghost"
-              @click="cancelPin"
-            >
-              Cancel·la
-            </UiButton>
-          </div>
-        </template>
-
-        <template v-else>
-          <UiAlert
-            v-if="pinAlert"
-            variant="error"
-          >
-            {{ pinAlert }}
-          </UiAlert>
-          <UiInput
-            v-model="pin"
-            label="PIN de seguretat"
-            type="password"
-            inputmode="numeric"
-            maxlength="4"
-            :error="pinFieldError"
-            data-test="withdrawal-pin"
-            @update:model-value="clearPinMessages"
-          />
-          <div class="withdrawal__actions">
-            <UiButton
-              type="submit"
-              :loading="withdrawing"
-            >
-              Confirma
-            </UiButton>
-            <UiButton
-              variant="ghost"
-              :disabled="withdrawing"
-              data-test="withdrawal-pin-cancel"
-              @click="cancelPin"
-            >
-              Cancel·la
-            </UiButton>
-          </div>
-        </template>
-      </form>
+        <span class="tabular">{{ formattedAmount }}</span> a
+        <span class="tabular">{{ account.ibanMasked }}</span>
+      </PinDialog>
     </template>
   </UiCard>
 </template>
@@ -431,10 +316,6 @@ function goToProfile() {
 }
 .withdrawal__label {
   font-size: var(--tub-text-sm);
-}
-.withdrawal__title {
-  font-weight: 600;
-  color: var(--tub-text);
 }
 .withdrawal__iban {
   display: flex;

@@ -10,7 +10,21 @@ export const PIN_SAVE_ERROR = "No s'ha pogut desar el PIN. Torna-ho a provar."
 // demanat el PIN actual
 export const PIN_ALREADY_SET_NOTICE = 'Ja tens un PIN configurat. Escriu el PIN actual per canviar-lo.'
 
-const PIN_PATTERN = new RegExp(`^\\d{${PIN_LENGTH}}$`)
+// Errors en confirmar una operació amb el PIN (require_pin al backend): retirada, compra i venda
+export const PIN_INCORRECT_ERROR = 'El PIN introduït és incorrecte.'
+export const PIN_NOT_CONFIGURED_ERROR = 'Cal configurar el PIN de seguretat al perfil per fer aquesta operació.'
+export const PIN_CHECK_FAILED_ERROR = "No s'ha pogut validar el PIN de seguretat. Torna-ho a provar més tard."
+// Detail dels 500 de require_pin quan no es pot llegir o comprovar el PIN desat
+const PIN_SERVER_ERRORS = ["No s'ha pogut recuperar el PIN", "No s'ha pogut comprovar el PIN"]
+
+// Text que ha de mostrar el diàleg del PIN segons l'error del backend, o '' si l'error no és del PIN
+export function pinErrorMessage(status, detail) {
+  if (status === 403 && [PIN_INCORRECT_ERROR, PIN_NOT_CONFIGURED_ERROR].includes(detail)) return detail
+  if (status === 500 && PIN_SERVER_ERRORS.includes(detail)) return PIN_CHECK_FAILED_ERROR
+  return ''
+}
+
+const PIN_PATTERN =new RegExp(`^\\d{${PIN_LENGTH}}$`)
 
 export function isValidPin(value) {
   return PIN_PATTERN.test(value ?? '')

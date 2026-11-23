@@ -7,7 +7,8 @@ from .deps import get_current_user, get_user_client
 
 router = APIRouter()
 
-ASSET_COLUMNS = "name, ticker, type, close_price_eur, daily_change_pct, price_date"
+# L'id és el que demana POST /orders/buy per comprar l'actiu triat a la cerca (US6.1)
+ASSET_COLUMNS = "id, name, ticker, type, close_price_eur, daily_change_pct, price_date"
 
 
 @router.get("")

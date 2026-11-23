@@ -112,6 +112,9 @@
     0 2px 4px rgba(15, 23, 42, 0.03),
     0 20px 48px -16px rgba(15, 23, 42, 0.16);
 
+  /* Fons enfosquit darrere dels diàlegs modals */
+  --tub-overlay: rgba(15, 23, 42, 0.45);
+
   /* Moviment */
   --tub-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --tub-duration: 0.18s;

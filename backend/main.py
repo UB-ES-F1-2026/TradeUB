@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api import account, assets, health, profile, users
+from api import account, assets, health, orders, profile, users
 
 app = FastAPI(title="TradeUB API")
 
@@ -26,5 +26,6 @@ app.add_middleware(
 app.include_router(users.router, prefix="/api/v1/users", tags=["Users"])
 app.include_router(account.router, prefix="/api/v1/account", tags=["Account"])
 app.include_router(assets.router, prefix="/api/v1/assets", tags=["Assets"])
+app.include_router(orders.router, prefix="/api/v1/orders", tags=["Orders"])
 app.include_router(health.router, prefix="/api/v1/health", tags=["Health"])
 app.include_router(profile.router, prefix="/api/v1/profile", tags=["Profile"])
