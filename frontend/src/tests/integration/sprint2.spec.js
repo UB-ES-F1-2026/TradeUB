@@ -83,6 +83,7 @@ const fetchMock = vi.fn(async (url, init = {}) => {
     backend.iban = MASKED_IBAN
     return json(200, { iban_emmascarat: backend.iban })
   }
+  if (route === 'GET /profile/pin') return json(200, { configurat: Boolean(backend.pin) })
   if (route === 'POST /account/withdrawals') {
     // Mateix ordre que l'endpoint: primer el PIN (require_pin) i després el saldo
     if (backend.pinCheckFails) return json(500, { detail: "No s'ha pogut comprovar el PIN" })
@@ -129,15 +130,15 @@ async function deposit(amount) {
 const formWith = (selector) => wrapper.findAll('form').find((f) => f.find(selector).exists())
 const buttonText = (label) => wrapper.findAll('button').find((b) => b.text() === label)
 
-// Import → "Continua" → PIN → "Confirma", com ho fa l'usuari
+// Import → "Continua" → diàleg del PIN → "Confirma", com ho fa l'usuari
 async function withdraw(amount, pin) {
   const input = await vi.waitFor(() => wrapper.get('[data-test="withdrawal-amount"]'))
   await input.setValue(amount)
   await formWith('[data-test="withdrawal-amount"]').trigger('submit')
   await flushPromises()
   if (pin === undefined) return
-  await wrapper.get('[data-test="withdrawal-pin"]').setValue(pin)
-  await formWith('[data-test="withdrawal-pin"]').trigger('submit')
+  await wrapper.get('[data-test="pin-input"]').setValue(pin)
+  await wrapper.get('[data-test="pin-dialog"]').trigger('submit')
   await flushPromises()
 }
 
@@ -268,6 +269,7 @@ describe('Acceptació Sprint 2: retirada amb PIN (US3.3 + US1.5 + US3.5)', () =>
     await withdraw('30', '1234')
 
     expect(total()).toBe('70,00 €')
+    expect(text(wrapper.get('[data-test="withdrawal-success"]'))).toBe("S'han retirat 30,00 € del compte.")
     const [[, init]] = calls('POST', '/account/withdrawals')
     expect(init.headers['X-PIN']).toBe('1234')
     expect(JSON.parse(init.body)).toEqual({ amount: '30' })
@@ -289,7 +291,7 @@ describe('Acceptació Sprint 2: retirada amb PIN (US3.3 + US1.5 + US3.5)', () =>
     expect(total()).toBe('100,00 €')
     expect(backend.movements).toHaveLength(0)
     // El pas del PIN es queda obert i buit
-    expect(wrapper.get('[data-test="withdrawal-pin"]').element.value).toBe('')
+    expect(wrapper.get('[data-test="pin-input"]').element.value).toBe('')
   })
 
   it.each([
@@ -302,7 +304,7 @@ describe('Acceptació Sprint 2: retirada amb PIN (US3.3 + US1.5 + US3.5)', () =>
     await withdraw(amount)
 
     expect(text(wrapper)).toContain(message)
-    expect(wrapper.find('[data-test="withdrawal-pin"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="pin-dialog"]').exists()).toBe(false)
     expect(calls('POST', '/account/withdrawals')).toHaveLength(0)
   })
 
@@ -310,11 +312,15 @@ describe('Acceptació Sprint 2: retirada amb PIN (US3.3 + US1.5 + US3.5)', () =>
     backend.pin = null
     await mountAt('/compte-efectiu')
 
-    await withdraw('30', '1234')
+    // El diàleg avisa abans d'escriure el PIN
+    await withdraw('30')
 
-    expect(wrapper.text()).toContain('Cal configurar el PIN de seguretat al perfil per fer aquesta operació.')
-    expect(total()).toBe('100,00 €')
-    await wrapper.get('[data-test="withdrawal-go-profile"]').trigger('click')
+    expect(wrapper.get('[data-test="pin-missing"]').text()).toContain(
+      'Cal configurar el PIN de seguretat al perfil per fer aquesta operació.',
+    )
+    expect(wrapper.find('[data-test="pin-input"]').exists()).toBe(false)
+    expect(calls('POST', '/account/withdrawals')).toHaveLength(0)
+    await wrapper.get('[data-test="pin-go-profile"]').trigger('click')
     await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/perfil'))
   })
 
