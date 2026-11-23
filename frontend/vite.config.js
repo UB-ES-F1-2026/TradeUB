@@ -1,5 +1,5 @@
 import vue from '@vitejs/plugin-vue'
-import { defineConfig } from 'vitest/config'
+import { configDefaults, defineConfig } from 'vitest/config'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -7,5 +7,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
+    // e2e/ és de Playwright
+    exclude: [...configDefaults.exclude, 'e2e/**'],
   },
 })
