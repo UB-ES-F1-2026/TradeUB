@@ -14,6 +14,7 @@ import {
   parseUnits,
   unitsError,
 } from '../utils/buy'
+import { PIN_LENGTH } from '../utils/pin'
 import {
   PIN_CHECK_FAILED_ERROR,
   PIN_FORMAT_ERROR,
@@ -249,8 +250,9 @@ function goToProfile() {
             {{ format(quote.total) }}
           </dd>
         </div>
+        <!-- Sense saldo suficient no hi ha saldo restant: ho explica l'avís de sota -->
         <div
-          v-if="quote.remaining !== null"
+          v-if="quote.remaining !== null && quote.enough"
           class="buy__row"
         >
           <dt>Saldo restant</dt>
@@ -258,7 +260,7 @@ function goToProfile() {
             class="tabular"
             data-test="buy-remaining"
           >
-            {{ format(Math.max(quote.remaining, 0)) }}
+            {{ format(quote.remaining) }}
           </dd>
         </div>
       </dl>
@@ -342,7 +344,7 @@ function goToProfile() {
           label="PIN de seguretat"
           type="password"
           inputmode="numeric"
-          maxlength="4"
+          :maxlength="PIN_LENGTH"
           :error="pinFieldError"
           data-test="buy-pin"
           @update:model-value="clearPinMessages"
