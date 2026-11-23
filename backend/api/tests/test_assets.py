@@ -63,7 +63,7 @@ def test_without_query_returns_all_assets_ordered_by_name(client, make_token):
     assert response.json() == rows
     assert fake_db.table_name == "assets"
     assert fake_db.selected_columns == (
-        "name, ticker, type, close_price_eur, daily_change_pct, price_date"
+        "id, name, ticker, type, close_price_eur, daily_change_pct, price_date"
     )
     assert fake_db.or_filter is None
     assert fake_db.order_column == "name"

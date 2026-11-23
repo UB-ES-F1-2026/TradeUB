@@ -13,6 +13,7 @@ vi.mock('../services/api', async (importOriginal) => ({
 
 import { apiGet, apiPost, apiPut, ApiError } from '../services/api'
 import { useAccountStore } from '../stores/account'
+import { useProfileStore } from '../stores/profile'
 import WithdrawalForm from '../components/WithdrawalForm.vue'
 
 const TEST_IBAN = 'ES91 2100 0418 4502 0005 1332'
@@ -23,6 +24,8 @@ async function mountForm({ iban = MASKED, balance = 100, loadError = null } = {}
   if (loadError) apiGet.mockRejectedValue(loadError)
   else apiGet.mockResolvedValue({ perfil: { iban_emmascarat: iban } })
   useAccountStore().balance = balance
+  // El diàleg del PIN no consulta GET /profile/pin si ja se sap que n'hi ha (els casos sense PIN, a pinDialog.spec.js)
+  useProfileStore().pinConfigured = true
   const blank = { render: () => null }
   const router = createRouter({
     history: createMemoryHistory(),
@@ -45,8 +48,8 @@ async function continueWith(wrapper, amount) {
 }
 
 async function confirmWith(wrapper, pin) {
-  await wrapper.get('[data-test="withdrawal-pin"]').setValue(pin)
-  await wrapper.get('[data-test="withdrawal-pin-step"]').trigger('submit')
+  await wrapper.get('[data-test="pin-input"]').setValue(pin)
+  await wrapper.get('[data-test="pin-dialog"]').trigger('submit')
   await flushPromises()
 }
 
@@ -146,7 +149,7 @@ describe('WithdrawalForm', () => {
       await continueWith(wrapper, '0,50')
 
       expect(wrapper.text()).toContain("L'import mínim de retirada és d'1 €.")
-      expect(wrapper.find('[data-test="withdrawal-pin-step"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="pin-dialog"]').exists()).toBe(false)
     })
 
     it('amb més import que saldo diu quant falta', async () => {
@@ -156,7 +159,7 @@ describe('WithdrawalForm', () => {
 
       expect(wrapper.text()).toContain('Saldo insuficient. Et falten 5,50')
       expect(wrapper.text()).toContain("per completar l'operació")
-      expect(wrapper.find('[data-test="withdrawal-pin-step"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="pin-dialog"]').exists()).toBe(false)
     })
   })
 
@@ -166,7 +169,7 @@ describe('WithdrawalForm', () => {
 
       await continueWith(wrapper, '50,25')
 
-      const step = wrapper.get('[data-test="withdrawal-pin-step"]')
+      const step = wrapper.get('[data-test="pin-dialog"]')
       expect(step.text()).toContain('Confirma la retirada')
       expect(step.text()).toContain('50,25')
       expect(step.text()).toContain(MASKED)
@@ -182,8 +185,33 @@ describe('WithdrawalForm', () => {
 
       expect(apiPost).toHaveBeenCalledWith('/account/withdrawals', { amount: '50.25' }, { 'X-PIN': '1234' })
       expect(useAccountStore().balance).toBe(49.75)
-      expect(wrapper.find('[data-test="withdrawal-pin-step"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="pin-dialog"]').exists()).toBe(false)
       expect(wrapper.get('[data-test="withdrawal-amount"]').element.value).toBe('')
+    })
+
+    it("confirma la retirada amb l'import i el missatge desapareix en tornar a escriure", async () => {
+      apiPost.mockResolvedValue({ balance: '49.75' })
+      const { wrapper } = await mountForm()
+
+      await continueWith(wrapper, '50,25')
+      await confirmWith(wrapper, '1234')
+
+      expect(wrapper.get('[data-test="withdrawal-success"]').text().replace(/\s/g, ' '))
+        .toBe("S'han retirat 50,25 € del compte.")
+
+      await wrapper.get('[data-test="withdrawal-amount"]').setValue('10')
+
+      expect(wrapper.find('[data-test="withdrawal-success"]').exists()).toBe(false)
+    })
+
+    it('si la retirada falla no mostra cap confirmació', async () => {
+      apiPost.mockRejectedValue(new ApiError(500, 'Error del servidor'))
+      const { wrapper } = await mountForm()
+
+      await continueWith(wrapper, '10')
+      await confirmWith(wrapper, '1234')
+
+      expect(wrapper.find('[data-test="withdrawal-success"]').exists()).toBe(false)
     })
 
     it('un PIN de menys de 4 xifres no arriba al backend', async () => {
@@ -204,7 +232,7 @@ describe('WithdrawalForm', () => {
       await confirmWith(wrapper, '0000')
 
       expect(wrapper.text()).toContain('El PIN introduït és incorrecte.')
-      expect(wrapper.get('[data-test="withdrawal-pin"]').element.value).toBe('')
+      expect(wrapper.get('[data-test="pin-input"]').element.value).toBe('')
       expect(useAccountStore().balance).toBe(100)
     })
 
@@ -217,11 +245,11 @@ describe('WithdrawalForm', () => {
       await continueWith(wrapper, '10')
       await confirmWith(wrapper, '1234')
 
-      expect(wrapper.get('[data-test="withdrawal-pin-missing"]').text())
+      expect(wrapper.get('[data-test="pin-missing"]').text())
         .toBe('Cal configurar el PIN de seguretat al perfil per fer aquesta operació.')
-      expect(wrapper.find('[data-test="withdrawal-pin"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="pin-input"]').exists()).toBe(false)
 
-      await wrapper.get('[data-test="withdrawal-go-profile"]').trigger('click')
+      await wrapper.get('[data-test="pin-go-profile"]').trigger('click')
       await flushPromises()
       expect(router.currentRoute.value.fullPath).toBe('/perfil')
     })
@@ -233,7 +261,7 @@ describe('WithdrawalForm', () => {
       await continueWith(wrapper, '10')
       await confirmWith(wrapper, '1234')
 
-      expect(wrapper.get('[data-test="withdrawal-pin-step"]').text())
+      expect(wrapper.get('[data-test="pin-dialog"]').text())
         .toContain("No s'ha pogut validar el PIN de seguretat. Torna-ho a provar més tard.")
     })
 
@@ -241,7 +269,7 @@ describe('WithdrawalForm', () => {
       const { wrapper } = await mountForm()
 
       await continueWith(wrapper, '10')
-      await wrapper.get('[data-test="withdrawal-pin-cancel"]').trigger('click')
+      await wrapper.get('[data-test="pin-cancel"]').trigger('click')
 
       expect(apiPost).not.toHaveBeenCalled()
       expect(wrapper.get('[data-test="withdrawal-amount"]').element.value).toBe('10')
@@ -257,7 +285,7 @@ describe('WithdrawalForm', () => {
       await continueWith(wrapper, '10')
       await confirmWith(wrapper, '1234')
 
-      expect(wrapper.find('[data-test="withdrawal-pin-step"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="pin-dialog"]').exists()).toBe(false)
       expect(wrapper.text()).toContain(message)
       expect(wrapper.find('[data-test="withdrawal-error"]').exists()).toBe(false)
     })
