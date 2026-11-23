@@ -4,15 +4,21 @@ from datetime import UTC, date, datetime
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, StringConstraints
+from pydantic import BaseModel, ConfigDict, StringConstraints, field_validator
 from supabase import Client, PostgrestAPIError
 
+from core.iban import IBAN_ERROR, is_valid_iban, mask_iban, normalize_iban
 from core.investor_profile import INVESTOR_QUESTIONS, calculate_investor_profile
 from core.nif_nie import NIF_NIE_ERROR, is_valid_nif_nie, normalize_nif_nie
-from core.onboarding import INVESTOR_PROFILE_COLUMN
+from core.onboarding import INVESTOR_PROFILE_COLUMN, is_personal_data_completed
 from core.pin import PIN_FORMAT_ERROR, hash_pin, is_valid_pin, verify_pin
 from core.profile_pins import get_pin_hash, save_pin_hash
-from core.profiles import get_own_profile, update_own_profile
+from core.profiles import (
+    IBAN_COLUMN,
+    get_own_profile,
+    to_public_profile,
+    update_own_profile,
+)
 from core.verification import (
     TERMS_VERSION,
     get_verification_status,
@@ -47,6 +53,29 @@ class PersonalData(BaseModel):
     residencia_fiscal: Annotated[str, StringConstraints(pattern=r"^[A-Z]{2}$")]
 
 
+class PersonalDataUpdate(BaseModel):
+    """Camps editables del perfil; tots són opcionals per ser un PATCH."""
+
+    model_config = ConfigDict(extra="allow")
+
+    nom: RequiredText | None = None
+    cognoms: RequiredText | None = None
+    telefon: RequiredText | None = None
+    carrer: RequiredText | None = None
+    codi_postal: RequiredText | None = None
+    poblacio: RequiredText | None = None
+
+    @field_validator("nom", "cognoms", "telefon", "carrer", "codi_postal", "poblacio")
+    @classmethod
+    def reject_null(cls, value: str | None) -> str:
+        if value is None:
+            raise ValueError("El camp no pot ser nul")
+        return value
+
+
+KYC_FIELDS_ERROR = "Les dades verificades per KYC no es poden modificar directament."
+
+
 @router.post("/personal-data")
 def save_personal_data(
     data: PersonalData,
@@ -56,19 +85,37 @@ def save_personal_data(
     """Valida i desa les dades personals de l'usuari autenticat a profiles.
 
     Returns:
-        ``{"perfil": ...}`` amb la fila de profiles tal com ha quedat desada.
+        ``{"perfil": ...}`` amb la fila de profiles tal com ha quedat desada
+        (amb l'IBAN emmascarat).
 
     Raises:
         HTTPException: 422 si el NIF/NIE no és vàlid (els camps que falten o
             buits també retornen 422, amb el format de Pydantic), 404 si
             l'usuari no té fila a profiles i 500 si no s'han pogut desar.
     """
+    normalized_nif = normalize_nif_nie(data.nif)
     if not is_valid_nif_nie(data.nif):
         raise HTTPException(status_code=422, detail=NIF_NIE_ERROR)
 
+    try:
+        current_profile = get_own_profile(admin, user["sub"])
+    except PostgrestAPIError as e:
+        raise HTTPException(
+            status_code=500, detail="No s'han pogut desar les dades personals"
+        ) from e
+
+    if current_profile and is_identity_verified(current_profile):
+        stored_nif = normalize_nif_nie(str(current_profile.get("nif") or ""))
+        stored_birth_date = str(current_profile.get("data_naixement") or "")
+        if (
+            normalized_nif != stored_nif
+            or data.data_naixement.isoformat() != stored_birth_date
+        ):
+            raise HTTPException(status_code=403, detail=KYC_FIELDS_ERROR)
+
     # mode="json" converteix la data a text "AAAA-MM-DD" per enviar-la a PostgREST
     values = data.model_dump(mode="json")
-    values["nif"] = normalize_nif_nie(data.nif)
+    values["nif"] = normalized_nif
 
     try:
         rows = update_own_profile(admin, user["sub"], values)
@@ -78,7 +125,37 @@ def save_personal_data(
         ) from e
     if not rows:
         raise HTTPException(status_code=404, detail="Perfil no trobat")
-    return {"perfil": rows[0]}
+    return {"perfil": to_public_profile(rows[0])}
+
+
+@router.patch("/personal-data")
+def update_personal_data(
+    data: PersonalDataUpdate,
+    user=Depends(get_current_user),
+    admin: Client = Depends(get_admin_client),
+):
+    """Actualitza només les dades personals editables del perfil."""
+    if data.model_extra:
+        raise HTTPException(status_code=403, detail=KYC_FIELDS_ERROR)
+
+    values = data.model_dump(exclude_unset=True)
+    try:
+        profile = get_own_profile(admin, user["sub"])
+    except PostgrestAPIError as e:
+        raise HTTPException(
+            status_code=500, detail="No s'ha pogut recuperar el perfil"
+        ) from e
+    if not is_personal_data_completed(profile):
+        raise HTTPException(
+            status_code=409,
+            detail="Cal completar les dades personals de l'onboarding",
+        )
+
+    row = _save_own_profile(
+        admin, user["sub"], values, "No s'han pogut actualitzar les dades personals"
+    )
+    # Com al POST: la fila porta la columna iban i no pot sortir sencera en una resposta
+    return {"perfil": to_public_profile(row)}
 
 
 # Columna de profiles amb les respostes del qüestionari
@@ -225,6 +302,43 @@ def accept_terms(
         admin, user["sub"], values, "No s'ha pogut desar l'acceptació dels termes"
     )
     return {"verificacio": get_verification_status(row)}
+
+
+class IbanLink(BaseModel):
+    """IBAN que l'usuari vincula per a les retirades simulades.
+
+    El format i els dígits de control es validen a l'endpoint, per retornar el
+    missatge exacte del 422 en lloc de la llista de Pydantic.
+    """
+
+    iban: str
+
+
+@router.put("/iban")
+def link_iban(
+    data: IbanLink,
+    user=Depends(require_verified_user),
+    admin: Client = Depends(get_admin_client),
+):
+    """Vincula l'IBAN de l'usuari verificat o substitueix el que tenia (US3.3).
+
+    Només hi ha un IBAN per usuari: si ja en tenia un, se substitueix
+    directament. Es desa normalitzat (sense espais i en majúscules).
+
+    Returns:
+        ``{"iban_emmascarat": ...}``, mai l'IBAN sencer.
+
+    Raises:
+        HTTPException: 422 si l'IBAN no és un IBAN espanyol vàlid, 403 si
+            l'usuari no està verificat, 404 si no té fila a profiles i 500 si
+            no s'ha pogut desar.
+    """
+    if not is_valid_iban(data.iban):
+        raise HTTPException(status_code=422, detail=IBAN_ERROR)
+
+    iban = normalize_iban(data.iban)
+    _save_own_profile(admin, user["sub"], {IBAN_COLUMN: iban}, "No s'ha pogut desar l'IBAN")
+    return {"iban_emmascarat": mask_iban(iban)}
 
 
 def _read_pin_hash(admin: Client, user_id: str) -> str | None:

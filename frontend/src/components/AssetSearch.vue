@@ -1,7 +1,7 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { apiGet } from '../services/api'
-import { UiAlert, UiBadge, UiCard, UiInput } from './ui'
+import { UiAlert, UiBadge, UiButton, UiCard, UiInput } from './ui'
 import {
   ASSETS_LOAD_ERROR,
   NO_ASSETS_FOUND,
@@ -16,6 +16,17 @@ import {
 
 // Cercador d'actius (US5.1). Cerca mentre s'escriu pel nom, el ticker o l'ISIN; sense text mostra tot el catàleg.
 // Cercar no és operar: es mostra a tots els usuaris registrats, encara que no estiguin verificats
+// Amb selectable (només si l'usuari pot operar), cada resultat es pot triar per comprar-lo (US6.1, event select) i,
+// si l'usuari en té unitats a holdings, per vendre-les (US6.2, event sell)
+const props = defineProps({
+  selectable: { type: Boolean, default: false },
+  // Unitats de cada posició per id d'actiu, com account.positions
+  holdings: { type: Object, default: () => ({}) },
+})
+const emit = defineEmits(['select', 'sell'])
+
+const canSell = (asset) => props.selectable && (props.holdings[asset.id] ?? 0) > 0
+
 const query = ref('')
 const assets = ref([])
 const loading = ref(false)
@@ -105,6 +116,7 @@ onBeforeUnmount(() => clearTimeout(timer))
           v-for="asset in assets"
           :key="asset.ticker"
           class="assets__item"
+          :class="{ 'assets__item--selectable': selectable }"
           data-test="asset-result"
         >
           <div class="assets__info">
@@ -138,6 +150,26 @@ onBeforeUnmount(() => clearTimeout(timer))
               {{ formatPriceDate(asset.price_date) }}
             </p>
           </div>
+          <UiButton
+            v-if="selectable"
+            variant="secondary"
+            size="sm"
+            :aria-label="`Comprar ${asset.name}`"
+            data-test="asset-select"
+            @click="emit('select', asset)"
+          >
+            Compra
+          </UiButton>
+          <UiButton
+            v-if="canSell(asset)"
+            variant="ghost"
+            size="sm"
+            :aria-label="`Vendre ${asset.name}`"
+            data-test="asset-sell"
+            @click="emit('sell', asset)"
+          >
+            Ven
+          </UiButton>
         </li>
       </ul>
     </div>
@@ -166,6 +198,7 @@ onBeforeUnmount(() => clearTimeout(timer))
   padding: var(--tub-space-3) 0;
   border-top: 1px solid var(--tub-border);
 }
+/* El nom ocupa l'espai lliure; el tipus, el preu i els botons "Compra" i "Ven" queden a la dreta */
 .assets__info {
   flex: 1;
   min-width: 0;
@@ -208,5 +241,16 @@ onBeforeUnmount(() => clearTimeout(timer))
 }
 .assets__change--flat {
   color: var(--tub-text-muted);
+}
+
+/* A mòbil no hi caben el nom, el tipus, el preu i els dos botons en una línia: el nom va a dalt i la resta a sota */
+@media (max-width: 900px) {
+  .assets__item--selectable {
+    flex-wrap: wrap;
+    gap: var(--tub-space-2) var(--tub-space-3);
+  }
+  .assets__item--selectable .assets__info {
+    flex-basis: 100%;
+  }
 }
 </style>

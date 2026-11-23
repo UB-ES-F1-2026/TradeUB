@@ -8,6 +8,11 @@ i per això sempre es filtren per l'identificador de l'usuari del token.
 
 from supabase import Client
 
+from core.iban import mask_iban
+
+# Columna amb l'IBAN vinculat (supabase/migrations/20261114140000_profiles_iban.sql)
+IBAN_COLUMN = "iban"
+
 
 def get_own_profile(admin_client: Client, user_id: str) -> dict:
     """Llegeix la fila de profiles de l'usuari autenticat.
@@ -52,3 +57,23 @@ def update_own_profile(admin_client: Client, user_id: str, data: dict) -> list[d
 
     response = admin_client.table("profiles").update(data).eq("id", user_id).execute()
     return response.data
+
+
+def to_public_profile(profile: dict) -> dict:
+    """Fila de profiles tal com es pot enviar al client.
+
+    L'IBAN no surt mai sencer en una resposta: la columna ``iban`` se
+    substitueix per ``iban_emmascarat`` (None si l'usuari no en té). Si la
+    fila no porta la columna, no s'hi afegeix res.
+
+    Args:
+        profile: fila de profiles tal com la retorna PostgREST. No es modifica.
+
+    Returns:
+        Una còpia de la fila amb l'IBAN emmascarat.
+    """
+    public = {key: value for key, value in profile.items() if key != IBAN_COLUMN}
+    if IBAN_COLUMN in profile:
+        iban = profile[IBAN_COLUMN]
+        public["iban_emmascarat"] = mask_iban(iban) if iban else None
+    return public

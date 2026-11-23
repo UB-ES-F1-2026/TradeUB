@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest'
-import { isValidPin, validatePinForm, PIN_FORMAT_ERROR, PIN_MISMATCH_ERROR } from '../utils/pin'
+import {
+  isValidPin,
+  pinErrorMessage,
+  validatePinForm,
+  PIN_CHECK_FAILED_ERROR,
+  PIN_FORMAT_ERROR,
+  PIN_INCORRECT_ERROR,
+  PIN_MISMATCH_ERROR,
+  PIN_NOT_CONFIGURED_ERROR,
+} from '../utils/pin'
 
 describe('isValidPin', () => {
   it('accepta exactament 4 dígits', () => {
@@ -34,5 +43,19 @@ describe('validatePinForm', () => {
 
   it('en crear-lo, no comprova el PIN actual', () => {
     expect(validatePinForm({ currentPin: '', newPin: '1234', repeatPin: '1234' }, { changing: false })).toEqual({})
+  })
+})
+
+describe('pinErrorMessage', () => {
+  it('tradueix els errors de require_pin', () => {
+    expect(pinErrorMessage(403, PIN_INCORRECT_ERROR)).toBe(PIN_INCORRECT_ERROR)
+    expect(pinErrorMessage(403, PIN_NOT_CONFIGURED_ERROR)).toBe(PIN_NOT_CONFIGURED_ERROR)
+    expect(pinErrorMessage(500, "No s'ha pogut comprovar el PIN")).toBe(PIN_CHECK_FAILED_ERROR)
+    expect(pinErrorMessage(500, "No s'ha pogut recuperar el PIN")).toBe(PIN_CHECK_FAILED_ERROR)
+  })
+
+  it("no tracta com a error del PIN els altres errors de l'operació", () => {
+    expect(pinErrorMessage(403, 'Cal verificar la identitat')).toBe('')
+    expect(pinErrorMessage(500, "No s'ha pogut processar la retirada. El teu saldo no ha canviat.")).toBe('')
   })
 })

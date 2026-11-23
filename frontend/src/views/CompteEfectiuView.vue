@@ -3,11 +3,12 @@ import { onMounted, ref } from 'vue'
 import BalanceCard from '../components/BalanceCard.vue'
 import DepositForm from '../components/DepositForm.vue'
 import VerificationRequired from '../components/VerificationRequired.vue'
+import WithdrawalForm from '../components/WithdrawalForm.vue'
 import { UiAlert } from '../components/ui'
 import { useVerificationStore } from '../stores/verification'
 
 // Els moviments d'efectiu només estan disponibles amb la identitat verificada i els termes acceptats (US2.4).
-// El backend també ho comprova a POST /account/deposits
+// El backend també ho comprova a POST /account/deposits i POST /account/withdrawals
 const verification = useVerificationStore()
 
 // Fins que no s'ha comprovat l'estat en aquesta visita no es mostra ni el formulari ni l'avís
@@ -39,12 +40,15 @@ onMounted(async () => {
 
     <template v-else-if="verification.canOperate">
       <BalanceCard />
-      <DepositForm />
+      <div class="page__operations">
+        <DepositForm />
+        <WithdrawalForm />
+      </div>
     </template>
 
     <VerificationRequired
       v-else
-      message="Verifica la teva identitat i accepta els termes i condicions per ingressar diners al compte."
+      message="Verifica la teva identitat i accepta els termes i condicions per ingressar o retirar diners del compte."
     />
   </section>
 </template>
@@ -53,8 +57,14 @@ onMounted(async () => {
 .page {
   display: grid;
   gap: var(--tub-space-5);
-  max-width: 720px;
+  max-width: 960px;
   padding: var(--tub-space-6) var(--tub-space-5);
+}
+.page__operations {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--tub-space-5);
+  align-items: start;
 }
 .page__muted {
   color: var(--tub-text-muted);
@@ -63,6 +73,9 @@ onMounted(async () => {
 @media (max-width: 900px) {
   .page {
     padding: var(--tub-space-5) var(--tub-space-4);
+  }
+  .page__operations {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 </style>
