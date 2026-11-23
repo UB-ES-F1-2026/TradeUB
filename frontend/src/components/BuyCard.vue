@@ -14,16 +14,16 @@ import {
   parseUnits,
   unitsError,
 } from '../utils/buy'
-import { PIN_LENGTH } from '../utils/pin'
 import {
   PIN_CHECK_FAILED_ERROR,
   PIN_FORMAT_ERROR,
   PIN_INCORRECT_ERROR,
+  PIN_LENGTH,
   PIN_NOT_CONFIGURED_ERROR,
-  insufficientBalanceError,
   isValidPin,
   pinErrorMessage,
-} from '../utils/withdrawal'
+} from '../utils/pin'
+import { insufficientBalanceError } from '../utils/withdrawal'
 
 // Targeta "Comprar" (US6.1): s'obre des d'un resultat de la cerca. L'usuari tria les unitats, veu el cost, la
 // comissió, el total i el saldo que li quedarà, i confirma amb el PIN. El càlcul d'aquí és només la revisió: el
