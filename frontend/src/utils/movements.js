@@ -1,9 +1,12 @@
 import { formatCurrency } from './currency'
 
-// Tipus de moviment d'efectiu tal com els retorna GET /account/movements (US3.5)
+// Tipus de moviment d'efectiu tal com els retorna GET /account/movements (US3.5). La compra (US6.1) i la venda
+// (US6.2) també mouen efectiu: la compra resta del saldo i la venda hi suma l'import net
 export const MOVEMENT_TYPE_LABELS = {
   ingres: 'Ingrés',
   retirada: 'Retirada',
+  compra: 'Compra',
+  venda: 'Venda',
 }
 
 // Valor del filtre "Tots": no s'envia cap tipus al backend
@@ -13,11 +16,13 @@ export const MOVEMENT_TYPE_OPTIONS = [
   { value: ALL_MOVEMENT_TYPES, label: 'Tots' },
   { value: 'ingres', label: MOVEMENT_TYPE_LABELS.ingres },
   { value: 'retirada', label: MOVEMENT_TYPE_LABELS.retirada },
+  { value: 'compra', label: MOVEMENT_TYPE_LABELS.compra },
+  { value: 'venda', label: MOVEMENT_TYPE_LABELS.venda },
 ]
 
 export const movementTypeLabel = (type) => MOVEMENT_TYPE_LABELS[type] ?? type
 
-// L'import arriba amb signe (negatiu a les retirades). PostgREST pot retornar els numeric com a text
+// L'import arriba amb signe (negatiu a les retirades i a les compres). PostgREST pot retornar els numeric com a text
 export const isIncoming = (amount) => Number(amount) >= 0
 
 // "+250,00 €" o "−100,00 €", amb el signe menys tipogràfic

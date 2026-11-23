@@ -30,8 +30,8 @@ create index if not exists positions_asset_id_idx
 
 -- RLS: el client només pot consultar les posicions del mateix usuari.
 -- No hi ha polítiques d'INSERT, UPDATE ni DELETE: les escriptures es fan amb
--- les funcions de compra i venda (buy_asset, #126), que només pot executar
--- el backend.
+-- les funcions de compra i venda (buy_asset, #126, i sell_asset, #128), que
+-- només pot executar el backend.
 alter table public.positions enable row level security;
 
 -- Supabase dona permisos per defecte a anon i authenticated sobre les taules
