@@ -104,4 +104,27 @@ describe('AssetSearch', () => {
 
     expect(results(wrapper)).toEqual(['Apple Inc.AAPLAcció'])
   })
+
+  // Compra (US6.1): només qui pot operar pot triar un resultat
+  it('per defecte no mostra el botó "Compra"', async () => {
+    apiGet.mockResolvedValue([APPLE])
+    const wrapper = mount(AssetSearch)
+    await flushPromises()
+
+    expect(wrapper.find('[data-test="asset-select"]').exists()).toBe(false)
+  })
+
+  it('amb selectable, "Compra" emet l\'actiu triat', async () => {
+    apiGet.mockResolvedValue([APPLE, MSCI])
+    const wrapper = mount(AssetSearch, { props: { selectable: true } })
+    await flushPromises()
+
+    const buttons = wrapper.findAll('[data-test="asset-select"]')
+    expect(buttons).toHaveLength(2)
+    expect(buttons[1].attributes('aria-label')).toBe('Comprar iShares Core MSCI World')
+
+    await buttons[1].trigger('click')
+
+    expect(wrapper.emitted('select')).toEqual([[MSCI]])
+  })
 })
