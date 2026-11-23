@@ -329,3 +329,17 @@ def test_saved_profile_returns_iban_only_masked(client, auth_headers, fake_admin
     assert "iban" not in perfil
     assert perfil["iban_emmascarat"] == "ES•• •••• •••• •••• •••• 1332"
     assert iban not in response.text
+
+
+def test_patch_returns_iban_only_masked(client, auth_headers, fake_admin):
+    """El PATCH també retorna la fila desada: l'IBAN només surt emmascarat."""
+    iban = "ES9121000418450200051332"
+    fake_admin(rows=[{**COMPLETE_PROFILE, "iban": iban}])
+
+    response = client.patch(ENDPOINT, json={"nom": "Marta"}, headers=auth_headers)
+
+    assert response.status_code == 200
+    perfil = response.json()["perfil"]
+    assert "iban" not in perfil
+    assert perfil["iban_emmascarat"] == "ES•• •••• •••• •••• •••• 1332"
+    assert iban not in response.text
