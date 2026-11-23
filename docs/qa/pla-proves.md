@@ -196,16 +196,11 @@ missatges literals del criteri, sense importar les constants del codi, perquè u
 
 Fora d'abast: el bloqueig del PIN per intents fallits és la US1.6, al backlog.
 
-### Casos manuals per a la demo
+### End-to-end (#158)
 
-Es fan a l'entorn desplegat amb un usuari verificat, perquè depenen de Supabase real.
-
-| ID | Passos | Resultat esperat | Resultat obtingut |
-|---|---|---|---|
-| S2-M01 | Compte d'efectiu → ingressar 50 € → Historial | El saldo puja 50 € i el moviment "Ingrés de diners" és el primer de la llista | |
-| S2-M02 | Perfil → crear el PIN → canviar-lo amb el PIN actual equivocat | "El PIN actual és incorrecte." i el PIN no canvia | |
-| S2-M03 | Actius → escriure "app" | Surt Apple; amb "zzz" surt "No s'han trobat actius" | |
-| S2-M04 | Compte d'efectiu → retirar 10 € amb el PIN correcte → Historial | El saldo baixa 10 € i surt "Retirada a ES•• …" en vermell | |
+El que els mocks no veuen (migracions, `VITE_API_URL`, CORS, permisos) es prova amb Playwright contra DEV, no a mà:
+ingrés → historial, retirada amb PIN incorrecte i correcte → historial, canvi de PIN amb el PIN actual equivocat i
+cerca d'actius amb i sense resultats.
 
 ---
 
