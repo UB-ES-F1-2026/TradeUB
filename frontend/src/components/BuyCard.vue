@@ -1,8 +1,8 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { useAccountStore } from '../stores/account'
 import { ApiError } from '../services/api'
+import PinDialog from './PinDialog.vue'
 import { UiAlert, UiBadge, UiButton, UiCard, UiInput } from './ui'
 import { assetTypeLabel } from '../utils/assets'
 import { formatCurrency } from '../utils/currency'
@@ -14,15 +14,6 @@ import {
   parseUnits,
   unitsError,
 } from '../utils/buy'
-import {
-  PIN_CHECK_FAILED_ERROR,
-  PIN_FORMAT_ERROR,
-  PIN_INCORRECT_ERROR,
-  PIN_LENGTH,
-  PIN_NOT_CONFIGURED_ERROR,
-  isValidPin,
-  pinErrorMessage,
-} from '../utils/pin'
 import { insufficientBalanceError } from '../utils/withdrawal'
 
 // Targeta "Comprar" (US6.1): s'obre des d'un resultat de la cerca. L'usuari tria les unitats, veu el cost, la
@@ -35,7 +26,6 @@ const props = defineProps({
 const emit = defineEmits(['close'])
 
 const account = useAccountStore()
-const router = useRouter()
 
 const format = (amount) => formatCurrency(amount, account.currency)
 const unitsText = (units) => (units === 1 ? '1 unitat' : `${units} unitats`)
@@ -49,7 +39,6 @@ onMounted(() => {
 const serverError = ref('')
 
 // --- Unitats i revisió del cost ------------------------------------------------------------------------------
-const step = ref('units') // units | pin
 const unitsInput = ref('')
 const submitted = ref(false)
 const unitsServerError = ref('')
@@ -77,52 +66,35 @@ function clearUnitsMessages() {
   serverError.value = ''
 }
 
+// --- PIN -----------------------------------------------------------------------------------------------------
+// "Continua" obre el diàleg del PIN (PinDialog, issue 130) amb el resum de la compra, com a la retirada. Els errors
+// del PIN els resol el diàleg; la resta els rep showBuyError
+const pinOpen = ref(false)
+
 function continueToPin() {
   submitted.value = true
   clearUnitsMessages()
   if (unitsFieldError.value || insufficientMessage.value) return
-  resetPinStep()
-  step.value = 'pin'
-}
-
-// --- PIN -----------------------------------------------------------------------------------------------------
-// shortcut: pas del PIN dins la targeta, com a la retirada, fins que hi hagi el PinDialog (issue 130). Quan
-// existeixi, "Continua" l'ha d'obrir amb el títol i el resum, i confirmPin és el que ha de fer amb el PIN
-const pin = ref('')
-const pinSubmitted = ref(false)
-const pinError = ref('')
-const pinAlert = ref('')
-const pinMissing = ref(false)
-const buying = ref(false)
-
-const pinFieldError = computed(() => {
-  if (pinError.value) return pinError.value
-  return pinSubmitted.value && !isValidPin(pin.value) ? PIN_FORMAT_ERROR : ''
-})
-
-function resetPinStep() {
-  pin.value = ''
-  pinSubmitted.value = false
-  pinError.value = ''
-  pinAlert.value = ''
-  pinMissing.value = false
+  pinOpen.value = true
 }
 
 // Cancel·lar no executa res i el formulari conserva les unitats
 function cancelPin() {
-  step.value = 'units'
-  resetPinStep()
+  pinOpen.value = false
 }
 
-function clearPinMessages() {
-  pinError.value = ''
-  pinAlert.value = ''
+// El diàleg la crida amb el PIN escrit
+const buy = (pin) => account.buy(props.asset.id, units.value, pin)
+
+// El saldo nou i la posició ja són al store. La targeta es tanca sense missatge d'èxit
+function onBought() {
+  pinOpen.value = false
+  emit('close')
 }
 
-// Els errors que no són del PIN tanquen el pas del PIN i es mostren a la targeta
+// Els errors que no són del PIN tanquen el diàleg i es mostren a la targeta
 function showBuyError(e) {
-  step.value = 'units'
-  resetPinStep()
+  pinOpen.value = false
   const message = e instanceof ApiError ? e.message : ''
   if (message === BUY_INSUFFICIENT_BALANCE_ERROR) {
     // El saldo ha canviat des d'una altra pestanya: es torna a llegir perquè la revisió mostri el que falta
@@ -135,39 +107,6 @@ function showBuyError(e) {
   } else {
     serverError.value = BUY_FAILED_ERROR
   }
-}
-
-async function confirmPin() {
-  pinSubmitted.value = true
-  clearPinMessages()
-  if (pinFieldError.value) return
-
-  buying.value = true
-  try {
-    await account.buy(props.asset.id, units.value, pin.value)
-    // El saldo nou ja és al store; la posició es veurà a Cartera. La targeta es tanca
-    emit('close')
-  } catch (e) {
-    const pinMessage = e instanceof ApiError ? pinErrorMessage(e.status, e.message) : ''
-    if (pinMessage === PIN_INCORRECT_ERROR) {
-      // El pas es queda obert i el camp es buida
-      pinError.value = pinMessage
-      pin.value = ''
-      pinSubmitted.value = false
-    } else if (pinMessage === PIN_NOT_CONFIGURED_ERROR) {
-      pinMissing.value = true
-    } else if (pinMessage === PIN_CHECK_FAILED_ERROR) {
-      pinAlert.value = pinMessage
-    } else {
-      showBuyError(e)
-    }
-  } finally {
-    buying.value = false
-  }
-}
-
-function goToProfile() {
-  router.push({ name: 'perfil' })
 }
 </script>
 
@@ -200,7 +139,6 @@ function goToProfile() {
     </UiAlert>
 
     <form
-      v-if="step === 'units'"
       class="buy__form"
       novalidate
       data-test="buy-units-form"
@@ -291,82 +229,19 @@ function goToProfile() {
       </div>
     </form>
 
-    <form
-      v-else
-      class="buy__form"
-      novalidate
-      data-test="buy-pin-step"
-      @submit.prevent="confirmPin"
+    <PinDialog
+      :open="pinOpen"
+      title="Confirma la compra"
+      :confirm="buy"
+      @cancel="cancelPin"
+      @done="onBought"
+      @error="showBuyError"
     >
-      <div>
-        <p class="buy__title">
-          Confirma la compra
-        </p>
-        <p class="buy__muted">
-          {{ unitsText(units) }} de {{ asset.ticker }} per
-          <span class="tabular">{{ format(quote.total) }}</span>
-        </p>
-      </div>
-
-      <template v-if="pinMissing">
-        <UiAlert
-          variant="warning"
-          data-test="buy-pin-missing"
-        >
-          {{ PIN_NOT_CONFIGURED_ERROR }}
-        </UiAlert>
-        <div class="buy__actions">
-          <UiButton
-            variant="secondary"
-            data-test="buy-go-profile"
-            @click="goToProfile"
-          >
-            Ves al perfil
-          </UiButton>
-          <UiButton
-            variant="ghost"
-            @click="cancelPin"
-          >
-            Cancel·la
-          </UiButton>
-        </div>
+      <template v-if="quote">
+        {{ unitsText(units) }} de {{ asset.ticker }} per
+        <span class="tabular">{{ format(quote.total) }}</span>
       </template>
-
-      <template v-else>
-        <UiAlert
-          v-if="pinAlert"
-          variant="error"
-        >
-          {{ pinAlert }}
-        </UiAlert>
-        <UiInput
-          v-model="pin"
-          label="PIN de seguretat"
-          type="password"
-          inputmode="numeric"
-          :maxlength="PIN_LENGTH"
-          :error="pinFieldError"
-          data-test="buy-pin"
-          @update:model-value="clearPinMessages"
-        />
-        <div class="buy__actions">
-          <UiButton
-            type="submit"
-            :loading="buying"
-          >
-            Confirma
-          </UiButton>
-          <UiButton
-            variant="ghost"
-            :disabled="buying"
-            data-test="buy-pin-cancel"
-            @click="cancelPin"
-          >
-            Cancel·la
-          </UiButton>
-        </div>
-      </template>
-    </form>
+    </PinDialog>
   </UiCard>
 </template>
 
@@ -385,8 +260,7 @@ function goToProfile() {
 .buy__asset {
   min-width: 0;
 }
-.buy__name,
-.buy__title {
+.buy__name {
   font-weight: 600;
   color: var(--tub-text);
   overflow-wrap: anywhere;
