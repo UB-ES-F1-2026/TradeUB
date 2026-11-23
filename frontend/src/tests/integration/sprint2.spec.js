@@ -391,7 +391,7 @@ describe('Acceptació Sprint 2: cercar actius (US5.1 + US5.3)', () => {
     expect(rows[0].get('[data-test="asset-sell"]').text()).toBe('Ven')
   })
 
-  it('cada resultat mostra el preu, la variació amb signe i color i la data; si falta, "No disponible"', async () => {
+  it('cada resultat mostra el preu, la variació amb signe i color i la data', async () => {
     Object.assign(backend.catalog[1], { close_price_eur: 182.5, daily_change_pct: 1.25, price_date: '2026-11-20' })
     Object.assign(backend.catalog[0], { close_price_eur: 410, daily_change_pct: -0.5, price_date: '2026-11-20' })
     Object.assign(backend.catalog[2], { close_price_eur: 99.1, daily_change_pct: 0, price_date: '2026-11-20' })

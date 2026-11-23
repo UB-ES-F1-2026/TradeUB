@@ -153,48 +153,98 @@ Casos escrits a partir de Trello; cal revisar-los quan la implementació sigui a
 
 ## Acceptació: Sprint 2 (tests automàtics)
 
-Criteris de Trello del Sprint 2 convertits en tests que s'executen a la CI (QA 5, #133). Els tests escriuen els
-missatges literals del criteri, sense importar les constants del codi, perquè un canvi de text faci fallar el test.
+Criteris de Trello del Sprint 2 convertits en tests que s'executen a la CI (QA 5, #133, i QA 6, #158). Cada criteri
+apareix tal com està escrit a la targeta de Trello, en el mateix ordre: l'ID `USx.y-NN` és la posició del criteri a la
+checklist. Els tests escriuen els missatges literals del criteri, sense importar les constants del codi, perquè un canvi
+de text faci fallar el test.
 
-- **Back:** `backend/api/tests/test_acceptance_sprint2.py`.
-- **Integració:** `frontend/src/tests/integration/sprint2.spec.js` (App, router i stores reals; només se simulen
-  Supabase i el backend).
-- **Unitari:** test que ja existia de la mateixa US.
+On és cada test:
 
-| ID | Criteri | Test |
-|---|---|---|
-| US1.5-01 | No verificat: no pot crear el PIN ("Cal verificar la identitat…") | Back: `test_unverified_user_cannot_operate[crear-pin]` |
-| US1.5-02 | "El PIN ha de tenir 4 dígits." | Back: `test_pin_must_have_four_digits`; unitari: `pinCard.spec.js` |
-| US1.5-03 | "Els PIN no coincideixen." (només frontend) | Unitari: `pinCard.spec.js` |
-| US1.5-04 | "El PIN actual és incorrecte." | Back: `test_pin_change_with_wrong_current_pin`; unitari: `pinCard.spec.js` |
-| US3.2-01 | El saldo s'incrementa a l'instant | Integració: `un ingrés actualitza el saldo…` |
-| US3.2-02 | "L'import mínim d'ingrés és d'1 €." | Back: `test_deposit_limits[US3.2-minim]`; integració: `un ingrés de 0,99 €…` |
-| US3.2-03 | "L'import màxim per operació és de 10.000 €." | Back: `test_deposit_limits[US3.2-maxim]`; integració: `un ingrés de 10000,01 €…` |
-| US3.2-04 | Falla la BD: "No s'ha pogut processar el dipòsit…" | Back: `test_deposit_database_failure`; integració: `si la base de dades falla…` |
-| US3.2-05 | No verificat: veu el component per verificar-se | Back: `test_unverified_user_cannot_operate[ingres]` i `[retirada]`; integració: `l'usuari no verificat veu a /compte-efectiu…` |
-| US3.5-01 | Data, concepte, import, tipus i saldo resultant | Integració: `un ingrés actualitza el saldo… i apareix a l'historial`; unitari: `historialView.spec.js` |
-| US3.5-02 | Import en verd si suma i en vermell si resta | Integració (verd); unitari: `historialView.spec.js` |
-| US3.5-03 | Filtres de dates i tipus, pàgines de 20 | Unitari: `historialView.spec.js`, `movementsStore.spec.js` |
-| US3.5-04 | "No s'han trobat moviments per als filtres seleccionats." | Integració: `sense moviments, l'historial…` |
-| US3.5-05 | No verificat: avís "Compte no verificat" amb "Verifica't" | Back: `test_unverified_user_cannot_operate[historial]`; integració: `l'usuari no verificat veu a /historial…` |
-| US5.1-01 | Sense estar verificat també pot cercar | Integració: tot el bloc de cerca s'executa amb un usuari no verificat |
-| US5.1-02 | Sense text, tot el catàleg ordenat per nom, amb ticker i tipus | Integració: `sense text mostra tot el catàleg…` |
-| US5.1-03 | Filtra per nom i ticker, sense espais ni majúscules | Integració: `filtra pel nom o el ticker…` |
-| US5.1-04 | "No s'han trobat actius" | Integració: `filtra pel nom o el ticker…`; unitari: `assetSearch.spec.js` |
-| US5.1-05 | L'usuari verificat veu "Compra" a cada resultat i "Ven" només als actius amb posició | Integració: `l'usuari verificat pot comprar…` |
-| US5.3-01 | Preu, data, variació amb signe i color i "Preus simulats" | Integració: `cada resultat mostra el preu…` |
-| US5.3-02 | Sense cotització, "No disponible" | Integració: `un actiu sense cotització…` |
-| US3.3-01 | Sense IBAN, la targeta el demana amb l'ajuda "És una simulació…" | Integració: `sense IBAN la targeta el demana primer…` |
-| US3.3-02 | "El codi IBAN no és vàlid." | Back: `test_invalid_iban`; integració: `sense IBAN la targeta el demana primer…` |
-| US3.3-03 | IBAN emmascarat (ES•• … 1332) amb el botó "Canvia" | Integració: `sense IBAN la targeta el demana primer…` |
-| US3.3-04 | "L'import mínim de retirada és d'1 €." | Back: `test_withdrawal_errors[minim]`; integració: `una retirada de 0,99 €…` |
-| US3.3-05 | "Saldo insuficient. Et falten X € per completar l'operació" | Back: `test_withdrawal_errors[saldo-insuficient]`; integració: `una retirada de 150 €…` |
-| US3.3-06 | "El PIN introduït és incorrecte." i no s'executa | Back: `test_withdrawal_errors[pin-incorrecte]`; integració: `amb el PIN incorrecte…` |
-| US3.3-07 | Sense PIN: "Cal configurar el PIN…" amb enllaç al perfil | Back: `test_withdrawal_errors[sense-pin]`; integració: `sense PIN configurat…` |
-| US3.3-08 | "No s'ha pogut validar el PIN de seguretat…" | Integració: `si no es pot validar el PIN…` |
-| US3.3-09 | El saldo es redueix a l'instant | Back: `test_withdrawal_with_correct_pin_returns_new_balance`; integració: `amb el PIN correcte…` |
-| US3.3-10 | Falla la BD: "No s'ha pogut processar la retirada…" | Back: `test_withdrawal_errors[fallada-bd]` |
-| US3.5-06 | Concepte "Retirada a ES•• 1332" i import en vermell | Integració: `amb el PIN correcte… apareix a l'historial` |
+- **Back:** `backend/api/tests/test_acceptance_sprint2.py` (`pytest`).
+- **Integració:** `frontend/src/tests/integration/sprint2.spec.js` (`npm test`): App, router i stores reals; només se
+  simulen Supabase i el backend, amb un backend fals amb estat.
+- **E2E:** `frontend/e2e/sprint2.spec.js` (Playwright contra DEV, amb un usuari de prova real).
+- **Unitari:** test que ja existia de la mateixa US, indicat amb el fitxer de `frontend/src/tests/` o
+  `backend/api/tests/`.
+
+Cobertura: ✅ coberta per tests d'acceptació · 🟡 coberta només per tests unitaris · ➖ sense test automàtic (cas manual
+per a la demo).
+
+### US1.5 PIN de seguretat per a operacions · [Trello](https://trello.com/c/ERWCBORf)
+
+| ID | Criteri de Trello | Test | Com ho comprova | |
+|---|---|---|---|---|
+| US1.5-01 | A la pantalla Perfil, l'usuari verificat té l'apartat "PIN de seguretat", des d'on pot crear un PIN de 4 dígits. Si no està verificat, l'apartat no apareix i tampoc no pot crear el PIN per cap altra via: "Cal verificar la identitat i acceptar els termes per operar". | Back: `test_unverified_user_cannot_operate[crear-pin]`. Unitari: `perfilView.spec.js` › `mostra la targeta del PIN només als usuaris verificats` | Un usuari sense verificar fa `POST /profile/pin` i rep 403 amb el text literal, sense que es desi res. Al perfil, la targeta del PIN surt amb l'usuari verificat i no surt sense verificar. | ✅ |
+| US1.5-02 | Si el PIN no té exactament 4 dígits numèrics, es mostra l'error: "El PIN ha de tenir 4 dígits." | Back: `test_pin_must_have_four_digits` (`3-digits`, `5-digits`, `lletra`, `buit`). Unitari: `pinCard.spec.js` › `si el PIN no té 4 dígits mostra l'error i no l'envia` | `123`, `12345`, `12a4` i un PIN buit reben 422 amb "El PIN ha de tenir 4 dígits." i no es desa cap PIN. | ✅ |
+| US1.5-03 | En crear o canviar el PIN, cal escriure el PIN nou dues vegades; si no coincideixen, es mostra l'error: "Els PIN no coincideixen." | Unitari: `pinCard.spec.js` › `si els dos PIN no coincideixen mostra l'error i no l'envia` | Amb dos PIN diferents es mostra el text i no es crida el backend. És una validació només del formulari. | 🟡 |
+| US1.5-04 | Per canviar el PIN cal introduir el PIN actual; si és incorrecte, es mostra l'error: "El PIN actual és incorrecte." | Back: `test_pin_change_with_wrong_current_pin`. E2E: `canviar el PIN amb el PIN actual equivocat (US1.5)`. Unitari: `pinCard.spec.js` › `si el PIN actual és incorrecte, mostra l'error al camp i el buida` | Amb el PIN desat `1234` i el PIN actual `0000`, el backend respon 403 amb el text literal i no canvia el PIN. A DEV, el perfil mostra "El PIN actual és incorrecte." (el PIN nou és el mateix, així que l'usuari de prova no canvia encara que fallés). | ✅ |
+
+### US3.2 Ingressar diners ficticis · [Trello](https://trello.com/c/jJzuv5ng)
+
+| ID | Criteri de Trello | Test | Com ho comprova | |
+|---|---|---|---|---|
+| US3.2-01 | L'usuari verificat disposa, a la pantalla Compte d'efectiu, d'un formulari per introduir un import a ingressar en euros (€), amb dos decimals com a màxim. | Integració: `un ingrés actualitza el saldo a l'instant i apareix a l'historial`. Unitari: `deposit.spec.js` › `rebutja més de dos decimals, separadors de milers i text`; back: `test_account_deposits.py` (`three-decimals`) | L'usuari verificat entra a `/compte-efectiu`, escriu `50,25` i s'envia `{ amount: '50.25' }`. Amb tres decimals, el formulari i el backend el rebutgen. | ✅ |
+| US3.2-02 | Si l'import introduït és inferior a 1 €, l'operació es rebutja amb l'error: "L'import mínim d'ingrés és d'1 €." | Back: `test_deposit_limits[US3.2-minim]`. Integració: `un ingrés de 0,99 € es rebutja amb el missatge del criteri` | `0,99` mostra el text literal, el saldo es queda a 100,00 € i no es fa cap `POST /account/deposits`. El backend respon 422 amb el mateix text i no crida la funció de la BD. | ✅ |
+| US3.2-03 | Si l'import és superior a 10.000 € per operació, es rebutja amb l'error: "L'import màxim per operació és de 10.000 €." | Back: `test_deposit_limits[US3.2-maxim]`. Integració: `un ingrés de 10000,01 € es rebutja amb el missatge del criteri` | El mateix amb `10000,01`. | ✅ |
+| US3.2-04 | En confirmar un ingrés vàlid, el saldo disponible s'incrementa immediatament en la quantitat dipositada. | Integració: `un ingrés actualitza el saldo a l'instant i apareix a l'historial`. E2E: `ingrés → saldo → historial (US3.2, US3.5)` | El saldo passa de 100,00 € a 150,25 € amb la resposta de l'ingrés, sense tornar a demanar el saldo (`GET /account/balance` només una vegada). A DEV, el saldo puja 1 €. | ✅ |
+| US3.2-05 | Si la base de dades falla durant el procés, no s'aplica cap canvi i es mostra l'error: "No s'ha pogut processar el dipòsit. El teu saldo no ha canviat." | Back: `test_deposit_database_failure`. Integració: `si la base de dades falla, el saldo no canvia i es mostra el missatge del criteri` | La funció de la BD falla: el backend respon 500 amb el text literal; la pantalla el mostra i el saldo es queda a 100,00 €. | ✅ |
+| US3.2-06 | L'usuari no verificat veu, a la pantalla Compte d'efectiu, el component per verificar-se | Integració: `l'usuari no verificat veu a /compte-efectiu l'avís per verificar-se, que porta a l'onboarding`. Back: `test_unverified_user_cannot_operate[ingres]` i `[saldo]` | Surt "Compte no verificat" sense cap formulari, no es demana res del compte i "Verifica't" porta a `/onboarding`. El backend rebutja l'ingrés i el saldo amb 403. | ✅ |
+
+### US3.3 Retirar diners ficticis i associar IBAN · [Trello](https://trello.com/c/RLB68slx)
+
+| ID | Criteri de Trello | Test | Com ho comprova | |
+|---|---|---|---|---|
+| US3.3-01 | A la pantalla Compte d'efectiu, al costat del formulari d'ingrés, l'usuari verificat té la targeta "Retirar diners". | Unitari: `compteEfectiuView.spec.js` › `amb la identitat verificada i els termes acceptats mostra el saldo i els formularis d'ingrés i de retirada` | Amb l'usuari verificat, la pantalla té els dos formularis. La posició "al costat" és visual: es comprova a la demo. | 🟡 |
+| US3.3-02 | Si no té cap IBAN vinculat, la targeta li demana primer, amb l'ajuda "És una simulació: fes servir un IBAN de prova." S'accepta un IBAN espanyol (ES + 22 dígits), amb espais o sense; si el format o els dígits de control no són vàlids, es mostra l'error: "El codi IBAN no és vàlid." | Integració: `sense IBAN la targeta el demana primer, rebutja un IBAN invàlid i mostra l'emmascarat`. Back: `test_invalid_iban` | Sense IBAN surt l'ajuda literal i no hi ha camp d'import. `ES00 0000…` mostra "El codi IBAN no és vàlid." sense cridar el backend; `ES91 2100 0418 4502 0005 1332`, amb espais, s'envia sense espais. El backend també rebutja l'IBAN invàlid amb 422 i el text literal. | ✅ |
+| US3.3-03 | Un cop vinculat, l'IBAN es mostra emmascarat, amb només els 4 últims dígits visibles (ES•• •••• •••• •••• •••• 1332), i el botó "Canvia", que permet introduir-ne un de nou i substitueix l'anterior directament. | Integració: `sense IBAN la targeta el demana primer, rebutja un IBAN invàlid i mostra l'emmascarat`. E2E: `retirada amb PIN incorrecte i després correcte → historial (US3.3, US1.5, US3.5)` | Després de vincular-lo es veu exactament `ES•• •••• •••• •••• •••• 1332` i el botó "Canvia". A DEV, l'IBAN emmascarat de l'usuari de prova és visible. | ✅ |
+| US3.3-04 | L'import a retirar és en euros, amb dos decimals com a màxim; si és inferior a 1 €, es mostra l'error: "L'import mínim de retirada és d'1 €." | Back: `test_withdrawal_errors[minim]`. Integració: `una retirada de 0,99 € es rebutja abans de demanar el PIN`. Unitari: back `test_account_withdrawals.py` (`three-decimals`) | `0,99` mostra el text literal, no s'obre el PIN i no es fa cap `POST /account/withdrawals`. El backend respon 422 amb el mateix text i rebutja tres decimals. | ✅ |
+| US3.3-05 | Si l'import supera el saldo disponible, es mostra l'error: "Saldo insuficient. Et falten X € per completar l'operació" | Back: `test_withdrawal_errors[saldo-insuficient]`. Integració: `una retirada de 150 € es rebutja abans de demanar el PIN` | Amb 100 € de saldo, 150 € mostra "Saldo insuficient. Et falten 50,00 € per completar l'operació" abans del PIN. Al backend, 80 € amb 50 € de saldo dona el mateix text amb 30,00 €. | ✅ |
+| US3.3-06 | Abans de confirmar la retirada es demana el PIN de seguretat (US1.5); si és incorrecte, la retirada no s'executa i es mostra l'error: "El PIN introduït és incorrecte." | Back: `test_withdrawal_errors[pin-incorrecte]`. Integració: `amb el PIN incorrecte la retirada no es fa i es pot tornar a provar`. E2E: `retirada amb PIN incorrecte i després correcte → historial (US3.3, US1.5, US3.5)` | Amb `0000` surt el text literal, el saldo no canvia, no es registra cap moviment i el camp del PIN queda buit per tornar-ho a provar. A DEV, el saldo es manté igual amb el PIN incorrecte. | ✅ |
+| US3.3-07 | Si l'usuari no té cap PIN configurat, no pot confirmar la retirada i es mostra l'error: "Cal configurar el PIN de seguretat al perfil per fer aquesta operació.", amb un enllaç al perfil. | Back: `test_withdrawal_errors[sense-pin]`. Integració: `sense PIN configurat no es pot confirmar i porta al perfil` | El diàleg mostra el text literal sense camp de PIN, no es fa la retirada i l'enllaç porta a `/perfil`. El backend respon 403 amb el mateix text. | ✅ |
+| US3.3-08 | Si no es pot validar el PIN, la retirada no s'executa i es mostra l'error: "No s'ha pogut validar el PIN de seguretat. Torna-ho a provar més tard." | Integració: `si no es pot validar el PIN, la retirada no es fa` | El backend fals respon 500 en comprovar el PIN: surt el text literal i el saldo es queda a 100,00 €. | ✅ |
+| US3.3-09 | En confirmar la retirada, el saldo es redueix immediatament. | Back: `test_withdrawal_with_correct_pin_returns_new_balance`. Integració: `amb el PIN correcte el saldo baixa a l'instant i la retirada apareix a l'historial`. E2E: `retirada amb PIN incorrecte i després correcte → historial (US3.3, US1.5, US3.5)` | Amb `1234` el saldo passa de 100,00 € a 70,00 € i es mostra "S'han retirat 30,00 € del compte."; el PIN viatja a la capçalera `X-PIN`. El backend retorna el saldo nou (50 → 40). A DEV, el saldo baixa 1 €. | ✅ |
+| US3.3-10 | Si falla la base de dades, no s'aplica cap canvi i es mostra l'error: "No s'ha pogut processar la retirada. El teu saldo no ha canviat." | Back: `test_withdrawal_errors[fallada-bd]` | La funció de la BD falla: el backend respon 500 amb el text literal. | ✅ |
+
+### US3.5 Historial de moviments d'efectiu · [Trello](https://trello.com/c/aBpVkQvw)
+
+| ID | Criteri de Trello | Test | Com ho comprova | |
+|---|---|---|---|---|
+| US3.5-01 | A la pantalla Historial, cada moviment mostra: Data, Concepte, Import, Tipus de moviment i Saldo resultant, del més nou al més antic. | Integració: `un ingrés actualitza el saldo a l'instant i apareix a l'historial`. Unitari: `historialView.spec.js` › `mostra cada moviment amb el concepte, el tipus, l'import amb signe i el saldo resultant`; back: `test_account_movements.py` › `test_default_query_filters_by_token_subject_newest_first` | Després d'un ingrés, la fila mostra el concepte, `+50,25 €` i el saldo resultant `150,25 €`. L'ordre del més nou al més antic el comprova el test del backend. | ✅ |
+| US3.5-02 | L'import es mostra en verd si suma al saldo i en vermell si en resta | Integració: `un ingrés actualitza el saldo a l'instant i apareix a l'historial` i `amb el PIN correcte el saldo baixa a l'instant i la retirada apareix a l'historial`. E2E: `retirada amb PIN incorrecte i després correcte → historial (US3.3, US1.5, US3.5)` | L'ingrés té la classe `movements__amount--in` (verd) i la retirada `movements__amount--out` (vermell), també a DEV. | ✅ |
+| US3.5-03 | El concepte és "Ingrés de diners" per als ingressos i "Retirada a ES•• 1332" per a les retirades, amb els 4 últims dígits de l'IBAN de la retirada. | Integració: els mateixos dos tests. E2E: `ingrés → saldo → historial (US3.2, US3.5)` i `retirada amb PIN incorrecte i després correcte → historial (US3.3, US1.5, US3.5)` | Les files mostren exactament "Ingrés de diners" i "Retirada a ES•• 1332". A DEV, l'últim moviment conté "Ingrés de diners" o "Retirada a ES••". | ✅ |
+| US3.5-04 | L'usuari pot filtrar per rang de dates (Data inici / Data fi, totes dues incloses) i per tipus (Tots, Ingrés, Retirada), i pot combinar els dos filtres. | Unitari: `movementsStore.spec.js` › `envia les dates i el tipus seleccionats`; `historialView.spec.js` › `en canviar el tipus torna a carregar des de la primera pàgina amb el filtre`; back: `test_account_movements.py` › `test_filters_reach_the_query` | Les dates i el tipus arriben junts a la consulta del backend. Vegeu [D5](#discrepàncies-detectades): ara el filtre també té Compra i Venda. | 🟡 |
+| US3.5-05 | El llistat es mostra en pàgines de 20 moviments amb els botons "Anterior" i "Següent". | Unitari: `movementsStore.spec.js` › `sense filtres demana la primera pàgina de 20 sense dates ni tipus`; `historialView.spec.js` › `pagina amb Anterior i Següent segons has_more` | Es demanen 20 moviments per pàgina i els botons avancen i tornen enrere. | 🟡 |
+| US3.5-06 | Si no hi ha moviments que compleixin els filtres aplicats, es mostra el missatge: "No s'han trobat moviments per als filtres seleccionats." | Integració: `sense moviments, l'historial mostra el missatge del criteri` | Sense moviments, el missatge és exactament el del criteri. | ✅ |
+| US3.5-07 | Si l'usuari no està verificat, en lloc de l'historial veu l'avís "Compte no verificat" amb el botó "Verifica't", com a la pantalla Actius. | Integració: `l'usuari no verificat veu a /historial l'avís per verificar-se, que porta a l'onboarding`. Back: `test_unverified_user_cannot_operate[historial]` | Surt "Compte no verificat", no es demana l'historial i "Verifica't" porta a `/onboarding`. El backend respon 403. | ✅ |
+
+### US5.1 Cercar actius · [Trello](https://trello.com/c/CbGe4SOe)
+
+| ID | Criteri de Trello | Test | Com ho comprova | |
+|---|---|---|---|---|
+| US5.1-01 | El cercador és a la pantalla Actius i el poden fer servir tots els usuaris registrats, encara que no estiguin verificats. | Integració: tot el bloc `Acceptació Sprint 2: cercar actius (US5.1 + US5.3)` | Tots els tests de cerca, menys el de Compra i Ven, s'executen amb un usuari no verificat a `/actius`. | ✅ |
+| US5.1-02 | Amb el camp de cerca buit, es mostra tot el catàleg d'actius, ordenat per nom. | Integració: `sense text mostra tot el catàleg ordenat per nom, amb ticker i tipus` | El catàleg arriba desordenat i es mostra Apple, iShares, Microsoft. | ✅ |
+| US5.1-03 | A partir de 2 caràcters, la llista es filtra mentre s'escriu: coincidències parcials en el nom i el ticker, sense distingir majúscules ni tenir en compte els espais inicials i finals, i l'ISIN només complet. Els resultats es mantenen ordenats per nom. | Integració: `filtra pel nom o el ticker i, sense coincidències, mostra el missatge del criteri`. Back: `test_assets.py` › `test_query_filters_name_ticker_and_isin_and_sanitizes_input` | `"  ms "` s'envia com `q=ms` i troba iShares (nom) i Microsoft (ticker), en aquest ordre. L'ISIN complet el comprova el test del backend. | ✅ |
+| US5.1-04 | Cada actiu de la llista mostra el nom, el ticker i el tipus (Acció o ETF). | Integració: `sense text mostra tot el catàleg ordenat per nom, amb ticker i tipus` | Apple mostra `AAPL` i "Acció"; iShares mostra "ETF". | ✅ |
+| US5.1-05 | Si no hi ha coincidències, es mostra: "No s'han trobat actius" | Integració: `filtra pel nom o el ticker i, sense coincidències, mostra el missatge del criteri`. E2E: `cerca d'actius amb preu i sense resultats (US5.1, US5.3)` | `zzz` mostra exactament "No s'han trobat actius", també a DEV. | ✅ |
+
+### US5.3 Consultar preu i variació diària · [Trello](https://trello.com/c/AQ7QRknI)
+
+| ID | Criteri de Trello | Test | Com ho comprova | |
+|---|---|---|---|---|
+| US5.3-01 | Cada actiu de la llista del cercador mostra l'últim preu de tancament en euros (€), amb dos decimals, i la data de la cotització, tal com estan desats al catàleg. | Integració: `cada resultat mostra el preu, la variació amb signe i color i la data`. E2E: `cerca d'actius amb preu i sense resultats (US5.1, US5.3)` | `182.5` i `2026-11-20` del catàleg es mostren com `182,50 €` i `20/11/2026`. A DEV, la fila d'Apple mostra un preu en € (o "No disponible"; no es fixa el valor perquè el catàleg pot canviar). | ✅ |
+| US5.3-02 | Es mostra la variació percentual diària desada al catàleg: amb el signe + i en verd si és positiva, amb el signe − i en vermell si és negativa, i de color neutre si és 0,00 %. | Integració: `cada resultat mostra el preu, la variació amb signe i color i la data` | `1.25` → `+1,25 %` amb `assets__change--up`; `-0.5` → `−0,50 %` (signe menys) amb `assets__change--down`; `0` → `0,00 %` amb `assets__change--flat`. | ✅ |
+| US5.3-03 | Si falta alguna dada de la cotització, el camp afectat mostra el text: "No disponible" | Integració: `un actiu sense cotització mostra "No disponible"` | Sense preu, variació ni data, els tres camps mostren "No disponible". | ✅ |
+| US5.3-04 | La pantalla indica que els preus són simulats ("Preus simulats"). | Integració: `cada resultat mostra el preu, la variació amb signe i color i la data`. E2E: `cerca d'actius amb preu i sense resultats (US5.1, US5.3)` | El text "Preus simulats" surt a la pantalla, també a DEV. | ✅ |
+
+### Altres comprovacions
+
+No són criteris del Sprint 2, però els tests d'acceptació també les cobreixen perquè els canvis de les US següents no
+trenquin el que ja funcionava:
+
+- US6.1 i US6.2: l'usuari verificat veu "Compra" a cada resultat i "Ven" només als actius dels quals té posició.
+  Integració: `l'usuari verificat pot comprar qualsevol resultat i només pot vendre els actius de què té posició`.
+- US2.4: l'usuari no verificat rep 403 amb "Cal verificar la identitat i acceptar els termes per operar" a les
+  posicions, la compra i la venda. Back: `test_unverified_user_cannot_operate[posicions]`, `[compra]` i `[venda]`.
 
 Fora d'abast: el bloqueig del PIN per intents fallits és la US1.6, al backlog.
 
@@ -216,6 +266,7 @@ Diferències entre Trello i el que hi ha implementat, trobades en preparar el pl
 | D2 | US2.1 | 4 passos i estat "En procés" | 3 passos i estats Pendent / Completat | Ajustar el text de Trello |
 | D3 | US3.1 | Saldo reservat i recàlcul després d'operacions | El reservat es mostra sempre a 0,00 €: encara no existeixen ordres ni operacions | Moure aquests criteris a la US de les ordres o deixar-los per a un sprint posterior (decisió del PO) |
 | D4 | US2.1 / US2.4 | En acabar els passos, l'usuari entra a l'aplicació | Els passos 1 i 2 ja es completen des del backend, però el pas 3 encara no (#70): cap usuari pot acabar l'onboarding i en iniciar sessió sempre es passa per la benvinguda | Esperar la tasca de backend de US2.4 (#70) |
+| D5 | US3.5 | Filtre per tipus: Tots, Ingrés, Retirada | Amb US6.1 i US6.2 també hi ha Compra i Venda | Afegir Compra i Venda al criteri de Trello (el fora d'abast de la US ja diu que les afegeixen US6.1 i US6.2) |
 
 ## Errors trobats
 
