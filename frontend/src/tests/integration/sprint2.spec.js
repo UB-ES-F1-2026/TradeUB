@@ -24,9 +24,9 @@ const session = { access_token: 'token', user }
 
 // Catàleg simulat desordenat: el backend el retorna ordenat per nom
 const CATALOG = [
-  { name: 'Microsoft Corp.', ticker: 'MSFT', isin: 'US5949181045', type: 'accio' },
-  { name: 'Apple Inc.', ticker: 'AAPL', isin: 'US0378331005', type: 'accio' },
-  { name: 'iShares Core MSCI World', ticker: 'IWDA', isin: 'IE00B4L5Y983', type: 'etf' },
+  { id: 1, name: 'Microsoft Corp.', ticker: 'MSFT', isin: 'US5949181045', type: 'accio' },
+  { id: 2, name: 'Apple Inc.', ticker: 'AAPL', isin: 'US0378331005', type: 'accio' },
+  { id: 3, name: 'iShares Core MSCI World', ticker: 'IWDA', isin: 'IE00B4L5Y983', type: 'etf' },
 ]
 
 const json = (status, body) => ({ ok: status < 400, status, json: async () => body })
@@ -39,7 +39,7 @@ let backend
 function createBackend({ verified = true, balance = 100 } = {}) {
   return {
     verified, balance, movements: [], failDeposits: false, catalog: structuredClone(CATALOG),
-    iban: MASKED_IBAN, pin: '1234', pinCheckFails: false,
+    iban: MASKED_IBAN, pin: '1234', pinCheckFails: false, positions: [],
   }
 }
 
@@ -94,6 +94,7 @@ const fetchMock = vi.fn(async (url, init = {}) => {
     addMovement('retirada', `Retirada a ES•• ${backend.iban.slice(-4)}`, -Number(JSON.parse(init.body).amount))
     return json(201, { balance: backend.balance })
   }
+  if (route === 'GET /account/positions') return json(200, backend.positions)
   if (route === 'GET /account/movements') return json(200, { movements: backend.movements, has_more: false })
   throw new Error(`Crida no esperada: ${route}`)
 })
@@ -379,17 +380,43 @@ describe('Acceptació Sprint 2: cercar actius (US5.1 + US5.3)', () => {
     expect(wrapper.find('[data-test="no-results"]').text()).toBe("No s'han trobat actius")
   })
 
-  // shortcut: el frontend encara no mostra preu ni variació (#125); treure el skip quan entri
-  it.skip('cada resultat mostra el preu, la data i la variació diària, i que els preus són simulats', async () => {
+  it('l\'usuari verificat pot comprar qualsevol resultat i només pot vendre els actius de què té posició', async () => {
+    backend.verified = true
+    backend.positions = [{ asset_id: 2, units: 3 }]
+    await mountAt('/actius')
+
+    await vi.waitFor(() => expect(wrapper.findAll('[data-test="asset-sell"]')).toHaveLength(1))
+    const rows = wrapper.findAll('[data-test="asset-result"]')
+    expect(rows.every((r) => r.find('[data-test="asset-select"]').text() === 'Compra')).toBe(true)
+    expect(rows[0].get('[data-test="asset-sell"]').text()).toBe('Ven')
+  })
+
+  it('cada resultat mostra el preu, la variació amb signe i color i la data; si falta, "No disponible"', async () => {
     Object.assign(backend.catalog[1], { close_price_eur: 182.5, daily_change_pct: 1.25, price_date: '2026-11-20' })
+    Object.assign(backend.catalog[0], { close_price_eur: 410, daily_change_pct: -0.5, price_date: '2026-11-20' })
+    Object.assign(backend.catalog[2], { close_price_eur: 99.1, daily_change_pct: 0, price_date: '2026-11-20' })
+    await mountAt('/actius')
+
+    await vi.waitFor(() => expect(names()).toHaveLength(3))
+    const [apple, ishares, msft] = wrapper.findAll('[data-test="asset-result"]')
+    expect(text(apple.get('[data-test="asset-price"]'))).toBe('182,50 €')
+    expect(text(apple.get('[data-test="asset-change"]'))).toBe('+1,25 %')
+    expect(apple.get('[data-test="asset-change"]').classes()).toContain('assets__change--up')
+    expect(apple.get('[data-test="asset-date"]').text()).toBe('20/11/2026')
+    expect(text(msft.get('[data-test="asset-change"]'))).toBe('−0,50 %')
+    expect(msft.get('[data-test="asset-change"]').classes()).toContain('assets__change--down')
+    expect(text(ishares.get('[data-test="asset-change"]'))).toBe('0,00 %')
+    expect(ishares.get('[data-test="asset-change"]').classes()).toContain('assets__change--flat')
+    expect(wrapper.text()).toContain('Preus simulats')
+  })
+
+  it('un actiu sense cotització mostra "No disponible"', async () => {
     await mountAt('/actius')
 
     await vi.waitFor(() => expect(names()).toHaveLength(3))
     const apple = wrapper.findAll('[data-test="asset-result"]')[0]
-    expect(text(apple)).toContain('182,50 €')
-    expect(text(apple)).toContain('+1,25 %')
-    // Els actius sense cotització al catàleg
-    expect(wrapper.findAll('[data-test="asset-result"]')[1].text()).toContain('No disponible')
-    expect(wrapper.text()).toContain('Preus simulats')
+    expect(apple.get('[data-test="asset-price"]').text()).toBe('No disponible')
+    expect(apple.get('[data-test="asset-change"]').text()).toBe('No disponible')
+    expect(apple.get('[data-test="asset-date"]').text()).toBe('No disponible')
   })
 })

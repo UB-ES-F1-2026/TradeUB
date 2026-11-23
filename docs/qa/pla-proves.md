@@ -181,7 +181,9 @@ missatges literals del criteri, sense importar les constants del codi, perquè u
 | US5.1-02 | Sense text, tot el catàleg ordenat per nom, amb ticker i tipus | Integració: `sense text mostra tot el catàleg…` |
 | US5.1-03 | Filtra per nom i ticker, sense espais ni majúscules | Integració: `filtra pel nom o el ticker…` |
 | US5.1-04 | "No s'han trobat actius" | Integració: `filtra pel nom o el ticker…`; unitari: `assetSearch.spec.js` |
-| US5.3-01 | Preu, data, variació amb signe i "Preus simulats" | ⏳ Integració en `skip` fins que entri #125 |
+| US5.1-05 | L'usuari verificat veu "Compra" a cada resultat i "Ven" només als actius amb posició | Integració: `l'usuari verificat pot comprar…` |
+| US5.3-01 | Preu, data, variació amb signe i color i "Preus simulats" | Integració: `cada resultat mostra el preu…` |
+| US5.3-02 | Sense cotització, "No disponible" | Integració: `un actiu sense cotització…` |
 | US3.3-01 | Sense IBAN, la targeta el demana amb l'ajuda "És una simulació…" | Integració: `sense IBAN la targeta el demana primer…` |
 | US3.3-02 | "El codi IBAN no és vàlid." | Back: `test_invalid_iban`; integració: `sense IBAN la targeta el demana primer…` |
 | US3.3-03 | IBAN emmascarat (ES•• … 1332) amb el botó "Canvia" | Integració: `sense IBAN la targeta el demana primer…` |
