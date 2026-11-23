@@ -9,5 +9,12 @@ export default defineConfig({
     globals: true,
     // e2e/ és de Playwright
     exclude: [...configDefaults.exclude, 'e2e/**'],
+    // Només s'activa amb --coverage (a la CI). json-summary és el que llegeix .github/scripts/frontend-summary.mjs
+    coverage: {
+      provider: 'v8',
+      include: ['src/**'],
+      exclude: ['src/tests/**'],
+      reporter: ['text', 'json-summary'],
+    },
   },
 })

@@ -20,6 +20,7 @@
   "devDependencies": {
     "@playwright/test": "^1.56.1",
     "@vitejs/plugin-vue": "^6.0.8",
+    "@vitest/coverage-v8": "^5.0.5",
     "@vue/test-utils": "^2.5.1",
     "eslint": "^10.13.0",
     "eslint-plugin-vue": "^10.11.1",
