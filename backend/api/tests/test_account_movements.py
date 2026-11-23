@@ -199,19 +199,48 @@ def test_last_possible_date_is_accepted(client, make_token, fake_movements):
     assert response.status_code == 200
 
 
-def test_future_movement_types_have_generic_concept(client, make_token, fake_movements):
-    """Una compra (US6.1) no es mostra com a retirada."""
-    fake_movements(rows=[{**WITHDRAWAL, "type": "compra", "iban_masked": None}])
+@pytest.mark.parametrize(
+    ("movement_type", "concept"),
+    [("compra", "Compra d'actius"), ("venda", "Venda d'actius")],
+)
+def test_buy_and_sell_have_their_concept(
+    client, make_token, fake_movements, movement_type, concept
+):
+    """La compra (US6.1) i la venda (US6.2) no es mostren com a retirada."""
+    fake_movements(rows=[{**WITHDRAWAL, "type": movement_type, "iban_masked": None}])
+
+    body = get(client, make_token).json()
+
+    assert body["movements"][0]["concept"] == concept
+    assert body["movements"][0]["type"] == movement_type
+
+
+def test_unknown_movement_type_has_generic_concept(client, make_token, fake_movements):
+    """Un tipus que l'endpoint encara no coneix té un concepte genèric."""
+    fake_movements(rows=[{**WITHDRAWAL, "type": "dividend", "iban_masked": None}])
 
     body = get(client, make_token).json()
 
     assert body["movements"][0]["concept"] == "Moviment d'efectiu"
 
 
+@pytest.mark.parametrize("movement_type", ["compra", "venda"])
+def test_buy_and_sell_filters_reach_the_query(
+    client, make_token, fake_movements, movement_type
+):
+    """El filtre de tipus també admet la compra i la venda."""
+    fake = fake_movements()
+
+    response = get(client, make_token, type=movement_type)
+
+    assert response.status_code == 200
+    assert ("eq", "type", movement_type) in fake.calls
+
+
 @pytest.mark.parametrize(
     "params",
     [
-        {"type": "compra"},
+        {"type": "dividend"},
         {"from": "15/11/2026"},
         {"limit": 0},
         {"limit": 101},

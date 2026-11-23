@@ -44,6 +44,11 @@ def _personal_data_completed(profile: dict) -> bool:
     )
 
 
+def is_personal_data_completed(profile: dict) -> bool:
+    """Indica si l'usuari ha completat el pas de dades personals."""
+    return _personal_data_completed(profile)
+
+
 # Columna de profiles amb el perfil d'inversor calculat pel backend
 # (supabase/migrations/20261109120000_profiles_investor_profile.sql)
 INVESTOR_PROFILE_COLUMN = "perfil_inversor"

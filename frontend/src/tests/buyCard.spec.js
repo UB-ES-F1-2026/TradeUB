@@ -12,6 +12,7 @@ vi.mock('../services/api', async (importOriginal) => ({
 
 import { apiGet, apiPost, ApiError } from '../services/api'
 import { useAccountStore } from '../stores/account'
+import { useProfileStore } from '../stores/profile'
 import { formatCurrency } from '../utils/currency'
 import BuyCard from '../components/BuyCard.vue'
 
@@ -21,6 +22,8 @@ const eur = (amount) => formatCurrency(amount, 'EUR')
 
 async function mountCard({ balance = 100 } = {}) {
   useAccountStore().balance = balance
+  // El diàleg del PIN no consulta GET /profile/pin si ja se sap que n'hi ha (els casos sense PIN, a pinDialog.spec.js)
+  useProfileStore().pinConfigured = true
   const blank = { render: () => null }
   const router = createRouter({
     history: createMemoryHistory(),
@@ -47,8 +50,8 @@ async function continueWith(wrapper, units) {
 }
 
 async function confirmWith(wrapper, pin) {
-  await wrapper.get('[data-test="buy-pin"]').setValue(pin)
-  await wrapper.get('[data-test="buy-pin-step"]').trigger('submit')
+  await wrapper.get('[data-test="pin-input"]').setValue(pin)
+  await wrapper.get('[data-test="pin-dialog"]').trigger('submit')
   await flushPromises()
 }
 
@@ -95,7 +98,7 @@ describe('BuyCard', () => {
       await continueWith(wrapper, '1,5')
 
       expect(wrapper.text()).toContain('Les unitats han de ser un nombre enter positiu.')
-      expect(wrapper.find('[data-test="buy-pin-step"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="pin-dialog"]').exists()).toBe(false)
     })
 
     it('sense el saldo carregat el demana en obrir-se', async () => {
@@ -115,14 +118,14 @@ describe('BuyCard', () => {
   })
 
   describe('PIN', () => {
-    it('"Continua" obre el pas del PIN amb el resum', async () => {
+    it('"Continua" obre el diàleg del PIN amb el resum', async () => {
       const { wrapper } = await mountCard()
 
       await continueWith(wrapper, '3')
 
-      expect(wrapper.find('[data-test="buy-pin-step"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="pin-dialog"]').exists()).toBe(true)
       expect(wrapper.text()).toContain(`3 unitats de AAPL per ${eur(30.61)}`)
-      expect(wrapper.get('[data-test="buy-pin"]').attributes('maxlength')).toBe('4')
+      expect(wrapper.get('[data-test="pin-input"]').attributes('maxlength')).toBe('4')
     })
 
     it('un PIN amb format incorrecte no arriba al backend', async () => {
@@ -147,16 +150,16 @@ describe('BuyCard', () => {
       expect(wrapper.emitted('close')).toHaveLength(1)
     })
 
-    it('amb el PIN incorrecte el pas es queda obert i el camp es buida', async () => {
+    it('amb el PIN incorrecte el diàleg es queda obert i el camp es buida', async () => {
       apiPost.mockRejectedValue(new ApiError(403, 'El PIN introduït és incorrecte.'))
       const { wrapper } = await mountCard()
       await continueWith(wrapper, '3')
 
       await confirmWith(wrapper, '9999')
 
-      expect(wrapper.find('[data-test="buy-pin-step"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="pin-dialog"]').exists()).toBe(true)
       expect(wrapper.text()).toContain('El PIN introduït és incorrecte.')
-      expect(wrapper.get('[data-test="buy-pin"]').element.value).toBe('')
+      expect(wrapper.get('[data-test="pin-input"]').element.value).toBe('')
       expect(wrapper.emitted('close')).toBeUndefined()
     })
 
@@ -168,8 +171,8 @@ describe('BuyCard', () => {
       await continueWith(wrapper, '3')
       await confirmWith(wrapper, '1234')
 
-      expect(wrapper.find('[data-test="buy-pin-missing"]').exists()).toBe(true)
-      await wrapper.get('[data-test="buy-go-profile"]').trigger('click')
+      expect(wrapper.find('[data-test="pin-missing"]').exists()).toBe(true)
+      await wrapper.get('[data-test="pin-go-profile"]').trigger('click')
       await flushPromises()
 
       expect(router.currentRoute.value.name).toBe('perfil')
@@ -179,7 +182,7 @@ describe('BuyCard', () => {
       const { wrapper } = await mountCard()
       await continueWith(wrapper, '3')
 
-      await wrapper.get('[data-test="buy-pin-cancel"]').trigger('click')
+      await wrapper.get('[data-test="pin-cancel"]').trigger('click')
 
       expect(apiPost).not.toHaveBeenCalled()
       expect(wrapper.get('[data-test="buy-units"]').element.value).toBe('3')
@@ -187,7 +190,7 @@ describe('BuyCard', () => {
   })
 
   describe('errors del backend', () => {
-    it('amb saldo insuficient al backend torna a les unitats, avisa i recarrega el saldo', async () => {
+    it('amb saldo insuficient al backend tanca el diàleg, avisa i recarrega el saldo', async () => {
       apiPost.mockRejectedValue(new ApiError(422, 'No tens saldo suficient per fer aquesta compra.'))
       apiGet.mockResolvedValue({ balance: '5.00', currency: 'EUR' })
       const { wrapper } = await mountCard()
@@ -195,7 +198,7 @@ describe('BuyCard', () => {
 
       await confirmWith(wrapper, '1234')
 
-      expect(wrapper.find('[data-test="buy-pin-step"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="pin-dialog"]').exists()).toBe(false)
       expect(wrapper.get('[data-test="buy-error"]').text()).toBe('No tens saldo suficient per fer aquesta compra.')
       expect(apiGet).toHaveBeenCalledWith('/account/balance')
     })
