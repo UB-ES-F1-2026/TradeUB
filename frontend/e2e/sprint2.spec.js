@@ -84,12 +84,16 @@ test('canviar el PIN amb el PIN actual equivocat (US1.5)', async ({ page }) => {
   await expect(page.getByText('El PIN actual és incorrecte.')).toBeVisible()
 })
 
-test('cerca d\'actius amb i sense resultats (US5.1)', async ({ page }) => {
+test('cerca d\'actius amb preu i sense resultats (US5.1, US5.3)', async ({ page }) => {
   await page.goto('/actius')
   const search = page.getByTestId('asset-search')
+  await expect(page.getByTestId('simulated-prices')).toHaveText('Preus simulats')
 
   await search.fill('app')
-  await expect(page.getByTestId('asset-result').filter({ hasText: 'Apple' })).toBeVisible()
+  const apple = page.getByTestId('asset-result').filter({ hasText: 'Apple' })
+  await expect(apple).toBeVisible()
+  // El catàleg de DEV pot canviar: només es comprova el format, no el valor
+  await expect(apple.getByTestId('asset-price')).toHaveText(/€|No disponible/)
 
   await search.fill('zzz')
   await expect(page.getByTestId('no-results')).toContainText("No s'han trobat actius")
