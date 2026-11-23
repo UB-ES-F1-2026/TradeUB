@@ -12,6 +12,9 @@ from supabase import Client
 
 DEPOSIT = "ingres"
 WITHDRAWAL = "retirada"
+# Els registren buy_asset (US6.1) i sell_asset (US6.2) des de Postgres
+BUY = "compra"
+SELL = "venda"
 
 # Codi d'error de process_cash_movement quan el saldo quedaria negatiu
 INSUFFICIENT_BALANCE_CODE = "P0003"

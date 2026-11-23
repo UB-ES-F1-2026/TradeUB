@@ -7,8 +7,10 @@ from pydantic import BaseModel, Field
 from supabase import Client, PostgrestAPIError
 
 from core.cash_movements import (
+    BUY,
     DEPOSIT,
     INSUFFICIENT_BALANCE_CODE,
+    SELL,
     WITHDRAWAL,
     get_account_balance,
     process_cash_movement,
@@ -233,14 +235,19 @@ def movement_concept(row: dict) -> str:
     """Concepte de l'historial (US3.5), generat al servidor i no desat.
 
     La retirada mostra l'IBAN emmascarat que #116 desa al moviment, perquè el
-    concepte no canviï si l'usuari canvia d'IBAN més endavant.
+    concepte no canviï si l'usuari canvia d'IBAN més endavant. La compra i la
+    venda (US6.1, US6.2) tenen un concepte genèric: el moviment no desa
+    l'actiu ni les unitats.
     """
-    if row["type"] == "ingres":
+    if row["type"] == DEPOSIT:
         return "Ingrés de diners"
-    if row["type"] == "retirada":
+    if row["type"] == WITHDRAWAL:
         iban = row.get("iban_masked")
         return f"Retirada a ES•• {iban[-4:]}" if iban else "Retirada de diners"
-    # Compra i venda: les afegiran US6.1 i US6.2
+    if row["type"] == BUY:
+        return "Compra d'actius"
+    if row["type"] == SELL:
+        return "Venda d'actius"
     return "Moviment d'efectiu"
 
 
@@ -248,7 +255,9 @@ def movement_concept(row: dict) -> str:
 def list_movements(
     date_from: date | None = Query(None, alias="from"),
     date_to: date | None = Query(None, alias="to"),
-    movement_type: Literal["ingres", "retirada"] | None = Query(None, alias="type"),
+    movement_type: Literal["ingres", "retirada", "compra", "venda"] | None = Query(
+        None, alias="type"
+    ),
     limit: int = Query(MOVEMENTS_PAGE_SIZE, ge=1, le=100),
     offset: int = Query(0, ge=0),
     user=Depends(require_verified_user),
