@@ -34,8 +34,11 @@ async function handleSubmit() {
     // L'estat es demana ara i no al login: amb la 2FA activa, el backend no accepta el token fins que la sessió és aal2.
     // Si el backend no respon, els passos queden pendents i es passa per la benvinguda, que ho torna a provar
     await onboarding.load().catch(() => {})
-    // Sense l'onboarding acabat, primer es passa per la pantalla de benvinguda
-    await router.replace(onboarding.isComplete ? safeRedirect(route.query.redirect) : { name: 'onboarding' })
+    // Sense l'onboarding acabat, primer es passa per la pantalla de benvinguda,
+    // excepte si es ve de recuperar la contrasenya, que no en depèn
+    const redirect = safeRedirect(route.query.redirect)
+    const isPasswordReset = router.resolve(redirect).name === 'reset-password'
+    await router.replace(onboarding.isComplete || isPasswordReset ? redirect : { name: 'onboarding' })
   } catch (err) {
     error.value = mfaErrorMessage(err)
     code.value = ''
