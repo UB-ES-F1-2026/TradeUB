@@ -48,6 +48,44 @@ def get_balance(
     return response.data[0]
 
 
+@router.get("/positions")
+def list_positions(
+    user=Depends(require_verified_user),
+    db: Client = Depends(get_user_client),
+):
+    """Posicions de l'usuari verificat: actiu i unitats (US6.2).
+
+    La pantalla de venda les fa servir per saber quins actius es poden vendre
+    i quantes unitats com a màxim. Es filtra pel ``sub`` del token, i la RLS de
+    ``positions`` tampoc deixa llegir les d'un altre usuari.
+
+    Returns:
+        Llista de ``{"asset_id", "units"}``. ``units`` és un enter: les
+        posicions només admeten unitats enteres (#126). Sense posicions,
+        llista buida.
+
+    Raises:
+        HTTPException: 403 si l'usuari no està verificat i 500 si no es poden
+            llegir les posicions.
+    """
+    try:
+        response = (
+            db.table("positions")
+            .select("asset_id, units")
+            .eq("user_id", user["sub"])
+            .execute()
+        )
+    except PostgrestAPIError as e:
+        raise HTTPException(
+            status_code=500, detail="No s'han pogut recuperar les posicions"
+        ) from e
+    # PostgREST retorna el numeric com a número o com a text ("3.00000000")
+    return [
+        {"asset_id": row["asset_id"], "units": int(Decimal(str(row["units"])))}
+        for row in response.data
+    ]
+
+
 # Límits de cada ingrés (US3.2)
 MIN_DEPOSIT = Decimal(1)
 MAX_DEPOSIT = Decimal(10000)
