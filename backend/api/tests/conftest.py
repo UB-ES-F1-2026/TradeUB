@@ -160,7 +160,7 @@ def fake_profile():
 class FakeAdminClient:
     """Doble encadenable de la clau secreta.
 
-    Imita table().update().eq().execute() i rpc(nom, params).execute(). Amb
+    Imita table().select/update().eq().execute() i rpc(nom, params). Amb
     rpc, execute() retorna ``rows`` com a ``data`` (el valor de la funció).
     """
 
@@ -171,6 +171,7 @@ class FakeAdminClient:
         self.update_data = None
         self.eq_args = None
         self.rpc_call = None
+        self.select_mode = False
 
     def rpc(self, name, params):
         self.rpc_call = (name, params)
@@ -180,7 +181,12 @@ class FakeAdminClient:
         self.table_name = name
         return self
 
+    def select(self, *columns):
+        self.select_mode = True
+        return self
+
     def update(self, data):
+        self.select_mode = False
         self.update_data = data
         return self
 
@@ -191,8 +197,12 @@ class FakeAdminClient:
     def execute(self):
         if self.error is not None:
             raise self.error
+        if self.select_mode:
+            return SimpleNamespace(data=self.rows or [])
         if self.rows is not None:
-            return SimpleNamespace(data=self.rows)
+            if not self.rows or self.update_data is None:
+                return SimpleNamespace(data=self.rows)
+            return SimpleNamespace(data=[{**self.rows[0], **self.update_data}])
         return SimpleNamespace(data=[{"id": self.eq_args[1], **self.update_data}])
 
 
