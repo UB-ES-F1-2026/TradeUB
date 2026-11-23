@@ -294,6 +294,27 @@ describe('DadesPersonalsForm en mode edició (US4.1)', () => {
     expect(wrapper.emitted('saved')).toBeUndefined()
   })
 
+  it("sense el pas de l'onboarding completat mostra el missatge del backend (409)", async () => {
+    apiPatch.mockRejectedValue(new ApiError(409, "Cal completar les dades personals de l'onboarding"))
+    const wrapper = await mountEdit()
+
+    await submit(wrapper)
+
+    expect(wrapper.text()).toContain("Cal completar les dades personals de l'onboarding")
+    expect(wrapper.emitted('saved')).toBeUndefined()
+  })
+
+  it("si Pydantic rebutja el cos (422 sense text), mostra l'error general", async () => {
+    // api.js converteix el detail en llista de Pydantic a 'Error del servidor'
+    apiPatch.mockRejectedValue(new ApiError(422, 'Error del servidor'))
+    const wrapper = await mountEdit()
+
+    await submit(wrapper)
+
+    expect(wrapper.text()).toContain("No s'han pogut desar les dades. Torna-ho a provar.")
+    expect(wrapper.text()).not.toContain('Error del servidor')
+  })
+
   it("si el backend falla, mostra l'error general", async () => {
     apiPatch.mockRejectedValue(new ApiError(500, 'Error del servidor'))
     const wrapper = await mountEdit()
