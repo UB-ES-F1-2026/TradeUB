@@ -10,6 +10,7 @@ import { INCOMPLETE_FEATURES_ENABLED } from '../config/features'
 import { UiAlert, UiBadge, UiButton, UiCard } from '../components/ui'
 import TwoFactorCard from '../components/TwoFactorCard.vue'
 import PinCard from '../components/PinCard.vue'
+import PasswordCard from '../components/PasswordCard.vue'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -177,6 +178,8 @@ async function handleLogout() {
     </UiCard>
 
     <TwoFactorCard />
+
+    <PasswordCard />
 
     <!-- El PIN només el poden configurar els usuaris verificats (US1.5) -->
     <PinCard v-if="verificat" />
