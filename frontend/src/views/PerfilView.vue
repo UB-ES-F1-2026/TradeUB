@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useAccountStore } from '../stores/account'
 import { useAuthStore } from '../stores/auth'
@@ -53,6 +53,13 @@ onMounted(async () => {
   }
 })
 const editingPersonalData = ref(false)
+// En sortir del mode edició (desar o cancel·lar), el focus torna al botó Edita
+const personalDataCard = ref(null)
+async function closePersonalDataEdit() {
+  editingPersonalData.value = false
+  await nextTick()
+  personalDataCard.value?.querySelector('[data-test="edit-personal-data"]')?.focus()
+}
 
 // Verificació (US2.4): ve del backend (GET /users/me). Compta com a verificat amb la identitat verificada
 // i els termes vigents acceptats, el mateix criteri que fa servir el backend per a l'operativa
@@ -150,7 +157,10 @@ async function handleLogout() {
     </div>
 
     <UiCard class="page__card">
-      <div class="page__card-head">
+      <div
+        ref="personalDataCard"
+        class="page__card-head"
+      >
         <h2 class="page__section-title">
           Dades personals
         </h2>
@@ -168,8 +178,8 @@ async function handleLogout() {
       <DadesPersonalsForm
         v-if="editingPersonalData"
         mode="edit"
-        @saved="editingPersonalData = false"
-        @cancel="editingPersonalData = false"
+        @saved="closePersonalDataEdit"
+        @cancel="closePersonalDataEdit"
       />
       <dl
         v-else

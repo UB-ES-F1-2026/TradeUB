@@ -41,6 +41,8 @@ const submitted = ref(false)
 const saveError = ref('')
 // Error del NIF/NIE que ha retornat el backend; es mostra al camp i s'esborra quan l'usuari el canvia
 const nifServerError = ref('')
+// Al mode edició, el focus va al primer camp en obrir-se
+const formEl = ref(null)
 
 // Si l'usuari ja havia desat dades, el formulari les mostra per poder-les revisar.
 // Al perfil ja estan carregades: no cal tornar-les a demanar
@@ -49,6 +51,7 @@ onMounted(async () => {
   for (const key of Object.keys(form)) {
     if (!form[key] && profile.perfil[key]) form[key] = profile.perfil[key]
   }
+  if (isEdit.value) formEl.value?.querySelector('input')?.focus()
 })
 
 watch(() => form.nif, () => {
@@ -140,6 +143,7 @@ async function handleSubmit() {
 
 <template>
   <form
+    ref="formEl"
     novalidate
     @submit.prevent="handleSubmit"
   >

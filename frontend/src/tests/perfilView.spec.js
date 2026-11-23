@@ -47,12 +47,13 @@ function makeRouter() {
   })
 }
 
-async function mountPerfil() {
+// attachTo: per als tests de focus, que necessiten el component dins del document
+async function mountPerfil(attachTo) {
   const router = makeRouter()
   router.push('/perfil')
   await router.isReady()
   // La secció de 2FA té els seus propis tests (twoFactorCard.spec.js)
-  const wrapper = mount(PerfilView, { global: { plugins: [router], stubs: { TwoFactorCard: true } } })
+  const wrapper = mount(PerfilView, { global: { plugins: [router], stubs: { TwoFactorCard: true } }, attachTo })
   return { wrapper, router }
 }
 
@@ -280,5 +281,19 @@ describe('PerfilView: edició de les dades personals (US4.1)', () => {
     expect(apiPatch).toHaveBeenCalledWith('/profile/personal-data', expect.objectContaining({ poblacio: 'Girona' }))
     expect(wrapper.find('form').exists()).toBe(false)
     expect(wrapper.text()).toContain('Carrer Gran Via 585, 08007 Girona')
+  })
+
+  it('el focus va al primer camp en editar i torna a "Edita" en cancel·lar', async () => {
+    const { wrapper } = await mountPerfil(document.body)
+    await flushPromises()
+
+    await editButton(wrapper).trigger('click')
+    await flushPromises()
+    expect(document.activeElement).toBe(wrapper.find('form input').element)
+
+    await wrapper.findAll('button').find((b) => b.text() === 'Cancel·la').trigger('click')
+    await flushPromises()
+    expect(document.activeElement).toBe(editButton(wrapper).element)
+    wrapper.unmount()
   })
 })
