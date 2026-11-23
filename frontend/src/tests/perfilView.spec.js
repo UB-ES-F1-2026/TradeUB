@@ -52,8 +52,11 @@ async function mountPerfil(attachTo) {
   const router = makeRouter()
   router.push('/perfil')
   await router.isReady()
-  // La secció de 2FA té els seus propis tests (twoFactorCard.spec.js)
-  const wrapper = mount(PerfilView, { global: { plugins: [router], stubs: { TwoFactorCard: true } }, attachTo })
+  // Les seccions de 2FA i de contrasenya tenen els seus propis tests (twoFactorCard.spec.js, passwordCard.spec.js)
+  const wrapper = mount(PerfilView, {
+    global: { plugins: [router], stubs: { TwoFactorCard: true, PasswordCard: true } },
+    attachTo,
+  })
   return { wrapper, router }
 }
 
@@ -177,6 +180,13 @@ describe('PerfilView', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('No verificat')
+  })
+
+  it("mostra l'apartat de contrasenya a qualsevol usuari registrat", async () => {
+    const { wrapper } = await mountPerfil()
+    await flushPromises()
+
+    expect(wrapper.findComponent({ name: 'PasswordCard' }).exists()).toBe(true)
   })
 
   it('oculta la configuració encara no disponible', async () => {

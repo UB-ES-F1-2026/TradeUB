@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import { supabase } from '../services/supabase';
+import { supabase, verifyPassword } from '../services/supabase';
 
 // Llegeix una claim del JWT d'accés (només per mostrar estat, la validació la fa Supabase)
 function jwtClaim(token, claim) {
@@ -141,9 +141,20 @@ export const useAuthStore = defineStore('auth', () => {
         if (data?.session) setSession(data.session);
     };
 
+    // Canvi de contrasenya des del perfil. Supabase no comprova la contrasenya actual a updateUser,
+    // per això es comprova abans sense tocar la sessió. Amb la 2FA activa també es demana el codi.
+    // Si alguna comprovació falla, no es canvia res i la sessió es queda igual
+    const changePassword = async (currentPassword, newPassword, code) => {
+        await verifyPassword(user.value?.email, currentPassword);
+        if (code) await verifyMfaLogin(code);
+
+        const { error } = await supabase.auth.updateUser({ password: newPassword });
+        if (error) throw error;
+    };
+
     return {
         user, session, isAuthenticated, aal, needsMfa,
-        initAuth, register, resend, login, logout, requestPasswordReset, updatePassword,
+        initAuth, register, resend, login, logout, requestPasswordReset, updatePassword, changePassword,
         getTotpFactor, enrollTotp, verifyTotp, verifyMfaLogin, unenrollTotp,
     };
 });
