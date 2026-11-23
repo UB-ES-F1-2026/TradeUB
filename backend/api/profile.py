@@ -154,7 +154,8 @@ def update_personal_data(
     row = _save_own_profile(
         admin, user["sub"], values, "No s'han pogut actualitzar les dades personals"
     )
-    return {"perfil": row}
+    # Com al POST: la fila porta la columna iban i no pot sortir sencera en una resposta
+    return {"perfil": to_public_profile(row)}
 
 
 # Columna de profiles amb les respostes del qüestionari
