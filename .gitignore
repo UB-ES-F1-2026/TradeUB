@@ -33,3 +33,9 @@ yarn-error.log*
 *.njsproj
 *.sln
 *.sw?
+
+# Cobertura i resultats dels tests (CI)
+.coverage
+coverage/
+pytest.xml
+vitest-results.json

@@ -6,3 +6,8 @@ ignore = ["B008", "BLE001"]
 # backend/ al sys.path: main.py fa "from api import users" (imports absoluts)
 pythonpath = ["."]
 testpaths = ["api/tests"]
+
+[tool.coverage.run]
+# Només el codi de l'aplicació: els tests no compten
+source = ["."]
+omit = ["api/tests/*", "conftest.py"]
