@@ -169,3 +169,19 @@ def test_postgrest_error_returns_500(client, make_token, fake_profile):
 
     assert response.status_code == 500
     assert response.json()["detail"] == "No s'ha pogut recuperar el perfil"
+
+
+def test_profile_returns_iban_only_masked(client, make_token, fake_profile):
+    """L'IBAN vinculat no surt mai sencer a la resposta, només emmascarat."""
+    iban = "ES9121000418450200051332"
+    fake_profile(rows=[{"id": SUBJECT, "iban": iban}])
+
+    response = client.get(
+        ENDPOINT, headers={"Authorization": f"Bearer {make_token(sub=SUBJECT)}"}
+    )
+
+    assert response.status_code == 200
+    perfil = response.json()["perfil"]
+    assert "iban" not in perfil
+    assert perfil["iban_emmascarat"] == "ES•• •••• •••• •••• •••• 1332"
+    assert iban not in response.text

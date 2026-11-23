@@ -66,11 +66,15 @@ describe('protecció de rutes en carregar la pàgina (F5)', () => {
       expect(await carregarApp('/perfil')).toBe('/perfil')
     })
 
-    for (const path of ['/cartera', '/historial', '/bustia']) {
+    for (const path of ['/cartera', '/bustia']) {
       it(`${path} redirigeix a /actius`, async () => {
         expect(await carregarApp(path)).toBe('/actius')
       })
     }
+
+    it('es queda a /historial', async () => {
+      expect(await carregarApp('/historial')).toBe('/historial')
+    })
 
     it('es queda a /compte-efectiu', async () => {
       expect(await carregarApp('/compte-efectiu')).toBe('/compte-efectiu')

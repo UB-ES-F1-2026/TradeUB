@@ -25,7 +25,7 @@ async function mountCompte() {
   await router.isReady()
   // El saldo i el formulari tenen els seus propis tests
   const wrapper = mount(CompteEfectiuView, {
-    global: { plugins: [router], stubs: { BalanceCard: true, DepositForm: true } },
+    global: { plugins: [router], stubs: { BalanceCard: true, DepositForm: true, WithdrawalForm: true } },
   })
   await flushPromises()
   return wrapper
@@ -37,12 +37,13 @@ describe('CompteEfectiuView', () => {
     setActivePinia(createPinia())
   })
 
-  it("amb la identitat verificada i els termes acceptats mostra el saldo i el formulari d'ingrés", async () => {
+  it("amb la identitat verificada i els termes acceptats mostra el saldo i els formularis d'ingrés i de retirada", async () => {
     apiGet.mockResolvedValue({ verificacio: { estat: 'verificat', termes_acceptats: true } })
     const wrapper = await mountCompte()
 
     expect(wrapper.findComponent({ name: 'BalanceCard' }).exists()).toBe(true)
     expect(wrapper.findComponent({ name: 'DepositForm' }).exists()).toBe(true)
+    expect(wrapper.findComponent({ name: 'WithdrawalForm' }).exists()).toBe(true)
     expect(wrapper.find('[data-test="verification-required"]').exists()).toBe(false)
   })
 
@@ -50,7 +51,8 @@ describe('CompteEfectiuView', () => {
     apiGet.mockResolvedValue({ verificacio: { estat: 'pendent', termes_acceptats: false } })
     const wrapper = await mountCompte()
 
-    expect(wrapper.get('[data-test="verification-required"]').text()).toContain('per ingressar diners')
+    expect(wrapper.get('[data-test="verification-required"]').text()).toContain('per ingressar o retirar diners')
     expect(wrapper.findComponent({ name: 'DepositForm' }).exists()).toBe(false)
+    expect(wrapper.findComponent({ name: 'WithdrawalForm' }).exists()).toBe(false)
   })
 })
