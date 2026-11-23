@@ -80,7 +80,7 @@ def test_deposit_database_failure(client, auth, verified, fake_admin):
     )
 
 
-# --- 403 per a usuaris no verificats (US2.4, US1.5, US3.2, US3.5) ---
+# --- 403 per a usuaris no verificats (US2.4, US1.5, US3.2, US3.5, US6.1, US6.2) ---
 
 
 @pytest.mark.parametrize(
@@ -91,8 +91,20 @@ def test_deposit_database_failure(client, auth, verified, fake_admin):
         ("get", "/api/v1/account/balance", None),
         ("get", "/api/v1/account/movements", None),
         ("post", PIN, {"pin": "1234"}),
+        ("get", "/api/v1/account/positions", None),
+        ("post", "/api/v1/orders/buy", {"asset_id": 1, "units": 1}),
+        ("post", "/api/v1/orders/sell", {"asset_id": 1, "units": 1}),
     ],
-    ids=["ingres", "retirada", "saldo", "historial", "crear-pin"],
+    ids=[
+        "ingres",
+        "retirada",
+        "saldo",
+        "historial",
+        "crear-pin",
+        "posicions",
+        "compra",
+        "venda",
+    ],
 )
 def test_unverified_user_cannot_operate(
     client, auth, fake_profile, fake_admin, method, path, body
