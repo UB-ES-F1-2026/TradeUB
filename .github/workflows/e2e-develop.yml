@@ -20,7 +20,8 @@ jobs:
   e2e:
     name: E2E - Playwright
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
-    runs-on: ubuntu-latest
+    # Versió fixa: Playwright 1.56 no té Chromium per a Ubuntu 26.04, que ara és ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: ./frontend
