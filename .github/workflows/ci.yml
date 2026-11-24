@@ -13,6 +13,32 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  sql-check:
+    name: SQL - Funcions de la base de dades
+    runs-on: ubuntu-latest
+    # Postgres buit: run.sh hi crea el mínim de Supabase i hi aplica les migracions
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Obtenir el codi
+        uses: actions/checkout@v4
+
+      - name: Executar els tests de les funcions SQL
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+        run: supabase/tests/run.sh
+
   backend-check:
     name: Backend - Validació
     runs-on: ubuntu-latest
@@ -44,10 +70,14 @@ jobs:
       - name: Executar tests unitaris del backend
         run: |
           if [ -d api/tests ] || [ -d tests ]; then
-            pytest
+            pytest --cov --cov-report=term --junitxml=pytest.xml
           else
             echo "No hi ha tests del backend; s'omet temporalment."
           fi
+
+      - name: Resum dels tests i la cobertura
+        if: always()
+        run: python ../.github/scripts/backend_summary.py >> "$GITHUB_STEP_SUMMARY"
 
   frontend-check:
     name: Frontend - Build
@@ -77,4 +107,8 @@ jobs:
         run: npm run build
 
       - name: Executar tests unitaris del frontend
-        run: npm test -- src/tests
+        run: npm test -- src/tests --coverage --reporter=default --reporter=json --outputFile.json=vitest-results.json
+
+      - name: Resum dels tests i la cobertura
+        if: always()
+        run: node ../.github/scripts/frontend-summary.mjs >> "$GITHUB_STEP_SUMMARY"

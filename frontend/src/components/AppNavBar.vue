@@ -7,9 +7,9 @@ import { UiLogo } from './ui'
 const links = [
   { to: '/actius', label: 'Actius' },
   { to: '/cartera', label: 'Cartera', enabled: INCOMPLETE_FEATURES_ENABLED },
-  { to: '/historial', label: 'Historial', enabled: INCOMPLETE_FEATURES_ENABLED },
+  { to: '/historial', label: 'Historial' },
   { to: '/bustia', label: 'Bústia', enabled: INCOMPLETE_FEATURES_ENABLED },
-  { to: '/compte-efectiu', label: "Compte d'efectiu", enabled: INCOMPLETE_FEATURES_ENABLED },
+  { to: '/compte-efectiu', label: "Compte d'efectiu" },
   { to: '/perfil', label: 'Perfil' },
 ]
 

@@ -19,10 +19,10 @@ describe('AppNavBar', () => {
     const wrapper = mount(AppNavBar, { global: { plugins: [router] } })
 
     expect(wrapper.text()).toContain('Actius')
+    expect(wrapper.text()).toContain("Compte d'efectiu")
     expect(wrapper.text()).toContain('Perfil')
+    expect(wrapper.text()).toContain('Historial')
     expect(wrapper.text()).not.toContain('Cartera')
-    expect(wrapper.text()).not.toContain('Historial')
     expect(wrapper.text()).not.toContain('Bústia')
-    expect(wrapper.text()).not.toContain("Compte d'efectiu")
   })
 })

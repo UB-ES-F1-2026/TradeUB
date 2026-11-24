@@ -33,3 +33,13 @@ yarn-error.log*
 *.njsproj
 *.sln
 *.sw?
+
+# Playwright
+test-results/
+playwright-report/
+
+# Cobertura i resultats dels tests (CI)
+.coverage
+coverage/
+pytest.xml
+vitest-results.json

@@ -1,0 +1,74 @@
+name: E2E a DEV (Develop)
+
+# Tests de Playwright (frontend/e2e) contra DEV, quan acaba el desplegament del frontend o del backend.
+# Sense els secrets E2E_EMAIL, E2E_PASSWORD i E2E_PIN el job se salta en lloc de fallar
+on:
+  workflow_run:
+    workflows: ["CD Frontend a Vercel (Develop)", "CD Backend Docker a Azure (Develop)"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Els dos desplegaments acaben gairebé alhora: només cal provar l'últim
+concurrency:
+  group: e2e-develop
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: E2E - Playwright
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    # Versió fixa: Playwright 1.56 no té Chromium per a Ubuntu 26.04, que ara és ubuntu-latest
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: ./frontend
+    env:
+      E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+      E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+      E2E_PIN: ${{ secrets.E2E_PIN }}
+    steps:
+      - name: Comprovar els secrets
+        id: secrets
+        run: |
+          if [ -z "$E2E_EMAIL" ] || [ -z "$E2E_PASSWORD" ] || [ -z "$E2E_PIN" ]; then
+            echo "Falten els secrets E2E_*: no s'executen els tests E2E"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+        working-directory: .
+
+      - name: Obtenir el codi
+        if: steps.secrets.outputs.ready == 'true'
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        if: steps.secrets.outputs.ready == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: ./frontend/package-lock.json
+
+      - name: Instal·lar dependències
+        if: steps.secrets.outputs.ready == 'true'
+        run: npm ci
+
+      - name: Instal·lar Chromium
+        if: steps.secrets.outputs.ready == 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Executar els tests E2E
+        if: steps.secrets.outputs.ready == 'true'
+        run: npm run e2e
+
+      - name: Desar l'informe
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report
+          retention-days: 7

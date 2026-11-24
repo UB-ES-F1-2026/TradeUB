@@ -158,7 +158,11 @@ def fake_profile():
 
 
 class FakeAdminClient:
-    """Doble encadenable de table().update().eq().execute() amb la clau secreta."""
+    """Doble encadenable de la clau secreta.
+
+    Imita table().select/update().eq().execute() i rpc(nom, params). Amb
+    rpc, execute() retorna ``rows`` com a ``data`` (el valor de la funció).
+    """
 
     def __init__(self, rows=None, error=None):
         self.rows = rows
@@ -166,12 +170,23 @@ class FakeAdminClient:
         self.table_name = None
         self.update_data = None
         self.eq_args = None
+        self.rpc_call = None
+        self.select_mode = False
+
+    def rpc(self, name, params):
+        self.rpc_call = (name, params)
+        return self
 
     def table(self, name):
         self.table_name = name
         return self
 
+    def select(self, *columns):
+        self.select_mode = True
+        return self
+
     def update(self, data):
+        self.select_mode = False
         self.update_data = data
         return self
 
@@ -182,8 +197,12 @@ class FakeAdminClient:
     def execute(self):
         if self.error is not None:
             raise self.error
+        if self.select_mode:
+            return SimpleNamespace(data=self.rows or [])
         if self.rows is not None:
-            return SimpleNamespace(data=self.rows)
+            if not self.rows or self.update_data is None:
+                return SimpleNamespace(data=self.rows)
+            return SimpleNamespace(data=[{**self.rows[0], **self.update_data}])
         return SimpleNamespace(data=[{"id": self.eq_args[1], **self.update_data}])
 
 
@@ -200,6 +219,71 @@ def fake_admin():
         admin = FakeAdminClient(rows, error)
         main.app.dependency_overrides[deps.get_admin_client] = lambda: admin
         return admin
+
+    yield install
+    main.app.dependency_overrides.clear()
+
+
+class FakePinsClient:
+    """Doble de la taula profile_pins amb el client d'administració.
+
+    Imita table().select().eq().execute() i table().upsert().execute(). Guarda
+    el hash de l'usuari (o cap) i hi aplica l'upsert, com faria PostgREST.
+    """
+
+    def __init__(self, pin_hash=None, error=None, upsert_error=None):
+        self.pin_hash = pin_hash
+        self.error = error
+        self.upsert_error = upsert_error
+        self.eq_args = []
+        self.upserted = None
+        self.on_conflict = None
+        self._pending_upsert = None
+
+    def table(self, name):
+        assert name == "profile_pins"
+        return self
+
+    def select(self, *columns):
+        self._pending_upsert = None
+        return self
+
+    def eq(self, column, value):
+        self.eq_args.append((column, value))
+        return self
+
+    def upsert(self, data, on_conflict=""):
+        self._pending_upsert = data
+        self.on_conflict = on_conflict
+        return self
+
+    def execute(self):
+        if self.error is not None:
+            raise self.error
+        if self._pending_upsert is not None:
+            if self.upsert_error is not None:
+                raise self.upsert_error
+            self.upserted = self._pending_upsert
+            self.pin_hash = self.upserted["pin_hash"]
+            self._pending_upsert = None
+            return SimpleNamespace(data=[self.upserted])
+        rows = [{"pin_hash": self.pin_hash}] if self.pin_hash else []
+        return SimpleNamespace(data=rows)
+
+
+@pytest.fixture
+def fake_pins():
+    """Substitueix get_admin_client per un doble de profile_pins.
+
+    Yields:
+        Funció install(pin_hash=None, error=None, upsert_error=None) que
+        retorna el doble per inspeccionar què s'ha llegit i desat.
+    """
+
+    def install(pin_hash=None, error=None, upsert_error=None):
+        pins = FakePinsClient(pin_hash, error, upsert_error)
+        main.app.dependency_overrides[deps.get_admin_client] = lambda: pins
+        return pins
 
     yield install
     main.app.dependency_overrides.clear()

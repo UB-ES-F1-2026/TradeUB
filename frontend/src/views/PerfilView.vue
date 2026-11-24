@@ -1,14 +1,19 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useAccountStore } from '../stores/account'
 import { useAuthStore } from '../stores/auth'
+import { useOnboardingStore } from '../stores/onboarding'
 import { useProfileStore } from '../stores/profile'
 import { useVerificationStore } from '../stores/verification'
+import { STEP_STATUS } from '../utils/onboarding'
 import { formatCurrency } from '../utils/currency'
 import { INCOMPLETE_FEATURES_ENABLED } from '../config/features'
 import { UiAlert, UiBadge, UiButton, UiCard } from '../components/ui'
 import TwoFactorCard from '../components/TwoFactorCard.vue'
+import PinCard from '../components/PinCard.vue'
+import PasswordCard from '../components/PasswordCard.vue'
+import DadesPersonalsForm from '../components/DadesPersonalsForm.vue'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -35,6 +40,27 @@ const personalRows = computed(() => [
   { label: 'Data de naixement', value: formatDate(perfil.value.data_naixement) },
   { label: 'Adreça', value: address.value },
 ])
+
+// Mode edició (US4.1): només si el pas "Dades personals" de l'onboarding està completat, encara que la verificació
+// no estigui acabada. Si no es pot comprovar, no s'ofereix
+const onboarding = useOnboardingStore()
+const personalDataCompleted = ref(false)
+onMounted(async () => {
+  try {
+    await onboarding.load()
+    personalDataCompleted.value = onboarding.getStep('dades-personals')?.status === STEP_STATUS.COMPLETED
+  } catch {
+    personalDataCompleted.value = false
+  }
+})
+const editingPersonalData = ref(false)
+// En sortir del mode edició (desar o cancel·lar), el focus torna al botó Edita
+const personalDataCard = ref(null)
+async function closePersonalDataEdit() {
+  editingPersonalData.value = false
+  await nextTick()
+  personalDataCard.value?.querySelector('[data-test="edit-personal-data"]')?.focus()
+}
 
 // Verificació (US2.4): ve del backend (GET /users/me). Compta com a verificat amb la identitat verificada
 // i els termes vigents acceptats, el mateix criteri que fa servir el backend per a l'operativa
@@ -132,10 +158,34 @@ async function handleLogout() {
     </div>
 
     <UiCard class="page__card">
-      <h2 class="page__section-title">
-        Dades personals
-      </h2>
-      <dl class="page__data">
+      <div
+        ref="personalDataCard"
+        class="page__card-head"
+      >
+        <h2 class="page__section-title">
+          Dades personals
+        </h2>
+        <UiButton
+          v-if="personalDataCompleted && !editingPersonalData"
+          variant="secondary"
+          size="sm"
+          data-test="edit-personal-data"
+          @click="editingPersonalData = true"
+        >
+          Edita
+        </UiButton>
+      </div>
+      <!-- En desar, el store ja s'ha recarregat i la targeta torna a la lectura amb les dades noves -->
+      <DadesPersonalsForm
+        v-if="editingPersonalData"
+        mode="edit"
+        @saved="closePersonalDataEdit"
+        @cancel="closePersonalDataEdit"
+      />
+      <dl
+        v-else
+        class="page__data"
+      >
         <div
           v-for="row in personalRows"
           :key="row.label"
@@ -176,6 +226,11 @@ async function handleLogout() {
     </UiCard>
 
     <TwoFactorCard />
+
+    <PasswordCard />
+
+    <!-- El PIN només el poden configurar els usuaris verificats (US1.5) -->
+    <PinCard v-if="verificat" />
 
     <UiCard
       v-if="INCOMPLETE_FEATURES_ENABLED"
@@ -279,6 +334,12 @@ async function handleLogout() {
 }
 .page__section-title {
   font-size: var(--tub-text-md);
+}
+.page__card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tub-space-4);
 }
 .page__data {
   display: grid;

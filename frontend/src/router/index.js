@@ -29,7 +29,7 @@ const routes = [
         path: '/historial',
         name: 'historial',
         component: () => import('../views/HistorialView.vue'),
-        meta: { requiresAuth: true, enabled: INCOMPLETE_FEATURES_ENABLED }
+        meta: { requiresAuth: true }
     },
     {
         path: '/bustia',
@@ -41,7 +41,7 @@ const routes = [
         path: '/compte-efectiu',
         name: 'compte-efectiu',
         component: () => import('../views/CompteEfectiuView.vue'),
-        meta: { requiresAuth: true, enabled: INCOMPLETE_FEATURES_ENABLED }
+        meta: { requiresAuth: true }
     },
     {
         path: '/perfil',

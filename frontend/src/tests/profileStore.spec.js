@@ -7,9 +7,10 @@ vi.mock('../services/api', async (importOriginal) => ({
   ...(await importOriginal()),
   apiGet: vi.fn(),
   apiPost: vi.fn(),
+  apiPatch: vi.fn(),
 }))
 
-import { apiGet, apiPost, ApiError } from '../services/api'
+import { apiGet, apiPatch, apiPost, ApiError } from '../services/api'
 import { useAuthStore } from '../stores/auth'
 import { useProfileStore } from '../stores/profile'
 
@@ -70,6 +71,25 @@ describe('profile store', () => {
     expect(store.perfil).toEqual({})
   })
 
+  it('updatePersonalData envia els camps amb PATCH i torna a llegir el perfil', async () => {
+    apiPatch.mockResolvedValue({})
+    apiGet.mockResolvedValue({ perfil: { nom: 'Anna', poblacio: 'Girona' } })
+
+    await store.updatePersonalData({ nom: 'Anna', poblacio: 'Girona' })
+
+    expect(apiPatch).toHaveBeenCalledWith('/profile/personal-data', { nom: 'Anna', poblacio: 'Girona' })
+    expect(apiGet).toHaveBeenCalledWith('/users/me')
+    expect(store.perfil).toEqual({ nom: 'Anna', poblacio: 'Girona' })
+  })
+
+  it("si l'edició falla, llança l'error i no torna a llegir el perfil", async () => {
+    const apiError = new ApiError(403, 'Les dades verificades per KYC no es poden modificar directament.')
+    apiPatch.mockRejectedValue(apiError)
+
+    await expect(store.updatePersonalData({ nif: '12345678Z' })).rejects.toBe(apiError)
+    expect(apiGet).not.toHaveBeenCalled()
+  })
+
   it('saveInvestorQuestionnaire envia les respostes a POST /profile/investor-questionnaire i retorna el perfil', async () => {
     apiPost.mockResolvedValue({ profile: 'avancat' })
 
@@ -78,6 +98,73 @@ describe('profile store', () => {
     expect(apiPost).toHaveBeenCalledWith('/profile/investor-questionnaire', { experiencia: 'habitual' })
     expect(profile).toBe('avancat')
     expect(store.perfil.perfil_inversor).toBe('avancat')
+  })
+
+  it('loadPinStatus llegeix de GET /profile/pin si hi ha PIN configurat', async () => {
+    apiGet.mockResolvedValue({ configurat: true })
+    expect(store.hasPin).toBe(false)
+
+    await store.loadPinStatus()
+
+    expect(apiGet).toHaveBeenCalledWith('/profile/pin')
+    expect(store.hasPin).toBe(true)
+  })
+
+  it('si no es pot comprovar el PIN, mostra l\'error i no se sap si n\'hi ha', async () => {
+    apiGet.mockRejectedValue(new ApiError(500, "No s'ha pogut recuperar el PIN"))
+
+    await store.loadPinStatus()
+
+    expect(store.pinConfigured).toBeNull()
+    expect(store.pinError).toBe("No s'ha pogut comprovar el PIN. Torna-ho a provar.")
+  })
+
+  it('pinLoading està actiu mentre es comprova el PIN', async () => {
+    let resolve
+    apiGet.mockReturnValue(new Promise((r) => { resolve = r }))
+
+    const pending = store.loadPinStatus()
+    expect(store.pinLoading).toBe(true)
+
+    resolve({ configurat: false })
+    await pending
+    expect(store.pinLoading).toBe(false)
+  })
+
+  it('pinLoading es desactiva també quan falla', async () => {
+    apiGet.mockRejectedValue(new ApiError(500, "No s'ha pogut recuperar el PIN"))
+
+    const pending = store.loadPinStatus()
+    expect(store.pinLoading).toBe(true)
+
+    await pending
+    expect(store.pinLoading).toBe(false)
+  })
+
+  it('savePin crea el PIN amb POST /profile/pin i el marca com a configurat', async () => {
+    apiPost.mockResolvedValue({})
+
+    await store.savePin({ pin: '1234' })
+
+    expect(apiPost).toHaveBeenCalledWith('/profile/pin', { pin: '1234' })
+    expect(store.hasPin).toBe(true)
+  })
+
+  it('savePin envia també el PIN actual quan es canvia', async () => {
+    apiPost.mockResolvedValue({})
+
+    await store.savePin({ pin: '5678', currentPin: '1234' })
+
+    expect(apiPost).toHaveBeenCalledWith('/profile/pin', { pin: '5678', pin_actual: '1234' })
+  })
+
+  it('si el backend rebutja el PIN, llança l\'error i no el marca com a configurat', async () => {
+    const apiError = new ApiError(403, 'Cal verificar la identitat i acceptar els termes per operar')
+    apiPost.mockRejectedValue(apiError)
+
+    await expect(store.savePin({ pin: '1234' })).rejects.toBe(apiError)
+
+    expect(store.hasPin).toBe(false)
   })
 
   it('en canviar d\'usuari s\'esborra el perfil de l\'anterior', async () => {
