@@ -1,8 +1,8 @@
 """Moviments d'efectiu del compte virtual (US3.2, US3.3).
 
 Totes les operacions amb diners ficticis passen per la funció de Postgres
-``process_cash_movement`` (supabase/migrations/20261119180000_cash_movements_iban_masked.sql),
-que bloqueja la fila d'``accounts``, actualitza el saldo i registra el
+``process_cash_movement`` (la versió vigent és a
+supabase/migrations/20261125120000_orders_create.sql), que bloqueja la fila d'``accounts``, actualitza el saldo i registra el
 moviment en una sola transacció. Si falla, no es desa cap canvi.
 """
 

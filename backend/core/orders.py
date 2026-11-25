@@ -1,11 +1,12 @@
-"""Ordres de compra i venda d'actius simulats (US6.1, US6.2).
+"""Ordres de compra i venda d'actius simulats (US6.1, US6.2, US6.5).
 
-La compra i la venda es fan amb les funcions de Postgres ``buy_asset``
-(supabase/migrations/20261121130000_buy_asset.sql) i ``sell_asset``
-(supabase/migrations/20261123120000_sell_asset.sql). Calculen l'import i la
-comissió amb el preu del catàleg, registren el moviment d'efectiu i
-actualitzen la posició en una sola transacció. Si fallen, no es desa cap
-canvi.
+La compra i la venda es fan amb les funcions de Postgres ``buy_asset`` i
+``sell_asset``. Les van crear supabase/migrations/20261121130000_buy_asset.sql
+i supabase/migrations/20261123120000_sell_asset.sql, i la versió vigent és a
+supabase/migrations/20261125120000_orders_create.sql. Calculen l'import i la
+comissió amb el preu del catàleg, registren el moviment d'efectiu,
+actualitzen la posició i desen l'ordre executada a ``orders`` en una sola
+transacció. Si fallen, no es desa cap canvi.
 """
 
 from decimal import Decimal
