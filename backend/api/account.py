@@ -229,6 +229,25 @@ def _insufficient_balance_message(admin: Client, user: dict, data: Withdrawal) -
 
 
 MOVEMENTS_PAGE_SIZE = 20
+MOVEMENTS_COLUMNS = "*, orders(id, units, assets(ticker))"
+
+
+def movement_order(row: dict) -> dict | None:
+    """Ordre de compra o venda (US6.5) enllaçada al moviment, si en té.
+
+    ``cash_movement_id`` és únic a ``orders``, així que PostgREST retorna
+    l'embed com un objecte o null. Si mai arribés com a llista, se'n pren la
+    primera fila.
+    """
+    order = row.get("orders")
+    if isinstance(order, list):
+        return order[0] if order else None
+    return order
+
+
+def format_units(units) -> str:
+    """Unitats sense zeros sobrants i amb coma decimal ("3", "2,5")."""
+    return f"{Decimal(str(units)).normalize():f}".replace(".", ",")
 
 
 def movement_concept(row: dict) -> str:
@@ -236,18 +255,21 @@ def movement_concept(row: dict) -> str:
 
     La retirada mostra l'IBAN emmascarat que #116 desa al moviment, perquè el
     concepte no canviï si l'usuari canvia d'IBAN més endavant. La compra i la
-    venda (US6.1, US6.2) tenen un concepte genèric: el moviment no desa
-    l'actiu ni les unitats.
+    venda amb ordre (US6.5) mostren les unitats i el ticker de l'actiu; les
+    anteriors a US6.5 no tenen ordre i mantenen el concepte genèric.
     """
     if row["type"] == DEPOSIT:
         return "Ingrés de diners"
     if row["type"] == WITHDRAWAL:
         iban = row.get("iban_masked")
         return f"Retirada a ES•• {iban[-4:]}" if iban else "Retirada de diners"
-    if row["type"] == BUY:
-        return "Compra d'actius"
-    if row["type"] == SELL:
-        return "Venda d'actius"
+    if row["type"] in (BUY, SELL):
+        order = movement_order(row)
+        label = "Compra" if row["type"] == BUY else "Venda"
+        if order:
+            ticker = order["assets"]["ticker"]
+            return f"{label} de {format_units(order['units'])} {ticker}"
+        return f"{label} d'actius"
     return "Moviment d'efectiu"
 
 
@@ -270,7 +292,9 @@ def list_movements(
 
     Returns:
         ``{"movements": [...], "has_more": bool}``. Cada moviment té
-        ``created_at``, ``concept``, ``amount``, ``type`` i ``balance_after``.
+        ``id``, ``created_at``, ``concept``, ``amount``, ``type``,
+        ``balance_after`` i ``order_id`` (null si no és d'una compra o venda
+        amb ordre).
 
     Raises:
         HTTPException: 422 si ``from`` és posterior a ``to``, 403 si l'usuari
@@ -283,8 +307,14 @@ def list_movements(
         )
 
     # select("*") i no les columnes: iban_masked l'afegeix #116 i, mentre no
-    # existeixi, demanar-la faria fallar la consulta.
-    query = db.table("cash_movements").select("*").eq("user_id", user["sub"])
+    # existeixi, demanar-la faria fallar la consulta. L'ordre de cada moviment
+    # (US6.5) arriba amb un embed per la FK cash_movement_id, sense una
+    # consulta per fila.
+    query = (
+        db.table("cash_movements")
+        .select(MOVEMENTS_COLUMNS)
+        .eq("user_id", user["sub"])
+    )
     # shortcut: les dates es tallen a mitjanit UTC, no a l'hora de Madrid;
     # un moviment entre les 00:00 i la 01:00/02:00 local cau al dia anterior.
     if date_from:
@@ -316,11 +346,13 @@ def list_movements(
     return {
         "movements": [
             {
+                "id": row["id"],
                 "created_at": row["created_at"],
                 "concept": movement_concept(row),
                 "amount": row["amount"],
                 "type": row["type"],
                 "balance_after": row["balance_after"],
+                "order_id": (movement_order(row) or {}).get("id"),
             }
             for row in rows[:limit]
         ],
