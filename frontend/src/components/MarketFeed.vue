@@ -1,13 +1,14 @@
 <script setup>
-import { computed, onBeforeUnmount, ref, useId, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue'
 import UiButton from './ui/UiButton.vue'
 
-// Carrusel de targetes (US17.1). No sap què hi ha a cada targeta: el contingut arriba pel slot "item". Els avisos de
-// preu (US17.1) i els titulars (US17.2) el fan servir igual
+// Cinta de targetes (US17.1) que es desplaça de manera contínua. No sap què hi ha a cada targeta: el contingut
+// arriba pel slot "item". Els avisos de preu (US17.1) i els titulars (US17.2) la fan servir igual
 const props = defineProps({
   items: { type: Array, required: true }, // [{ id, ... }]
   label: { type: String, required: true },
-  interval: { type: Number, default: 6000 },
+  // Ritme: el temps que triga a passar l'amplada d'una targeta
+  secondsPerCard: { type: Number, default: 6 },
 })
 
 // Diu si es compleix una media query i s'actualitza quan canvia. jsdom (tests) no té matchMedia
@@ -22,65 +23,91 @@ function useMediaQuery(query) {
   return matches
 }
 
-// Mateix punt de tall que el CSS: a escriptori es veuen tres targetes i un tros de la quarta; a 900 px o menys, una
+// Mateix punt de tall que el CSS: a escriptori hi caben tres targetes i un tros de la quarta; a 900 px o menys, una
+// i un tros de la següent
 const narrow = useMediaQuery('(max-width: 900px)')
-// C5: si el sistema demana reduir el moviment, no avança sol (només amb les fletxes) i no hi ha transicions
+// C5: si el sistema demana reduir el moviment, la cinta no es mou sola: es passa amb el desplaçament horitzontal
 const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
 
-const visibleCount = computed(() => (narrow.value ? 1 : 3))
-// La darrera posició és la que deixa la darrera targeta sencera; després es torna a la primera
-const positions = computed(() => Math.max(props.items.length - visibleCount.value + 1, 1))
-const canMove = computed(() => positions.value > 1)
-const index = ref(0)
-
-// Si canvien les targetes o l'amplada, la posició no pot quedar fora de rang
-watch(positions, (count) => {
-  if (index.value >= count) index.value = count - 1
-})
-
-function isVisible(i) {
-  return i >= index.value && i < index.value + visibleCount.value
-}
+// Si totes les targetes hi caben, no cal moure res
+const canMove = computed(() => props.items.length > (narrow.value ? 1 : 3))
+const animated = computed(() => canMove.value && !reducedMotion.value)
 
 // Tres pauses independents (C4): el ratolí a sobre, el focus del teclat dins, i el botó "Atura", que es manté fins
-// que es prem "Reprèn". Només avança si no n'hi ha cap
+// que es prem "Reprèn". Només es mou si no n'hi ha cap
 const root = ref(null)
+const viewport = ref(null)
 const hovered = ref(false)
 const focused = ref(false)
 const pausedByUser = ref(false)
 
-// Passar el focus d'una fletxa a l'altra també dispara focusout: només compta si el focus surt del carrusel
+// Un clic amb el ratolí també dona el focus: només compta el del teclat (:focus-visible). jsdom no sempre entén
+// aquest selector; llavors es compta com a focus del teclat
+function isKeyboardFocus(element) {
+  try {
+    return element.matches(':focus-visible')
+  } catch {
+    return true
+  }
+}
+
+function onFocusIn(event) {
+  if (isKeyboardFocus(event.target)) focused.value = true
+}
+
+// Passar el focus d'un element a un altre de dins també dispara focusout: només compta si el focus surt de la cinta
 function onFocusOut(event) {
   if (!root.value?.contains(event.relatedTarget)) focused.value = false
 }
 
-let timer = null
-const running = computed(
-  () => canMove.value && !reducedMotion.value && !hovered.value && !focused.value && !pausedByUser.value,
-)
+const running = computed(() => animated.value && !hovered.value && !focused.value && !pausedByUser.value)
+
+// La cinta és una tira amb desplaçament horitzontal: a cada fotograma se suma una mica a scrollLeft. Les targetes hi
+// són dues vegades; quan la primera còpia ha passat sencera, es torna enrere aquesta amplada i no es nota el salt.
+// La posició es guarda a part perquè el navegador arrodoneix scrollLeft i, a menys d'1 px per fotograma, no
+// avançaria mai
+let frame = null
+let lastTime = null
+let position = 0
+
+// Amplada d'una còpia de la llista: on comença la primera targeta repetida
+function loopWidth() {
+  const copy = viewport.value?.querySelector('[data-copy]')
+  return copy ? copy.offsetLeft - viewport.value.firstElementChild.offsetLeft : 0
+}
+
+function tick(now) {
+  const el = viewport.value
+  if (el && lastTime !== null) {
+    const loop = loopWidth()
+    // Si l'usuari ha desplaçat la tira (trackpad, dit), es continua des d'on l'ha deixada
+    if (Math.abs(el.scrollLeft - position) > 1) position = el.scrollLeft
+    // Una pestanya amagada no rep fotogrames: en tornar, no s'avança tot el temps perdut de cop
+    const seconds = Math.min(now - lastTime, 100) / 1000
+    position += (seconds * loop) / props.items.length / props.secondsPerCard
+    if (loop > 0 && position >= loop) position -= loop
+    el.scrollLeft = position
+  }
+  lastTime = now
+  frame = requestAnimationFrame(tick)
+}
 
 function stop() {
-  clearInterval(timer)
-  timer = null
+  cancelAnimationFrame(frame)
+  frame = null
 }
 
 function start() {
   stop()
-  if (running.value) timer = setInterval(() => go(index.value + 1), props.interval)
+  if (!running.value) return
+  lastTime = null
+  position = viewport.value?.scrollLeft ?? 0
+  frame = requestAnimationFrame(tick)
 }
 
-watch(running, start, { immediate: true })
-
-function go(target) {
-  index.value = (target + positions.value) % positions.value
-}
-
-// Amb les fletxes, el temporitzador torna a començar: la targeta no salta just després de prémer
-function move(step) {
-  go(index.value + step)
-  start()
-}
-
+// flush 'post': quan running canvia, la còpia de les targetes ja és (o ja no és) al DOM
+watch(running, start, { flush: 'post' })
+onMounted(start)
 onBeforeUnmount(stop)
 
 const titleId = useId()
@@ -92,9 +119,10 @@ const titleId = useId()
     class="market-feed"
     aria-roledescription="carrusel"
     :aria-labelledby="titleId"
+    :data-state="running ? 'running' : 'paused'"
     @mouseenter="hovered = true"
     @mouseleave="hovered = false"
-    @focusin="focused = true"
+    @focusin="onFocusIn"
     @focusout="onFocusOut"
   >
     <header class="market-feed__head">
@@ -105,83 +133,63 @@ const titleId = useId()
         {{ label }}
       </h2>
 
-      <div
-        v-if="canMove"
-        class="market-feed__controls"
+      <!-- Amb moviment reduït no es mou sola: no hi ha res a aturar -->
+      <UiButton
+        v-if="animated"
+        variant="secondary"
+        size="sm"
+        :aria-label="pausedByUser ? 'Reprèn les targetes' : 'Atura les targetes'"
+        @click="pausedByUser = !pausedByUser"
       >
-        <!-- Indicador de posició: només visual, cada targeta ja diu "N de M" -->
-        <div
-          class="market-feed__dots"
-          aria-hidden="true"
-        >
-          <span
-            v-for="n in positions"
-            :key="n"
-            class="market-feed__dot"
-            :class="{ 'market-feed__dot--active': n - 1 === index }"
-          />
-        </div>
-        <UiButton
-          variant="secondary"
-          size="sm"
-          aria-label="Anterior"
-          @click="move(-1)"
-        >
-          <span aria-hidden="true">‹</span>
-        </UiButton>
-        <!-- Amb moviment reduït no avança sol: no hi ha res a aturar -->
-        <UiButton
-          v-if="!reducedMotion"
-          variant="secondary"
-          size="sm"
-          :aria-label="pausedByUser ? 'Reprèn les targetes' : 'Atura les targetes'"
-          @click="pausedByUser = !pausedByUser"
-        >
-          <span aria-hidden="true">{{ pausedByUser ? '▶' : '❚❚' }}</span>
-          {{ pausedByUser ? 'Reprèn' : 'Atura' }}
-        </UiButton>
-        <UiButton
-          variant="secondary"
-          size="sm"
-          aria-label="Següent"
-          @click="move(1)"
-        >
-          <span aria-hidden="true">›</span>
-        </UiButton>
-      </div>
+        <span aria-hidden="true">{{ pausedByUser ? '▶' : '❚❚' }}</span>
+        {{ pausedByUser ? 'Reprèn' : 'Atura' }}
+      </UiButton>
     </header>
 
-    <div class="market-feed__viewport">
-      <!-- Mentre avança sol, el lector de pantalla no anuncia cada canvi; quan està aturat, sí (WAI-ARIA) -->
+    <!-- Focusable perquè amb el teclat es pugui desplaçar amb les fletxes del teclat (i, en entrar-hi, s'atura) -->
+    <div
+      ref="viewport"
+      class="market-feed__viewport"
+      :class="{ 'market-feed__viewport--manual': !animated }"
+      :tabindex="canMove ? 0 : undefined"
+      role="group"
+      :aria-labelledby="titleId"
+    >
       <div
-        class="market-feed__track"
-        :style="{ '--market-feed-index': index }"
-        :aria-live="running ? 'off' : 'polite'"
+        v-for="(item, i) in items"
+        :key="item.id"
+        class="market-feed__card"
+        role="group"
+        aria-roledescription="targeta"
+        :aria-label="`${i + 1} de ${items.length}`"
       >
-        <!-- Les targetes que no es veuen són inert: el tabulador no hi entra i el lector de pantalla no les llegeix.
-             Amb undefined, Vue treu l'atribut: inert="false" també faria inert la targeta -->
+        <slot
+          name="item"
+          :item="item"
+        />
+      </div>
+      <!-- Còpia per al bucle: el lector de pantalla no la llegeix i el tabulador no hi entra -->
+      <template v-if="animated">
         <div
-          v-for="(item, i) in items"
-          :key="item.id"
+          v-for="item in items"
+          :key="`copy-${item.id}`"
           class="market-feed__card"
-          role="group"
-          aria-roledescription="targeta"
-          :aria-label="`${i + 1} de ${items.length}`"
-          :inert="isVisible(i) ? undefined : true"
+          data-copy
+          aria-hidden="true"
+          inert
         >
           <slot
             name="item"
             :item="item"
           />
         </div>
-      </div>
+      </template>
     </div>
   </section>
 </template>
 
 <style scoped>
 .market-feed {
-  /* Distància entre targetes i el que avança la pista a cada pas (targeta + separació) */
   --market-feed-gap: var(--tub-space-4);
   --market-feed-card: calc((100% - 3 * var(--market-feed-gap)) / 3.25);
 
@@ -200,42 +208,34 @@ const titleId = useId()
   margin: 0;
 }
 
-.market-feed__controls {
-  display: flex;
-  align-items: center;
-  gap: var(--tub-space-2);
-}
-
-.market-feed__dots {
-  display: flex;
-  gap: var(--tub-space-1);
-  margin-right: var(--tub-space-2);
-}
-
-.market-feed__dot {
-  width: 6px;
-  height: 6px;
-  border-radius: var(--tub-radius-pill);
-  background: var(--tub-border-strong);
-  transition: width var(--tub-duration) var(--tub-ease);
-}
-
-.market-feed__dot--active {
-  width: 18px;
-  background: var(--tub-primary);
-}
-
 .market-feed__viewport {
-  overflow: hidden;
-}
-
-.market-feed__track {
   display: flex;
   gap: var(--market-feed-gap);
-  transform: translateX(
-    calc(var(--market-feed-index) * -1 * (var(--market-feed-card) + var(--market-feed-gap)))
-  );
-  transition: transform 0.4s var(--tub-ease);
+  overflow-x: auto;
+  /* Mentre es mou sola, sense barra de desplaçament */
+  scrollbar-width: none;
+}
+
+.market-feed__viewport::-webkit-scrollbar {
+  display: none;
+}
+
+/* Sense moviment: es desplaça a mà, amb la barra visible i encaixant a cada targeta */
+.market-feed__viewport--manual {
+  padding-bottom: var(--tub-space-2);
+  scroll-snap-type: x mandatory;
+  scrollbar-width: thin;
+}
+
+.market-feed__viewport--manual::-webkit-scrollbar {
+  display: block;
+  height: 6px;
+}
+
+.market-feed__viewport:focus-visible {
+  outline: 2px solid var(--tub-primary);
+  outline-offset: 4px;
+  border-radius: var(--tub-radius-lg);
 }
 
 .market-feed__card {
@@ -246,18 +246,12 @@ const titleId = useId()
   border-radius: var(--tub-radius-lg);
   background: var(--tub-surface);
   box-shadow: var(--tub-shadow-sm);
+  scroll-snap-align: start;
 }
 
 @media (max-width: 900px) {
   .market-feed {
-    --market-feed-card: 100%;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .market-feed__track,
-  .market-feed__dot {
-    transition: none;
+    --market-feed-card: 85%;
   }
 }
 </style>
