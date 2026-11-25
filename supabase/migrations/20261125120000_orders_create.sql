@@ -286,3 +286,119 @@ $$;
 -- Mateixos permisos que abans: només el backend (service_role).
 revoke all on function public.buy_asset(uuid, bigint, numeric) from public, anon, authenticated;
 grant execute on function public.buy_asset(uuid, bigint, numeric) to service_role;
+
+-- sell_asset: desa l'ordre executada.
+--
+-- La venda fa el mateix que a 20261123120000_sell_asset.sql (mateixa
+-- signatura, mateix ordre de bloqueig: primer el compte, després la posició)
+-- i, dins de la mateixa transacció, insereix l'ordre 'executada'. Si qualsevol
+-- pas falla, no es desa ni el moviment, ni el canvi de la posició, ni l'ordre.
+--
+-- - L'id del moviment es genera aquí i es passa a process_cash_movement, com
+--   a buy_asset.
+-- - El preu mitjà anterior és el de la fila de la posició que la funció ja
+--   bloqueja abans de vendre: no cal cap lectura més.
+-- - El total de l'ordre és l'import net que s'abona (amount − comissió).
+-- - L'ordre es desa encara que la venda liquidi tota la posició i se n'esborri
+--   la fila.
+-- - Retorna també order_id i price. La resta del resultat no canvia.
+
+create or replace function public.sell_asset(
+    p_user_id uuid,
+    p_asset_id bigint,
+    p_units numeric
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+    v_price numeric(12, 2);
+    v_held numeric(20, 8);
+    v_avg_price numeric(18, 6);
+    v_amount numeric(14, 2);
+    v_commission numeric(14, 2);
+    v_net numeric(14, 2);
+    v_balance numeric(14, 2);
+    v_movement_id uuid := gen_random_uuid();
+    v_order_id uuid;
+begin
+    if p_units is null or p_units <= 0 or p_units <> trunc(p_units) then
+        raise exception 'Units must be a positive whole number'
+            using errcode = '22023';
+    end if;
+
+    -- El preu sempre surt del catàleg, mai de la petició.
+    select close_price_eur into v_price
+    from public.assets
+    where id = p_asset_id;
+
+    if not found then
+        raise exception 'Asset not found: %', p_asset_id
+            using errcode = 'P0004';
+    end if;
+
+    -- Primer el compte, després la posició (mateix ordre que buy_asset).
+    perform 1 from public.accounts where user_id = p_user_id for update;
+
+    select units, avg_price into v_held, v_avg_price
+    from public.positions
+    where user_id = p_user_id and asset_id = p_asset_id
+    for update;
+
+    if not found or v_held < p_units then
+        raise exception 'Not enough units: held %, requested %',
+            coalesce(v_held, 0), p_units
+            using errcode = 'P0005';
+    end if;
+
+    v_amount := p_units * v_price;
+    v_commission := least(ceil(v_amount) / 100, 1.00);
+    v_net := v_amount - v_commission;
+
+    -- Suma l'import net al saldo i registra el moviment de venda amb l'id que
+    -- després es guarda a l'ordre.
+    v_balance := public.process_cash_movement(
+        p_user_id, 'venda', v_net, p_movement_id => v_movement_id
+    );
+
+    if v_held = p_units then
+        delete from public.positions
+        where user_id = p_user_id and asset_id = p_asset_id;
+    else
+        update public.positions
+        set units = units - p_units, updated_at = now()
+        where user_id = p_user_id and asset_id = p_asset_id;
+    end if;
+
+    -- L'ordre desa les dades del moment de la venda: el detall (US6.5) no
+    -- canvia encara que després canviï el preu del catàleg.
+    insert into public.orders (
+        user_id, asset_id, side, status, units, price, amount, commission,
+        total, avg_price_at_execution, executed_at, cash_movement_id
+    )
+    values (
+        p_user_id, p_asset_id, 'venda', 'executada', p_units, v_price, v_amount,
+        v_commission, v_net, v_avg_price, now(), v_movement_id
+    )
+    returning id into v_order_id;
+
+    -- Els imports viatgen com a text perquè el backend els llegeixi com a
+    -- Decimal exacte, sense passar per un float.
+    return jsonb_build_object(
+        'order_id', v_order_id,
+        'price', v_price::text,
+        'balance', v_balance::text,
+        'units', trunc(v_held - p_units)::text,
+        'avg_price', v_avg_price::text,
+        'amount', v_amount::text,
+        'commission', v_commission::text,
+        'net', v_net::text
+    );
+end;
+$$;
+
+-- Mateixos permisos que abans: només el backend (service_role).
+revoke all on function public.sell_asset(uuid, bigint, numeric) from public, anon, authenticated;
+grant execute on function public.sell_asset(uuid, bigint, numeric) to service_role;
