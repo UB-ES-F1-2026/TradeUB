@@ -175,3 +175,114 @@ $$;
 -- Mateixos permisos que la versió anterior: només el backend (service_role).
 revoke all on function public.process_cash_movement(uuid, text, numeric, text, uuid) from public, anon, authenticated;
 grant execute on function public.process_cash_movement(uuid, text, numeric, text, uuid) to service_role;
+
+-- buy_asset: desa l'ordre executada.
+--
+-- La compra fa el mateix que a 20261121130000_buy_asset.sql (mateixa
+-- signatura, mateix preu del catàleg, mateixa comissió) i, dins de la mateixa
+-- transacció, insereix l'ordre 'executada'. Si qualsevol pas falla, no es desa
+-- ni el moviment, ni la posició, ni l'ordre.
+--
+-- - L'id del moviment es genera aquí i es passa a process_cash_movement, així
+--   l'ordre el pot guardar a cash_movement_id.
+-- - El preu mitjà anterior es llegeix després de process_cash_movement, que
+--   bloqueja el compte. Si es llegís abans, dues compres simultànies podrien
+--   llegir el mateix preu mitjà, i la segona desaria el d'abans de la primera.
+--   Es llegeix amb un select a part perquè el RETURNING de l'upsert només dona
+--   els valors nous.
+-- - Retorna també order_id i price. La resta del resultat no canvia.
+
+create or replace function public.buy_asset(
+    p_user_id uuid,
+    p_asset_id bigint,
+    p_units numeric
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+    v_price numeric(12, 2);
+    v_cost numeric(14, 2);
+    v_commission numeric(14, 2);
+    v_total numeric(14, 2);
+    v_balance numeric(14, 2);
+    v_units numeric(20, 8);
+    v_avg_price numeric(18, 6);
+    v_previous_avg_price numeric(18, 6);
+    v_movement_id uuid := gen_random_uuid();
+    v_order_id uuid;
+begin
+    if p_units is null or p_units <= 0 or p_units <> trunc(p_units) then
+        raise exception 'Units must be a positive whole number'
+            using errcode = '22023';
+    end if;
+
+    -- El preu sempre surt del catàleg, mai de la petició.
+    select close_price_eur into v_price
+    from public.assets
+    where id = p_asset_id;
+
+    if not found then
+        raise exception 'Asset not found: %', p_asset_id
+            using errcode = 'P0004';
+    end if;
+
+    v_cost := p_units * v_price;
+    v_commission := least(ceil(v_cost) / 100, 1.00);
+    v_total := v_cost + v_commission;
+
+    -- Bloqueja el compte, comprova el saldo i registra el moviment de compra
+    -- amb l'id que després es guarda a l'ordre.
+    v_balance := public.process_cash_movement(
+        p_user_id, 'compra', -v_total, p_movement_id => v_movement_id
+    );
+
+    -- Preu mitjà de la posició abans de la compra. Si és la primera compra de
+    -- l'actiu no hi ha fila i queda null.
+    select avg_price into v_previous_avg_price
+    from public.positions
+    where user_id = p_user_id and asset_id = p_asset_id;
+
+    -- Crea la posició o hi suma les unitats. Les expressions del SET llegeixen
+    -- els valors anteriors de la fila, així que el preu mitjà es calcula amb
+    -- les unitats d'abans de la compra.
+    insert into public.positions as p (user_id, asset_id, units, avg_price)
+    values (p_user_id, p_asset_id, p_units, v_total / p_units)
+    on conflict (user_id, asset_id) do update set
+        avg_price = (p.units * p.avg_price + v_total) / (p.units + excluded.units),
+        units = p.units + excluded.units,
+        updated_at = now()
+    returning p.units, p.avg_price into v_units, v_avg_price;
+
+    -- L'ordre desa les dades del moment de la compra: el detall (US6.5) no
+    -- canvia encara que després canviï el preu del catàleg.
+    insert into public.orders (
+        user_id, asset_id, side, status, units, price, amount, commission,
+        total, avg_price_at_execution, executed_at, cash_movement_id
+    )
+    values (
+        p_user_id, p_asset_id, 'compra', 'executada', p_units, v_price, v_cost,
+        v_commission, v_total, v_previous_avg_price, now(), v_movement_id
+    )
+    returning id into v_order_id;
+
+    -- Els imports viatgen com a text perquè el backend els llegeixi com a
+    -- Decimal exacte, sense passar per un float.
+    return jsonb_build_object(
+        'order_id', v_order_id,
+        'price', v_price::text,
+        'balance', v_balance::text,
+        'units', trunc(v_units)::text,
+        'avg_price', v_avg_price::text,
+        'cost', v_cost::text,
+        'commission', v_commission::text,
+        'total', v_total::text
+    );
+end;
+$$;
+
+-- Mateixos permisos que abans: només el backend (service_role).
+revoke all on function public.buy_asset(uuid, bigint, numeric) from public, anon, authenticated;
+grant execute on function public.buy_asset(uuid, bigint, numeric) to service_role;
