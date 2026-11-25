@@ -36,6 +36,21 @@ describe('AssetSearch', () => {
     setActivePinia(createPinia())
   })
 
+  // US17.1 C6: Actius omple el cercador amb el ticker d'un avís i la llista en mostra el resultat
+  it('quan el pare omple el text de la cerca, el mostra al camp i cerca', async () => {
+    apiGet.mockResolvedValue([APPLE])
+    const wrapper = mount(AssetSearch)
+    await flushPromises()
+
+    await wrapper.setProps({ query: 'AAPL' })
+    await new Promise((resolve) => setTimeout(resolve, SEARCH_DELAY_MS + 20))
+    await flushPromises()
+
+    expect(wrapper.get('[data-test="asset-search"]').element.value).toBe('AAPL')
+    expect(apiGet).toHaveBeenLastCalledWith('/assets?q=AAPL')
+    expect(results(wrapper)).toHaveLength(1)
+  })
+
   it('en obrir-se mostra tot el catàleg amb el tipus traduït', async () => {
     apiGet.mockResolvedValue([APPLE, MSCI])
     const wrapper = mount(AssetSearch)

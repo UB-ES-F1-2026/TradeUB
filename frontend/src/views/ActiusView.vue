@@ -16,6 +16,9 @@ const account = useAccountStore()
 // quan l'operació ha anat bé
 const operation = ref(null)
 
+// Text del cercador. És aquí perquè l'actualitat del mercat (US17.1) hi pugui posar el ticker d'un avís
+const searchQuery = ref('')
+
 // La verificació es llegeix sense bloquejar el cercador. Fins que arriba (o si falla) no es pot triar cap actiu.
 // Les posicions diuen quins actius es poden vendre; si no es poden llegir, només no surt "Ven"
 onMounted(async () => {
@@ -55,6 +58,7 @@ function close() {
     </template>
 
     <AssetSearch
+      v-model:query="searchQuery"
       :selectable="verification.canOperate"
       :holdings="account.positions"
       @select="open('buy', $event)"
