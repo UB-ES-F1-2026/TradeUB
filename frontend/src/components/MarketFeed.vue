@@ -10,14 +10,22 @@ const props = defineProps({
   interval: { type: Number, default: 6000 },
 })
 
-// Mateix punt de tall que el CSS: a escriptori es veuen tres targetes i un tros de la quarta; a 900 px o menys, una.
-// jsdom (tests) no té matchMedia
-const narrowQuery = typeof window.matchMedia === 'function' ? window.matchMedia('(max-width: 900px)') : null
-const narrow = ref(narrowQuery?.matches ?? false)
-function onNarrowChange(event) {
-  narrow.value = event.matches
+// Diu si es compleix una media query i s'actualitza quan canvia. jsdom (tests) no té matchMedia
+function useMediaQuery(query) {
+  const list = typeof window.matchMedia === 'function' ? window.matchMedia(query) : null
+  const matches = ref(list?.matches ?? false)
+  const onChange = (event) => {
+    matches.value = event.matches
+  }
+  list?.addEventListener('change', onChange)
+  onBeforeUnmount(() => list?.removeEventListener('change', onChange))
+  return matches
 }
-narrowQuery?.addEventListener('change', onNarrowChange)
+
+// Mateix punt de tall que el CSS: a escriptori es veuen tres targetes i un tros de la quarta; a 900 px o menys, una
+const narrow = useMediaQuery('(max-width: 900px)')
+// C5: si el sistema demana reduir el moviment, no avança sol (només amb les fletxes) i no hi ha transicions
+const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
 
 const visibleCount = computed(() => (narrow.value ? 1 : 3))
 // La darrera posició és la que deixa la darrera targeta sencera; després es torna a la primera
@@ -47,7 +55,9 @@ function onFocusOut(event) {
 }
 
 let timer = null
-const running = computed(() => canMove.value && !hovered.value && !focused.value && !pausedByUser.value)
+const running = computed(
+  () => canMove.value && !reducedMotion.value && !hovered.value && !focused.value && !pausedByUser.value,
+)
 
 function stop() {
   clearInterval(timer)
@@ -71,10 +81,7 @@ function move(step) {
   start()
 }
 
-onBeforeUnmount(() => {
-  stop()
-  narrowQuery?.removeEventListener('change', onNarrowChange)
-})
+onBeforeUnmount(stop)
 
 const titleId = useId()
 </script>
@@ -122,7 +129,9 @@ const titleId = useId()
         >
           <span aria-hidden="true">‹</span>
         </UiButton>
+        <!-- Amb moviment reduït no avança sol: no hi ha res a aturar -->
         <UiButton
+          v-if="!reducedMotion"
           variant="secondary"
           size="sm"
           :aria-label="pausedByUser ? 'Reprèn les targetes' : 'Atura les targetes'"
@@ -242,6 +251,13 @@ const titleId = useId()
 @media (max-width: 900px) {
   .market-feed {
     --market-feed-card: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .market-feed__track,
+  .market-feed__dot {
+    transition: none;
   }
 }
 </style>

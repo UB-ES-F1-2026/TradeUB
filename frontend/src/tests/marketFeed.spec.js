@@ -4,10 +4,11 @@ import MarketFeed from '../components/MarketFeed.vue'
 
 const ITEMS = [1, 2, 3, 4, 5].map((id) => ({ id, text: `Avís ${id}` }))
 
-// jsdom no té matchMedia: "narrow" simula una pantalla de 900 px o menys
-function mockMedia({ narrow = false } = {}) {
+// jsdom no té matchMedia: "narrow" simula una pantalla de 900 px o menys i "reduced", que el sistema demana reduir
+// el moviment
+function mockMedia({ narrow = false, reduced = false } = {}) {
   window.matchMedia = vi.fn((query) => ({
-    matches: query.includes('max-width') && narrow,
+    matches: query.includes('max-width') ? narrow : query.includes('reduced-motion') && reduced,
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
   }))
@@ -105,6 +106,18 @@ describe('MarketFeed', () => {
 
     await button(wrapper, 'Reprèn les targetes').trigger('click')
     await vi.advanceTimersByTimeAsync(6000)
+    expect(firstVisible(wrapper)).toBe('2 de 5')
+  })
+
+  // C5: amb moviment reduït no avancen soles; només es passen amb les fletxes
+  it('amb moviment reduït només avança amb les fletxes', async () => {
+    mockMedia({ reduced: true })
+    const wrapper = mountFeed()
+
+    await vi.advanceTimersByTimeAsync(12000)
+    expect(firstVisible(wrapper)).toBe('1 de 5')
+
+    await button(wrapper, 'Següent').trigger('click')
     expect(firstVisible(wrapper)).toBe('2 de 5')
   })
 
