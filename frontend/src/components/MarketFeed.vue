@@ -34,8 +34,20 @@ function isVisible(i) {
   return i >= index.value && i < index.value + visibleCount.value
 }
 
+// Tres pauses independents (C4): el ratolí a sobre, el focus del teclat dins, i el botó "Atura", que es manté fins
+// que es prem "Reprèn". Només avança si no n'hi ha cap
+const root = ref(null)
+const hovered = ref(false)
+const focused = ref(false)
+const pausedByUser = ref(false)
+
+// Passar el focus d'una fletxa a l'altra també dispara focusout: només compta si el focus surt del carrusel
+function onFocusOut(event) {
+  if (!root.value?.contains(event.relatedTarget)) focused.value = false
+}
+
 let timer = null
-const running = computed(() => canMove.value)
+const running = computed(() => canMove.value && !hovered.value && !focused.value && !pausedByUser.value)
 
 function stop() {
   clearInterval(timer)
@@ -69,9 +81,14 @@ const titleId = useId()
 
 <template>
   <section
+    ref="root"
     class="market-feed"
     aria-roledescription="carrusel"
     :aria-labelledby="titleId"
+    @mouseenter="hovered = true"
+    @mouseleave="hovered = false"
+    @focusin="focused = true"
+    @focusout="onFocusOut"
   >
     <header class="market-feed__head">
       <h2
@@ -108,6 +125,15 @@ const titleId = useId()
         <UiButton
           variant="secondary"
           size="sm"
+          :aria-label="pausedByUser ? 'Reprèn les targetes' : 'Atura les targetes'"
+          @click="pausedByUser = !pausedByUser"
+        >
+          <span aria-hidden="true">{{ pausedByUser ? '▶' : '❚❚' }}</span>
+          {{ pausedByUser ? 'Reprèn' : 'Atura' }}
+        </UiButton>
+        <UiButton
+          variant="secondary"
+          size="sm"
           aria-label="Següent"
           @click="move(1)"
         >
@@ -117,9 +143,11 @@ const titleId = useId()
     </header>
 
     <div class="market-feed__viewport">
+      <!-- Mentre avança sol, el lector de pantalla no anuncia cada canvi; quan està aturat, sí (WAI-ARIA) -->
       <div
         class="market-feed__track"
         :style="{ '--market-feed-index': index }"
+        :aria-live="running ? 'off' : 'polite'"
       >
         <!-- Les targetes que no es veuen són inert: el tabulador no hi entra i el lector de pantalla no les llegeix.
              Amb undefined, Vue treu l'atribut: inert="false" també faria inert la targeta -->

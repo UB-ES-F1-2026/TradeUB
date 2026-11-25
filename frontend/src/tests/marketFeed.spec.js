@@ -67,6 +67,47 @@ describe('MarketFeed', () => {
     expect(firstVisible(wrapper)).toBe('3 de 5')
   })
 
+  // C4: s'aturen amb el ratolí a sobre i tornen a avançar en sortir-ne
+  it('no avança mentre el ratolí és a sobre', async () => {
+    const wrapper = mountFeed()
+
+    await wrapper.find('section').trigger('mouseenter')
+    await vi.advanceTimersByTimeAsync(6000)
+    expect(firstVisible(wrapper)).toBe('1 de 5')
+
+    await wrapper.find('section').trigger('mouseleave')
+    await vi.advanceTimersByTimeAsync(6000)
+    expect(firstVisible(wrapper)).toBe('2 de 5')
+  })
+
+  // C4: s'aturen amb el focus del teclat dins i tornen a avançar en sortir-ne
+  it('no avança mentre el focus és dins', async () => {
+    const wrapper = mountFeed()
+
+    await button(wrapper, 'Següent').trigger('focusin')
+    await vi.advanceTimersByTimeAsync(6000)
+    expect(firstVisible(wrapper)).toBe('1 de 5')
+
+    await button(wrapper, 'Següent').trigger('focusout', { relatedTarget: null })
+    await vi.advanceTimersByTimeAsync(6000)
+    expect(firstVisible(wrapper)).toBe('2 de 5')
+  })
+
+  // C4: "Atura" manté la pausa fins que es prem "Reprèn", encara que el ratolí surti
+  it('el botó Atura manté la pausa fins que es prem Reprèn', async () => {
+    const wrapper = mountFeed()
+
+    await wrapper.find('section').trigger('mouseenter')
+    await button(wrapper, 'Atura les targetes').trigger('click')
+    await wrapper.find('section').trigger('mouseleave')
+    await vi.advanceTimersByTimeAsync(12000)
+    expect(firstVisible(wrapper)).toBe('1 de 5')
+
+    await button(wrapper, 'Reprèn les targetes').trigger('click')
+    await vi.advanceTimersByTimeAsync(6000)
+    expect(firstVisible(wrapper)).toBe('2 de 5')
+  })
+
   // A 900 px o menys es veu una sola targeta, així que es passa per totes
   it('a 900 px o menys passa d\'una en una per totes les targetes', async () => {
     mockMedia({ narrow: true })
