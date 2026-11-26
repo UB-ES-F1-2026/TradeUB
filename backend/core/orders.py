@@ -20,8 +20,12 @@ INSUFFICIENT_BALANCE_CODE = "P0003"
 ASSET_NOT_FOUND_CODE = "P0004"
 INSUFFICIENT_UNITS_CODE = "P0005"
 
-BUY_RESULT_FIELDS = ("balance", "units", "avg_price", "cost", "commission", "total")
-SELL_RESULT_FIELDS = ("balance", "units", "avg_price", "amount", "commission", "net")
+BUY_RESULT_FIELDS = (
+    "price", "balance", "units", "avg_price", "cost", "commission", "total"
+)
+SELL_RESULT_FIELDS = (
+    "price", "balance", "units", "avg_price", "amount", "commission", "net"
+)
 
 
 def _run_order(
@@ -31,19 +35,23 @@ def _run_order(
     asset_id: int,
     units: int,
     fields: tuple[str, ...],
-) -> dict[str, Decimal]:
+) -> dict[str, str | Decimal]:
     response = admin_client.rpc(
         function,
         # Les unitats viatgen com a text perquè Postgres les llegeixi com a
         # numeric exacte.
         {"p_user_id": user_id, "p_asset_id": asset_id, "p_units": str(units)},
     ).execute()
-    return {field: Decimal(str(response.data[field])) for field in fields}
+    # L'id de l'ordre (US6.5) és un UUID: és l'únic camp que no és un import.
+    return {
+        "order_id": str(response.data["order_id"]),
+        **{field: Decimal(str(response.data[field])) for field in fields},
+    }
 
 
 def buy_asset(
     admin_client: Client, user_id: str, asset_id: int, units: int
-) -> dict[str, Decimal]:
+) -> dict[str, str | Decimal]:
     """Compra unitats d'un actiu per a l'usuari i en retorna el resultat.
 
     Args:
@@ -54,8 +62,9 @@ def buy_asset(
         units: unitats enteres a comprar.
 
     Returns:
-        Diccionari amb ``balance``, ``units``, ``avg_price``, ``cost``,
-        ``commission`` i ``total`` com a ``Decimal``.
+        Diccionari amb l'``order_id`` de l'ordre desada i el ``price``,
+        ``balance``, ``units``, ``avg_price``, ``cost``, ``commission`` i
+        ``total`` com a ``Decimal``.
 
     Raises:
         PostgrestAPIError: si la funció rebutja la compra o falla la base de
@@ -68,7 +77,7 @@ def buy_asset(
 
 def sell_asset(
     admin_client: Client, user_id: str, asset_id: int, units: int
-) -> dict[str, Decimal]:
+) -> dict[str, str | Decimal]:
     """Ven unitats d'una posició de l'usuari i en retorna el resultat.
 
     Args:
@@ -79,9 +88,9 @@ def sell_asset(
         units: unitats enteres a vendre.
 
     Returns:
-        Diccionari amb ``balance``, ``units`` (les que queden, 0 si s'ha
-        venut tot), ``avg_price``, ``amount``, ``commission`` i ``net`` com a
-        ``Decimal``.
+        Diccionari amb l'``order_id`` de l'ordre desada i el ``price``,
+        ``balance``, ``units`` (les que queden, 0 si s'ha venut tot),
+        ``avg_price``, ``amount``, ``commission`` i ``net`` com a ``Decimal``.
 
     Raises:
         PostgrestAPIError: si la funció rebutja la venda (per exemple amb

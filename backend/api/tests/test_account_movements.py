@@ -115,18 +115,22 @@ def test_returns_movements_with_server_concept(client, make_token, fake_movement
     assert response.json() == {
         "movements": [
             {
+                "id": "b",
                 "created_at": WITHDRAWAL["created_at"],
                 "concept": "Retirada a ES•• 1332",
                 "amount": -200.0,
                 "type": "retirada",
                 "balance_after": 10300.0,
+                "order_id": None,
             },
             {
+                "id": "a",
                 "created_at": DEPOSIT["created_at"],
                 "concept": "Ingrés de diners",
                 "amount": 500.0,
                 "type": "ingres",
                 "balance_after": 10500.0,
+                "order_id": None,
             },
         ],
         "has_more": False,
@@ -136,14 +140,17 @@ def test_returns_movements_with_server_concept(client, make_token, fake_movement
 def test_default_query_filters_by_token_subject_newest_first(
     client, make_token, fake_movements
 ):
-    """Sense filtres: nomes els del sub, del mes nou al mes antic, 20 + 1 files."""
+    """Sense filtres: nomes els del sub, del mes nou al mes antic, 20 + 1 files.
+
+    L'ordre de cada moviment arriba amb un embed, sense una consulta per fila.
+    """
     fake = fake_movements()
 
     get(client, make_token)
 
     assert fake.calls == [
         ("table", "cash_movements"),
-        ("select", "*"),
+        ("select", "*, orders(id, units, assets(ticker))"),
         ("eq", "user_id", SUBJECT),
         ("order", "created_at", True),
         ("order", "id", True),
@@ -203,16 +210,66 @@ def test_last_possible_date_is_accepted(client, make_token, fake_movements):
     ("movement_type", "concept"),
     [("compra", "Compra d'actius"), ("venda", "Venda d'actius")],
 )
-def test_buy_and_sell_have_their_concept(
+def test_buy_and_sell_without_order_have_generic_concept(
     client, make_token, fake_movements, movement_type, concept
 ):
-    """La compra (US6.1) i la venda (US6.2) no es mostren com a retirada."""
+    """Les compres i vendes d'abans de US6.5 no tenen ordre enllaçada."""
     fake_movements(rows=[{**WITHDRAWAL, "type": movement_type, "iban_masked": None}])
 
     body = get(client, make_token).json()
 
     assert body["movements"][0]["concept"] == concept
     assert body["movements"][0]["type"] == movement_type
+    assert body["movements"][0]["order_id"] is None
+
+
+ORDER_ID = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
+
+
+def order_movement(movement_type, order):
+    return {**WITHDRAWAL, "type": movement_type, "iban_masked": None, "orders": order}
+
+
+@pytest.mark.parametrize(
+    ("movement_type", "units", "concept"),
+    [
+        ("compra", "3.00000000", "Compra de 3 AAPL"),
+        ("venda", 2, "Venda de 2 AAPL"),
+        ("compra", "2.50000000", "Compra de 2,5 AAPL"),
+        ("venda", "10.00000000", "Venda de 10 AAPL"),
+    ],
+)
+def test_buy_and_sell_with_order_show_units_and_ticker(
+    client, make_token, fake_movements, movement_type, units, concept
+):
+    """Amb ordre (US6.5), el concepte porta les unitats sense zeros i el ticker."""
+    order = {"id": ORDER_ID, "units": units, "assets": {"ticker": "AAPL"}}
+    fake_movements(rows=[order_movement(movement_type, order)])
+
+    movement = get(client, make_token).json()["movements"][0]
+
+    assert movement["concept"] == concept
+    assert movement["order_id"] == ORDER_ID
+
+
+def test_order_embedded_as_list_is_also_read(client, make_token, fake_movements):
+    """Si PostgREST retornés l'embed com a llista, es fa servir la primera fila."""
+    order = {"id": ORDER_ID, "units": "1", "assets": {"ticker": "MSFT"}}
+    fake_movements(rows=[order_movement("venda", [order])])
+
+    movement = get(client, make_token).json()["movements"][0]
+
+    assert movement["concept"] == "Venda de 1 MSFT"
+    assert movement["order_id"] == ORDER_ID
+
+
+def test_empty_order_list_keeps_generic_concept(client, make_token, fake_movements):
+    fake_movements(rows=[order_movement("compra", [])])
+
+    movement = get(client, make_token).json()["movements"][0]
+
+    assert movement["concept"] == "Compra d'actius"
+    assert movement["order_id"] is None
 
 
 def test_unknown_movement_type_has_generic_concept(client, make_token, fake_movements):
