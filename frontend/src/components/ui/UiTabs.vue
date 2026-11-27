@@ -72,8 +72,13 @@ defineExpose({ tabId })
 <style scoped>
 .ui-tabs {
   display: flex;
-  gap: var(--tub-space-5);
-  border-bottom: 1px solid var(--tub-border);
+  gap: var(--tub-space-3);
+  /* Les pestanyes tenen marge interior perquè el focus i el subratllat no quedin retallats; el marge negatiu
+     manté el text alineat amb la resta de la targeta */
+  margin-inline: calc(-1 * var(--tub-space-2));
+  /* Línia de base amb una ombra interior: un contenidor amb overflow-x retalla el que sobresurt, i una vora amb
+     marge negatiu a la pestanya deixava el subratllat de 2 px en 1 px */
+  box-shadow: inset 0 -1px 0 var(--tub-border);
   /* A pantalles estretes, si no hi caben, es desplacen de costat en lloc de saltar de línia */
   overflow-x: auto;
   scrollbar-width: none;
@@ -82,12 +87,10 @@ defineExpose({ tabId })
   display: none;
 }
 .ui-tabs__tab {
+  position: relative;
   flex: none;
-  /* La línia de la pestanya triada tapa la vora del contenidor */
-  margin-bottom: -1px;
-  padding: var(--tub-space-2) 0;
+  padding: var(--tub-space-2);
   border: 0;
-  border-bottom: 2px solid transparent;
   background: none;
   color: var(--tub-text-muted);
   font: inherit;
@@ -98,19 +101,29 @@ defineExpose({ tabId })
 .ui-tabs__tab:hover {
   color: var(--tub-text);
 }
+/* Subratllat de l'amplada del text, per sobre de la línia de base */
+.ui-tabs__tab--selected::after {
+  content: '';
+  position: absolute;
+  right: var(--tub-space-2);
+  bottom: 0;
+  left: var(--tub-space-2);
+  height: 2px;
+  background: var(--tub-primary);
+}
 .ui-tabs__tab--selected {
-  border-bottom-color: var(--tub-primary);
   color: var(--tub-text);
 }
+/* El contorn va per dins: per fora, el contenidor el retallaria */
 .ui-tabs__tab:focus-visible {
   outline: 2px solid var(--tub-primary);
-  outline-offset: 2px;
+  outline-offset: -2px;
   border-radius: var(--tub-radius-sm);
 }
 
 @media (max-width: 900px) {
   .ui-tabs {
-    gap: var(--tub-space-4);
+    gap: var(--tub-space-2);
   }
 }
 </style>
