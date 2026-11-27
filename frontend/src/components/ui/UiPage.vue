@@ -9,7 +9,11 @@ defineProps({
 
 <template>
   <section class="ui-page">
-    <header class="ui-page__head">
+    <!-- Sense títol ni accions no hi ha capçalera: la 404 porta el títol dins de la seva targeta -->
+    <header
+      v-if="title || $slots.title || $slots.actions"
+      class="ui-page__head"
+    >
       <slot name="title">
         <h1 class="ui-page__title">
           {{ title }}
