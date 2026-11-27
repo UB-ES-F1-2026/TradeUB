@@ -62,6 +62,13 @@ modificar-la.
 <!-- Resposta tancada (una sola opció). Si va dins d'un <fieldset> amb <legend>, no cal label -->
 <UiRadioGroup v-model="resposta" name="pregunta-1" label="Nom accessible del grup"
               :options="[{ id: 'a', label: 'Opció A' }, { id: 'b', label: 'Opció B' }]" />
+
+<!-- Cinta de targetes (components/MarketFeed.vue, no és un Ui*): el contingut va al slot "item".
+     Es desplaça de manera contínua (seconds-per-card); s'atura amb el ratolí, el focus del teclat o "Atura";
+     amb moviment reduït no es mou sola i es desplaça a mà -->
+<MarketFeed :items="[{ id: 1, ... }]" label="Actualitat del mercat" :seconds-per-card="6">
+  <template #item="{ item }">...</template>
+</MarketFeed>
 ```
 
 ## Com canviar l'estil de tota l'app
