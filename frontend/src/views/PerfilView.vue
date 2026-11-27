@@ -25,10 +25,8 @@ const error = ref('')
 const profileStore = useProfileStore()
 onMounted(profileStore.load)
 const perfil = computed(() => profileStore.perfil)
-const fullName = computed(() => {
-  const name = [perfil.value.nom, perfil.value.cognoms].filter(Boolean).join(' ')
-  return name || 'Perfil'
-})
+// El títol és "Perfil", com a la barra (Technical Debt 4); el nom complet va a sota, si ja el tenim
+const fullName = computed(() => [perfil.value.nom, perfil.value.cognoms].filter(Boolean).join(' '))
 const address = computed(() => {
   const { carrer, codi_postal, poblacio } = perfil.value
   return [carrer, [codi_postal, poblacio].filter(Boolean).join(' ')].filter(Boolean).join(', ')
@@ -114,10 +112,15 @@ async function handleLogout() {
   <UiPage>
     <template #title>
       <div class="page__head-main">
-        <span class="eyebrow">Compte</span>
         <h1 class="page__title">
-          {{ fullName }}
+          Perfil
         </h1>
+        <p
+          v-if="fullName"
+          class="page__name"
+        >
+          {{ fullName }}
+        </p>
       </div>
     </template>
     <template #actions>
@@ -285,7 +288,10 @@ async function handleLogout() {
   gap: var(--tub-space-1);
 }
 .page__title {
-  font-size: var(--tub-text-xl);
+  margin: 0;
+}
+.page__name {
+  color: var(--tub-text-muted);
 }
 
 .page__tiles {
