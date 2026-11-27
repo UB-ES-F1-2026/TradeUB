@@ -10,6 +10,9 @@ const props = defineProps({
   // Ritme: el temps que triga a passar l'amplada d'una targeta
   secondsPerCard: { type: Number, default: 6 },
 })
+// "loop": la cinta acaba de començar una volta. Actius hi recalcula els avisos (US17.1 C3): així el text d'una
+// targeta no canvia mai mentre es llegeix
+const emit = defineEmits(['loop'])
 
 // Diu si es compleix una media query i s'actualitza quan canvia. jsdom (tests) no té matchMedia
 function useMediaQuery(query) {
@@ -85,7 +88,10 @@ function tick(now) {
     // Una pestanya amagada no rep fotogrames: en tornar, no s'avança tot el temps perdut de cop
     const seconds = Math.min(now - lastTime, 100) / 1000
     position += (seconds * loop) / props.items.length / props.secondsPerCard
-    if (loop > 0 && position >= loop) position -= loop
+    if (loop > 0 && position >= loop) {
+      position -= loop
+      emit('loop')
+    }
     el.scrollLeft = position
   }
   lastTime = now
@@ -147,7 +153,15 @@ const titleId = useId()
     </header>
 
     <!-- Focusable perquè amb el teclat es pugui desplaçar amb les fletxes del teclat (i, en entrar-hi, s'atura) -->
+    <!-- Sense targetes, el text que hi posi qui la fa servir (slot "empty") -->
     <div
+      v-if="!items.length"
+      class="market-feed__empty"
+    >
+      <slot name="empty" />
+    </div>
+    <div
+      v-else
       ref="viewport"
       class="market-feed__viewport"
       :class="{ 'market-feed__viewport--manual': !animated }"
@@ -206,6 +220,14 @@ const titleId = useId()
 
 .market-feed__head h2 {
   margin: 0;
+}
+
+.market-feed__empty {
+  padding: var(--tub-space-5);
+  border: 1px solid var(--tub-border);
+  border-radius: var(--tub-radius-lg);
+  background: var(--tub-surface);
+  color: var(--tub-text-muted);
 }
 
 .market-feed__viewport {

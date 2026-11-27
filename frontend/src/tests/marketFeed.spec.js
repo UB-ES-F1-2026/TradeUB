@@ -70,6 +70,16 @@ describe('MarketFeed', () => {
     expect(viewport.scrollLeft).toBeCloseTo(100, -1)
   })
 
+  // C3 (US17.1): avisa quan comença una volta, perquè Actius hi recalculi els avisos
+  it('emet loop cada vegada que la cinta torna a començar', async () => {
+    const { wrapper } = mountFeed()
+
+    await vi.advanceTimersByTimeAsync(29000)
+    expect(wrapper.emitted('loop')).toBeUndefined()
+    await vi.advanceTimersByTimeAsync(2000)
+    expect(wrapper.emitted('loop')).toHaveLength(1)
+  })
+
   // C4: s'atura amb el ratolí a sobre i torna a moure's en sortir-ne
   it('no es mou mentre el ratolí és a sobre', async () => {
     const { wrapper, viewport } = mountFeed()

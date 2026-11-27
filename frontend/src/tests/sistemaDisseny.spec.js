@@ -12,6 +12,7 @@ const fitxers = import.meta.glob(
 const excepcions = [
   ['../views/StyleguideView.vue', 'colors', 'mostra del sistema de disseny (gràfic SVG i vora de les mostres de color)'],
   ['../components/AppNavBar.vue', 'controls', 'botó d\'icona del menú mòbil; UiButton encara no té variant d\'icona'],
+  ['../views/ActiusView.vue', 'controls', 'cada avís de l\'actualitat del mercat és una targeta sencera clicable; UiButton no té variant de targeta'],
 ]
 
 const regles = {

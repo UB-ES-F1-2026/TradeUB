@@ -27,7 +27,9 @@ const emit = defineEmits(['select', 'sell'])
 
 const canSell = (asset) => props.selectable && (props.holdings[asset.id] ?? 0) > 0
 
-const query = ref('')
+// El text de la cerca. Actius el pot omplir des de fora (v-model:query): en prémer un avís de l'actualitat del mercat
+// (US17.1) s'hi posa el ticker. Si el pare no el passa, el cercador el gestiona sol
+const query = defineModel('query', { type: String, default: '' })
 const assets = ref([])
 const loading = ref(false)
 const error = ref('')
