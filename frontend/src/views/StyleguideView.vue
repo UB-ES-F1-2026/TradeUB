@@ -1,8 +1,15 @@
 <script setup>
 import { ref } from 'vue'
-import { UiButton, UiInput, UiSelect, UiFileInput, UiCheckbox, UiCard, UiAlert, UiBadge, UiLogo, UiRadioGroup } from '../components/ui'
+import { UiButton, UiInput, UiSelect, UiFileInput, UiCheckbox, UiCard, UiAlert, UiBadge, UiLogo, UiRadioGroup, UiTabs } from '../components/ui'
 
 const text = ref('')
+const tab = ref('tots')
+const tabOptions = [
+  { value: 'tots', label: 'Tots' },
+  { value: 'accio', label: 'Accions' },
+  { value: 'etf', label: 'ETF' },
+  { value: 'cripto', label: 'Cripto' },
+]
 const fileName = ref('')
 const bad = ref('hola')
 const country = ref('')
@@ -314,6 +321,22 @@ const groups = [
           </UiButton>
         </div>
       </div>
+    </section>
+
+    <section class="sg__section">
+      <p class="eyebrow">
+        08
+      </p>
+      <h2>Pestanyes</h2>
+      <p class="sg__lead">
+        <code>UiTabs</code>: tria una opció d'una llista curta, com el tipus d'actiu o el rang d'un gràfic. Les fletxes,
+        Inici i Fi canvien de pestanya.
+      </p>
+      <UiTabs
+        v-model="tab"
+        :options="tabOptions"
+        label="Tipus d'actiu"
+      />
     </section>
   </div>
 </template>
