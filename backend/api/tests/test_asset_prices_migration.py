@@ -1,8 +1,11 @@
 """Contract tests for the asset prices migration (US5.6, #191).
 
-CI has no Postgres here, so these tests check the migration text, not the real
-functions. Comments are stripped first so that words in them cannot make an
-assertion pass or fail.
+These tests check the migration text: that every asset has its parameters, the
+schedule, the clock, the formula's building blocks, the view's columns and the
+permissions. The behaviour of the real functions (prices, ranges, jumps, buy and
+sell at the engine price) is tested against Postgres in
+supabase/tests/asset_prices.test.sql. Comments are stripped first so that words
+in them cannot make an assertion pass or fail.
 """
 
 import re

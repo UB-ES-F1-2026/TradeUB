@@ -315,8 +315,8 @@ begin
         updated_at = now()
     returning p.units, p.avg_price into v_units, v_avg_price;
 
-    -- L'ordre desa les dades del moment de la compra: el detall (US6.5) no
-    -- canvia encara que després canviï el preu del catàleg.
+    -- L'ordre desa les dades del moment de la compra, amb el preu del motor en aquell instant: el detall
+    -- (US6.5) no canvia encara que després el preu de l'actiu sigui un altre.
     insert into public.orders (
         user_id, asset_id, side, status, units, price, amount, commission,
         total, avg_price_at_execution, executed_at, cash_movement_id
@@ -415,8 +415,8 @@ begin
         where user_id = p_user_id and asset_id = p_asset_id;
     end if;
 
-    -- L'ordre desa les dades del moment de la venda: el detall (US6.5) no
-    -- canvia encara que després canviï el preu del catàleg.
+    -- L'ordre desa les dades del moment de la venda, amb el preu del motor en aquell instant: el detall
+    -- (US6.5) no canvia encara que després el preu de l'actiu sigui un altre.
     insert into public.orders (
         user_id, asset_id, side, status, units, price, amount, commission,
         total, avg_price_at_execution, executed_at, cash_movement_id
