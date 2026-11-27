@@ -66,15 +66,9 @@ onBeforeUnmount(() => clearTimeout(timer))
 
 <template>
   <UiCard class="assets">
-    <div class="assets__header">
-      <p class="eyebrow">
-        Cercar actius
-      </p>
-      <!-- El catàleg és simulat: els preus no són de mercat (US5.3) -->
-      <UiBadge data-test="simulated-prices">
-        Preus simulats
-      </UiBadge>
-    </div>
+    <p class="eyebrow">
+      Cercar actius
+    </p>
 
     <UiInput
       v-model="query"
@@ -211,12 +205,6 @@ onBeforeUnmount(() => clearTimeout(timer))
 .assets__ticker {
   font-size: var(--tub-text-sm);
   color: var(--tub-text-muted);
-}
-.assets__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--tub-space-3);
 }
 .assets__quote {
   text-align: right;

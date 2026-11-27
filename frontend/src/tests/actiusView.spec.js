@@ -44,6 +44,13 @@ describe('ActiusView', () => {
     expect(wrapper.findComponent({ name: 'AssetSearch' }).exists()).toBe(true)
   })
 
+  // Technical Debt 4: la insígnia surt de la targeta del cercador i va a la dreta de la capçalera
+  it('indica a la capçalera que els preus són simulats', async () => {
+    const wrapper = await mountActius()
+
+    expect(wrapper.get('.ui-page__actions [data-test="simulated-prices"]').text()).toBe('Preus simulats')
+  })
+
   // Cercar no és operar: sense verificar es veu el cercador, però no es pot triar cap actiu per comprar (US6.1)
   it('sense verificar mostra el cercador però no deixa triar actius', async () => {
     apiGet.mockResolvedValue({ verificacio: { estat: 'pendent', termes_acceptats: false } })

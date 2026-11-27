@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
+import { START_LOCATION } from 'vue-router'
 
 // Client real de supabase-js (sense xarxa): la sessió es recupera del localStorage com al navegador
 vi.mock('../services/supabase', async () => {
@@ -37,11 +38,23 @@ async function carregarApp(path) {
 
   const { default: router } = await import('../router')
   await import('../main.js')
-  for (let i = 0; i < 10; i++) {
-    await flushPromises()
-    await new Promise((resolve) => setTimeout(resolve, 10))
-  }
+  // main.js instal·la el router quan acaba initAuth(), que és asíncron. S'espera la primera navegació (amb les
+  // redireccions del guard) i no un temps fix: amb la màquina carregada, 100 ms no sempre n'hi havia prou i la ruta
+  // encara era '/'
+  await vi.waitFor(() => {
+    if (router.currentRoute.value === START_LOCATION) throw new Error('El router encara no ha navegat')
+  }, { timeout: 5000, interval: 10 })
+  await router.isReady()
+  await flushPromises()
   return router.currentRoute.value.fullPath
+}
+
+// La barra (AppNavBar) i la pàgina 404 són components: s'espera que es pintin
+const barra = () => document.querySelector('.navbar')
+async function esperaText(text) {
+  await vi.waitFor(() => {
+    if (!document.body.textContent.includes(text)) throw new Error('Encara no surt: ' + text)
+  }, { timeout: 5000, interval: 10 })
 }
 
 describe('protecció de rutes en carregar la pàgina (F5)', () => {
@@ -83,6 +96,13 @@ describe('protecció de rutes en carregar la pàgina (F5)', () => {
     it('sense 2FA, es queda a /reset-password', async () => {
       expect(await carregarApp('/reset-password')).toBe('/reset-password')
     })
+
+    // Technical Debt 4
+    it('una ruta que no existeix mostra la pàgina 404 amb la barra', async () => {
+      expect(await carregarApp('/no-existeix')).toBe('/no-existeix')
+      await esperaText('Pàgina no trobada')
+      expect(barra()).not.toBeNull()
+    })
   })
 
   describe('sense sessió', () => {
@@ -96,6 +116,19 @@ describe('protecció de rutes en carregar la pàgina (F5)', () => {
 
     it('/mfa redirigeix a /login', async () => {
       expect(await carregarApp('/mfa')).toBe('/login')
+    })
+
+    // Technical Debt 4
+    it('una ruta que no existeix mostra la pàgina 404 sense la barra', async () => {
+      expect(await carregarApp('/no-existeix/de-cap-manera')).toBe('/no-existeix/de-cap-manera')
+      await esperaText('Pàgina no trobada')
+      expect(barra()).toBeNull()
+    })
+
+    it('/ui no mostra la barra', async () => {
+      expect(await carregarApp('/ui')).toBe('/ui')
+      await esperaText('Tipografia')
+      expect(barra()).toBeNull()
     })
   })
 
@@ -116,6 +149,13 @@ describe('protecció de rutes en carregar la pàgina (F5)', () => {
 
     it('/reset-password demana el codi abans de canviar la contrasenya', async () => {
       expect(await carregarApp('/reset-password')).toBe('/mfa?redirect=/reset-password')
+    })
+
+    // Technical Debt 4: amb el codi pendent no hi ha barra, tampoc a la 404
+    it('una ruta que no existeix mostra la pàgina 404 sense la barra', async () => {
+      expect(await carregarApp('/no-existeix')).toBe('/no-existeix')
+      await esperaText('Pàgina no trobada')
+      expect(barra()).toBeNull()
     })
   })
 

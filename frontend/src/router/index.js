@@ -107,6 +107,14 @@ const routes = [
         component: () => import('../views/MfaVerifyView.vue'),
         meta: { hideNav: true }
     },
+    {
+        // Qualsevol ruta que no existeix (Technical Debt 4). Ha d'anar l'última i no demana sessió, perquè s'hi ha de
+        // poder arribar també sense. Les vistes ocultes (meta.enabled === false) són rutes que existeixen: el guard les
+        // envia a Actius abans d'arribar aquí
+        path: '/:pathMatch(.*)*',
+        name: 'not-found',
+        component: () => import('../views/NotFoundView.vue'),
+    },
 ]
 
 const router = createRouter({
