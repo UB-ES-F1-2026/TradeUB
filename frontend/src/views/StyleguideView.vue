@@ -1,8 +1,9 @@
 <script setup>
 import { ref } from 'vue'
-import { UiButton, UiInput, UiSelect, UiFileInput, UiCheckbox, UiCard, UiAlert, UiBadge, UiLogo, UiRadioGroup } from '../components/ui'
+import { UiButton, UiInput, UiSelect, UiFileInput, UiCheckbox, UiCard, UiAlert, UiBadge, UiLogo, UiRadioGroup, UiDialog } from '../components/ui'
 
 const text = ref('')
+const dialogOpen = ref(false)
 const fileName = ref('')
 const bad = ref('hola')
 const country = ref('')
@@ -314,6 +315,40 @@ const groups = [
           </UiButton>
         </div>
       </div>
+    </section>
+
+    <section class="sg__section">
+      <p class="eyebrow">
+        08
+      </p>
+      <h2>Diàleg</h2>
+      <p class="sg__lead">
+        <code>UiDialog</code>: diàleg modal amb el fons fosc de <code>--tub-overlay</code>. Esc i "×" demanen tancar-lo, el
+        focus queda a dins i, en tancar-se, torna al botó que l'ha obert. És la base del PIN i del detall d'una operació.
+      </p>
+      <div class="sg__row">
+        <UiButton
+          variant="secondary"
+          @click="dialogOpen = true"
+        >
+          Obre el diàleg
+        </UiButton>
+      </div>
+      <UiDialog
+        :open="dialogOpen"
+        title="Detall de l'operació"
+        @close="dialogOpen = false"
+      >
+        <p>Contingut del diàleg.</p>
+        <template #footer>
+          <UiButton
+            variant="secondary"
+            @click="dialogOpen = false"
+          >
+            Tanca
+          </UiButton>
+        </template>
+      </UiDialog>
     </section>
   </div>
 </template>
