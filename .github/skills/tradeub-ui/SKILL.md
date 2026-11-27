@@ -20,7 +20,7 @@ modificar-la.
 |---|---|---|
 | Colors, tipografia, espais, radis, ombres | `frontend/src/styles/tokens.css` | Variables CSS `--tub-*`; únic lloc amb valors hex |
 | Reset i estils globals | `frontend/src/styles/base.css` | Només consumeix tokens |
-| Components base | `frontend/src/components/ui/` | `UiButton`, `UiInput`, `UiSelect`, `UiFileInput`, `UiCheckbox`, `UiCard`, `UiAlert`, `UiBadge`, `UiLogo`, `UiRadioGroup` |
+| Components base | `frontend/src/components/ui/` | `UiButton`, `UiInput`, `UiSelect`, `UiFileInput`, `UiCheckbox`, `UiCard`, `UiAlert`, `UiBadge`, `UiLogo`, `UiRadioGroup`, `UiTabs` |
 | Mostra visual | `frontend/src/views/StyleguideView.vue` | Ruta `/ui` |
 
 ## Regles
@@ -62,6 +62,10 @@ modificar-la.
 <!-- Resposta tancada (una sola opció). Si va dins d'un <fieldset> amb <legend>, no cal label -->
 <UiRadioGroup v-model="resposta" name="pregunta-1" label="Nom accessible del grup"
               :options="[{ id: 'a', label: 'Opció A' }, { id: 'b', label: 'Opció B' }]" />
+
+<!-- Pestanyes subratllades: role="tablist", fletxes, Inici i Fi. controls = id del panell que canvia -->
+<UiTabs v-model="tipus" label="Tipus d'actiu" controls="resultats"
+        :options="[{ value: 'tots', label: 'Tots' }, { value: 'etf', label: 'ETF' }]" />
 ```
 
 ## Com canviar l'estil de tota l'app
