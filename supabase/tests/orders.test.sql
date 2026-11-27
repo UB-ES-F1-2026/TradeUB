@@ -10,6 +10,11 @@ begin;
 -- El backend crida les funcions amb la clau secreta (service_role)
 set local request.jwt.claim.role = 'service_role';
 
+-- US5.6: el preu de compra i venda surt de asset_price. Aquests tests proven els imports, la comissió, la posició i
+-- l'ordre, no el motor de preus: dins d'aquesta transacció, el preu és el del catàleg
+create or replace function public.asset_price(p_asset_id bigint, p_at timestamptz default now())
+returns numeric language sql as $$ select close_price_eur from public.assets where id = p_asset_id $$;
+
 create function pg_temp.ok(p_cond boolean, p_name text) returns void
 language plpgsql as $$
 begin

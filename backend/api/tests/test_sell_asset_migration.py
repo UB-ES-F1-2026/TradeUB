@@ -38,10 +38,13 @@ def test_only_whole_positive_units():
     assert "p_units <= 0 or p_units <> trunc(p_units)" in sql
 
 
-def test_price_comes_from_catalog():
+def test_price_comes_from_the_price_engine():
     sql = load_current_function()
 
-    assert "select close_price_eur into v_price from public.assets" in sql
+    # US5.6: the simulated price at this instant, never the catalog anchor or the request
+    assert "v_price := public.asset_price(p_asset_id)" in sql
+    assert "close_price_eur" not in sql
+    assert "if v_price is null then raise exception 'asset not found: %'" in sql
 
 
 def test_locks_account_before_position():
