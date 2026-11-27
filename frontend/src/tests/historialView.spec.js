@@ -159,3 +159,107 @@ describe('HistorialView', () => {
     expect(movementCalls()).toHaveLength(0)
   })
 })
+
+describe("HistorialView: detall d'una compra o venda (US6.5)", () => {
+  const buy = {
+    created_at: '2026-11-26T09:42:00+00:00',
+    concept: 'Compra de 3 AAPL',
+    amount: '-638.20',
+    type: 'compra',
+    balance_after: '9361.80',
+    order_id: 'ordre-1',
+  }
+  // Una compra anterior a la taula d'ordres: no té order_id
+  const oldBuy = { ...buy, concept: "Compra d'actius", order_id: null }
+  const order = {
+    id: 'ordre-1',
+    side: 'compra',
+    status: 'executada',
+    asset: { id: 7, name: 'Apple Inc.', ticker: 'AAPL' },
+    units: '3.00000000',
+    price: '212.400000',
+    amount: '637.20',
+    commission: '1.00',
+    total: '638.20',
+    created_at: buy.created_at,
+    executed_at: buy.created_at,
+    balance_after: '9361.80',
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    setActivePinia(createPinia())
+    apiGet.mockImplementation(async (path) => {
+      if (path === '/users/me') return VERIFIED
+      if (path.startsWith('/orders/')) return order
+      return { movements: [buy, deposit, oldBuy, withdrawal], has_more: true }
+    })
+  })
+
+  const rows = (wrapper) => wrapper.findAll('[data-test="movement-row"]')
+  const dialogOpen = (wrapper) => wrapper.find('[data-test="ui-dialog"]').exists()
+
+  it('només les files amb ordre es poden obrir i porten "›"', async () => {
+    const wrapper = await mountHistorial()
+
+    const openable = rows(wrapper).map((r) => r.classes().includes('movements__row--openable'))
+    expect(openable).toEqual([true, false, false, false])
+    expect(rows(wrapper)[0].attributes('tabindex')).toBe('0')
+    expect(rows(wrapper)[0].text()).toContain('›')
+    expect(rows(wrapper)[1].attributes('tabindex')).toBeUndefined()
+    expect(rows(wrapper)[1].text()).not.toContain('›')
+  })
+
+  it("en fer clic a una compra n'obre el detall", async () => {
+    const wrapper = await mountHistorial()
+
+    await rows(wrapper)[0].trigger('click')
+    await flushPromises()
+
+    expect(apiGet).toHaveBeenCalledWith('/orders/ordre-1')
+    expect(wrapper.get('[data-test="ui-dialog"] h2').text()).toBe("Detall de l'operació")
+    expect(wrapper.get('[data-test="order-asset"] dd').text()).toBe('Apple Inc. (AAPL)')
+  })
+
+  it("amb el teclat (Retorn i espai) també s'obre", async () => {
+    const wrapper = await mountHistorial()
+
+    await rows(wrapper)[0].trigger('keydown', { key: 'Enter' })
+    await flushPromises()
+    expect(dialogOpen(wrapper)).toBe(true)
+
+    await wrapper.get('[data-test="order-close"]').trigger('click')
+    await rows(wrapper)[0].trigger('keydown', { key: ' ' })
+    await flushPromises()
+    expect(dialogOpen(wrapper)).toBe(true)
+  })
+
+  it('els ingressos, les retirades i les compres sense ordre no obren res', async () => {
+    const wrapper = await mountHistorial()
+
+    for (const index of [1, 2, 3]) {
+      await rows(wrapper)[index].trigger('click')
+      await rows(wrapper)[index].trigger('keydown', { key: 'Enter' })
+    }
+    await flushPromises()
+
+    expect(dialogOpen(wrapper)).toBe(false)
+    expect(apiGet.mock.calls.some(([path]) => path.startsWith('/orders/'))).toBe(false)
+  })
+
+  it('obrir i tancar el detall conserva els filtres i la pàgina sense tornar a carregar la llista', async () => {
+    const wrapper = await mountHistorial()
+    await wrapper.get('[data-test="page-next"]').trigger('click')
+    await flushPromises()
+    const callsBefore = movementCalls().length
+
+    await rows(wrapper)[0].trigger('click')
+    await flushPromises()
+    await wrapper.get('[data-test="order-close"]').trigger('click')
+    await flushPromises()
+
+    expect(dialogOpen(wrapper)).toBe(false)
+    expect(wrapper.get('[data-test="page-number"]').text()).toBe('Pàgina 2')
+    expect(movementCalls()).toHaveLength(callsBefore)
+  })
+})
