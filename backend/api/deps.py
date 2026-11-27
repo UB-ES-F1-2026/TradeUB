@@ -5,6 +5,7 @@ amb la clau pública publicada al JWKS del projecte (ES256). Els usuaris amb
 un factor MFA verificat han d'accedir amb autenticació de nivell aal2.
 """
 
+import math
 from functools import lru_cache
 
 import jwt
@@ -15,8 +16,12 @@ from supabase import Client, PostgrestAPIError
 from supabase_auth.errors import AuthApiError
 
 from core.config import SUPABASE_URL, create_admin_client, create_user_client
-from core.pin import verify_pin
-from core.profile_pins import get_pin_hash
+from core.profile_pins import (
+    PinLockedError,
+    WrongPinError,
+    check_pin,
+    get_pin_record,
+)
 from core.verification import is_fully_verified
 
 security = HTTPBearer()
@@ -167,6 +172,72 @@ def require_verified_user(
 # Capçalera on el frontend envia el PIN en les operacions que el demanen
 PIN_HEADER = "X-PIN"
 
+WRONG_PIN_ERROR = "El PIN introduït és incorrecte."
+
+
+def _remaining_attempts_message(remaining: int) -> str:
+    if remaining == 1:
+        return "Et queda 1 intent."
+    return f"Et queden {remaining} intents."
+
+
+def _pin_locked_message(retry_after_seconds: int) -> str:
+    minutes = math.ceil(retry_after_seconds / 60)
+    unit = "minut" if minutes == 1 else "minuts"
+    return (
+        "Has superat el nombre d'intents. "
+        f"Torna-ho a provar d'aquí a {minutes} {unit}."
+    )
+
+
+def read_pin_record(admin: Client, user_id: str) -> dict | None:
+    """Llegeix el hash i el bloqueig del PIN; els errors de la base de dades són 500."""
+    try:
+        return get_pin_record(admin, user_id)
+    except PostgrestAPIError as e:
+        raise HTTPException(
+            status_code=500, detail="No s'ha pogut recuperar el PIN"
+        ) from e
+
+
+def verify_pin_attempt(
+    admin: Client, user_id: str, pin: str | None, record: dict, wrong_pin_error: str
+) -> None:
+    """Comprova el PIN amb el comptador d'intents (US1.6) i en fa errors HTTP.
+
+    La fan servir ``require_pin`` i el canvi de PIN (``POST /profile/pin``),
+    que comparteixen el comptador. La lògica és ``core.profile_pins.check_pin``.
+
+    Args:
+        admin: client d'administració.
+        user_id: claim ``sub`` del token validat.
+        pin: PIN rebut a la petició.
+        record: fila de profile_pins de l'usuari (``read_pin_record``).
+        wrong_pin_error: missatge del 403, al qual s'afegeixen els intents.
+
+    Raises:
+        HTTPException: 403 si el PIN és incorrecte (amb els intents que
+            queden), 429 amb ``Retry-After`` si està bloquejat o es bloqueja
+            ara, i 500 si no es pot comprovar el PIN o registrar l'intent.
+    """
+    try:
+        check_pin(admin, user_id, pin, record)
+    except PinLockedError as e:
+        raise HTTPException(
+            status_code=429,
+            detail=_pin_locked_message(e.retry_after_seconds),
+            headers={"Retry-After": str(e.retry_after_seconds)},
+        ) from e
+    except WrongPinError as e:
+        raise HTTPException(
+            status_code=403,
+            detail=f"{wrong_pin_error} {_remaining_attempts_message(e.remaining_attempts)}",
+        ) from e
+    except (ValueError, PostgrestAPIError) as e:
+        raise HTTPException(
+            status_code=500, detail="No s'ha pogut comprovar el PIN"
+        ) from e
+
 
 def require_pin(
     pin: str | None = Header(default=None, alias=PIN_HEADER),
@@ -176,11 +247,12 @@ def require_pin(
     """Exigeix el PIN de seguretat correcte a la capçalera ``X-PIN`` (US1.5).
 
     És la dependència dels endpoints d'operació que demanen el PIN: la
-    retirada (#116) i, si es fan, la compra (#126) i la venda (#128). Inclou
-    ``require_verified_user``, així que l'endpoint no l'ha de repetir. Si
-    falla, l'operació no s'executa.
+    retirada (#116), la compra (#126), la venda (#128) i les ordres noves que
+    la facin servir. Inclou ``require_verified_user``, així que l'endpoint no
+    l'ha de repetir. Si falla, l'operació no s'executa.
 
-    No hi ha bloqueig per intents fallits (US1.6, al backlog).
+    Compta els intents fallits amb el canvi de PIN (US1.6): al 3r error
+    seguit el PIN es bloqueja 15 minuts i, mentre duri, no es comprova.
 
     Returns:
         Els claims del token, igual que ``get_current_user``.
@@ -188,26 +260,15 @@ def require_pin(
     Raises:
         HTTPException: 403 si l'usuari no està verificat, no té PIN
             configurat o el PIN no és correcte (també si falta la capçalera),
-            i 500 si no es pot llegir o comprovar el PIN desat.
+            429 si el PIN està bloquejat, i 500 si no es pot llegir o
+            comprovar el PIN desat.
     """
-    try:
-        pin_hash = get_pin_hash(admin, user["sub"])
-    except PostgrestAPIError as e:
-        raise HTTPException(
-            status_code=500, detail="No s'ha pogut recuperar el PIN"
-        ) from e
-    if pin_hash is None:
+    record = read_pin_record(admin, user["sub"])
+    if record is None:
         raise HTTPException(
             status_code=403,
             detail="Cal configurar el PIN de seguretat al perfil per fer aquesta operació.",
         )
 
-    try:
-        matches = verify_pin(pin, pin_hash)
-    except ValueError as e:
-        raise HTTPException(
-            status_code=500, detail="No s'ha pogut comprovar el PIN"
-        ) from e
-    if not matches:
-        raise HTTPException(status_code=403, detail="El PIN introduït és incorrecte.")
+    verify_pin_attempt(admin, user["sub"], pin, record, WRONG_PIN_ERROR)
     return user
