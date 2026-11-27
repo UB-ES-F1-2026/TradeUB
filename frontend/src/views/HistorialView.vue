@@ -1,5 +1,6 @@
 <script setup>
 import { onMounted, ref, watch } from 'vue'
+import OrderDetailDialog from '../components/OrderDetailDialog.vue'
 import VerificationRequired from '../components/VerificationRequired.vue'
 import { UiAlert, UiButton, UiCard, UiInput, UiSelect } from '../components/ui'
 import { useMovementsStore } from '../stores/movements'
@@ -30,6 +31,15 @@ onMounted(async () => {
 
 // Qualsevol canvi de filtre recarrega des de la primera pàgina
 watch(() => ({ ...movements.filters }), () => movements.applyFilters())
+
+// Detall d'una compra o venda (US6.5). Només s'obren les files amb ordre: els ingressos, les retirades i les compres i
+// vendes anteriors a la taula d'ordres no en tenen (C4). Obrir i tancar el detall no canvia de ruta ni torna a carregar
+// la llista: el store conserva els filtres i la pàgina (C5)
+const openOrderId = ref(null)
+
+function openOrder(movement) {
+  if (movement.order_id) openOrderId.value = movement.order_id
+}
 </script>
 
 <template>
@@ -144,6 +154,11 @@ watch(() => ({ ...movements.filters }), () => movements.applyFilters())
                 >
                   Saldo resultant
                 </th>
+                <th
+                  scope="col"
+                  class="movements__chevron"
+                  aria-label="Detall"
+                />
               </tr>
             </thead>
             <tbody>
@@ -151,7 +166,13 @@ watch(() => ({ ...movements.filters }), () => movements.applyFilters())
                 v-for="(movement, index) in movements.movements"
                 :key="`${movement.created_at}-${index}`"
                 class="movements__row"
+                :class="{ 'movements__row--openable': movement.order_id }"
+                :tabindex="movement.order_id ? 0 : undefined"
+                :aria-haspopup="movement.order_id ? 'dialog' : undefined"
                 data-test="movement-row"
+                @click="openOrder(movement)"
+                @keydown.enter.prevent="openOrder(movement)"
+                @keydown.space.prevent="openOrder(movement)"
               >
                 <td class="movements__date">
                   <span class="movements__main tabular">{{ formatMovementDate(movement.created_at) }}</span>
@@ -177,10 +198,21 @@ watch(() => ({ ...movements.filters }), () => movements.applyFilters())
                 >
                   <span class="movements__balance-label">Saldo </span>{{ formatCurrency(Number(movement.balance_after)) }}
                 </td>
+                <td
+                  class="movements__chevron"
+                  aria-hidden="true"
+                >
+                  <span v-if="movement.order_id">›</span>
+                </td>
               </tr>
             </tbody>
           </table>
         </UiCard>
+
+        <OrderDetailDialog
+          :order-id="openOrderId"
+          @close="openOrderId = null"
+        />
 
         <nav
           class="pagination"
@@ -280,6 +312,24 @@ watch(() => ({ ...movements.filters }), () => movements.applyFilters())
 .movements__row:last-child td {
   border-bottom: 0;
 }
+/* Compres i vendes amb detall: fons en passar el ratolí i "›" a la dreta. Els ingressos i les retirades, no */
+.movements__row--openable {
+  cursor: pointer;
+}
+.movements__row--openable:hover td {
+  background: var(--tub-surface-2);
+}
+.movements__row--openable:focus-visible {
+  outline: 2px solid var(--tub-primary);
+  outline-offset: -2px;
+}
+.movements .movements__chevron {
+  width: 1.5rem;
+  padding-left: 0;
+  color: var(--tub-text-muted);
+  font-size: var(--tub-text-lg);
+  text-align: right;
+}
 .movements .movements__num {
   text-align: right;
   white-space: nowrap;
@@ -340,10 +390,10 @@ watch(() => ({ ...movements.filters }), () => movements.applyFilters())
   }
   .movements__row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto auto;
     grid-template-areas:
-      'concept amount'
-      'date balance';
+      'concept amount chevron'
+      'date balance chevron';
     gap: var(--tub-space-1) var(--tub-space-3);
     padding: var(--tub-space-3) 0;
     border-bottom: 1px solid var(--tub-border);
@@ -377,6 +427,11 @@ watch(() => ({ ...movements.filters }), () => movements.applyFilters())
     font-size: var(--tub-text-sm);
     font-weight: 400;
     color: var(--tub-text-muted);
+  }
+  .movements .movements__chevron {
+    grid-area: chevron;
+    align-self: center;
+    width: auto;
   }
   .movements__balance {
     grid-area: balance;

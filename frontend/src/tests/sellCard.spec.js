@@ -127,7 +127,7 @@ describe('SellCard', () => {
 
       await continueWith(wrapper, '3')
 
-      expect(wrapper.get('[data-test="pin-dialog"]').text()).toContain('Confirma la venda')
+      expect(wrapper.get('[data-test="ui-dialog"] h2').text()).toBe('Confirma la venda')
       expect(wrapper.get('[data-test="pin-dialog"]').text()).toContain(`3 unitats de AAPL. Rebràs ${eur(29.99)}`)
     })
 

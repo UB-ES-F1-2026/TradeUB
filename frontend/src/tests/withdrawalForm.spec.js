@@ -169,8 +169,8 @@ describe('WithdrawalForm', () => {
 
       await continueWith(wrapper, '50,25')
 
-      const step = wrapper.get('[data-test="pin-dialog"]')
-      expect(step.text()).toContain('Confirma la retirada')
+      const step = wrapper.get('[data-test="ui-dialog"]')
+      expect(step.get('h2').text()).toBe('Confirma la retirada')
       expect(step.text()).toContain('50,25')
       expect(step.text()).toContain(MASKED)
       expect(apiPost).not.toHaveBeenCalled()
