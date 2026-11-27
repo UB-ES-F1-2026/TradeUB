@@ -2,7 +2,7 @@
 import { onMounted, ref, watch } from 'vue'
 import OrderDetailDialog from '../components/OrderDetailDialog.vue'
 import VerificationRequired from '../components/VerificationRequired.vue'
-import { UiAlert, UiButton, UiCard, UiInput, UiSelect } from '../components/ui'
+import { UiAlert, UiButton, UiCard, UiInput, UiPage, UiSelect } from '../components/ui'
 import { useMovementsStore } from '../stores/movements'
 import { useVerificationStore } from '../stores/verification'
 import { formatCurrency } from '../utils/currency'
@@ -43,9 +43,7 @@ function openOrder(movement) {
 </script>
 
 <template>
-  <section class="page">
-    <h1>Historial</h1>
-
+  <UiPage title="Historial">
     <p
       v-if="!checked || verification.loading"
       class="page__muted"
@@ -248,18 +246,10 @@ function openOrder(movement) {
       v-else
       message="Verifica la teva identitat i accepta els termes i condicions per consultar l'historial de moviments."
     />
-  </section>
+  </UiPage>
 </template>
 
 <style scoped>
-.page {
-  display: grid;
-  gap: var(--tub-space-5);
-  /* Centrat com Perfil */
-  width: min(100%, 960px);
-  margin-inline: auto;
-  padding: var(--tub-space-6) var(--tub-space-5);
-}
 .page__muted {
   color: var(--tub-text-muted);
 }
@@ -376,9 +366,6 @@ function openOrder(movement) {
 }
 
 @media (max-width: 900px) {
-  .page {
-    padding: var(--tub-space-5) var(--tub-space-4);
-  }
   .filters {
     grid-template-columns: 1fr;
     gap: 0;

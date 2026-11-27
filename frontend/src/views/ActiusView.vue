@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import AssetSearch from '../components/AssetSearch.vue'
 import BuyCard from '../components/BuyCard.vue'
 import SellCard from '../components/SellCard.vue'
+import { UiBadge, UiPage } from '../components/ui'
 import { useAccountStore } from '../stores/account'
 import { useVerificationStore } from '../stores/verification'
 
@@ -36,8 +37,13 @@ function close() {
 </script>
 
 <template>
-  <section class="page">
-    <h1>Actius</h1>
+  <UiPage title="Actius">
+    <!-- El catàleg és simulat: els preus no són de mercat (US5.3) -->
+    <template #actions>
+      <UiBadge data-test="simulated-prices">
+        Preus simulats
+      </UiBadge>
+    </template>
 
     <template v-if="operation && verification.canOperate">
       <BuyCard
@@ -60,20 +66,5 @@ function close() {
       @select="open('buy', $event)"
       @sell="open('sell', $event)"
     />
-  </section>
+  </UiPage>
 </template>
-
-<style scoped>
-.page {
-  display: grid;
-  gap: var(--tub-space-5);
-  max-width: 720px;
-  padding: var(--tub-space-6) var(--tub-space-5);
-}
-
-@media (max-width: 900px) {
-  .page {
-    padding: var(--tub-space-5) var(--tub-space-4);
-  }
-}
-</style>
