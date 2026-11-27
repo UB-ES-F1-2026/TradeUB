@@ -114,7 +114,8 @@ describe('PerfilView', () => {
     await flushPromises()
 
     expect(apiGet).toHaveBeenCalledWith('/users/me')
-    expect(wrapper.find('h1').text()).toBe('Cristian Prado')
+    expect(wrapper.find('h1').text()).toBe('Perfil')
+    expect(wrapper.find('.page__name').text()).toBe('Cristian Prado')
     expect(wrapper.text()).toContain('600000000')
     expect(wrapper.text()).toContain('Carrer Gran Via 585, 08007 Barcelona')
   })
