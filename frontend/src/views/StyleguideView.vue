@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-import { UiButton, UiInput, UiSelect, UiFileInput, UiCheckbox, UiCard, UiAlert, UiBadge, UiLogo, UiRadioGroup } from '../components/ui'
+import { UiButton, UiInput, UiSelect, UiFileInput, UiCheckbox, UiCard, UiAlert, UiBadge, UiLogo, UiRadioGroup, UiPage } from '../components/ui'
 
 const text = ref('')
 const fileName = ref('')
@@ -315,6 +315,27 @@ const groups = [
         </div>
       </div>
     </section>
+
+    <section class="sg__section">
+      <p class="eyebrow">
+        08
+      </p>
+      <h2>Pàgina</h2>
+      <p class="sg__lead">
+        <code>UiPage</code>: contenidor de les pantalles amb la barra de navegació, centrat i de 1120 px com a màxim.
+        La capçalera té el títol, igual que l'etiqueta de la barra, i una acció opcional a la dreta.
+      </p>
+      <div class="sg__frame">
+        <UiPage title="Actius">
+          <template #actions>
+            <UiBadge>Preus simulats</UiBadge>
+          </template>
+          <UiCard padding="md">
+            Contingut de la pàgina
+          </UiCard>
+        </UiPage>
+      </div>
+    </section>
   </div>
 </template>
 
@@ -405,6 +426,11 @@ code {
   flex-wrap: wrap;
   gap: var(--tub-space-3);
   align-items: center;
+}
+.sg__frame {
+  border: 1px dashed var(--tub-border);
+  border-radius: var(--tub-radius-lg);
+  background: var(--tub-bg);
 }
 .sg__card {
   max-width: 460px;

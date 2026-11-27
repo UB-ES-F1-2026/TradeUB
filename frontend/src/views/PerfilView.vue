@@ -9,7 +9,7 @@ import { useVerificationStore } from '../stores/verification'
 import { STEP_STATUS } from '../utils/onboarding'
 import { formatCurrency } from '../utils/currency'
 import { INCOMPLETE_FEATURES_ENABLED } from '../config/features'
-import { UiAlert, UiBadge, UiButton, UiCard } from '../components/ui'
+import { UiAlert, UiBadge, UiButton, UiCard, UiPage } from '../components/ui'
 import TwoFactorCard from '../components/TwoFactorCard.vue'
 import PinCard from '../components/PinCard.vue'
 import PasswordCard from '../components/PasswordCard.vue'
@@ -111,28 +111,28 @@ async function handleLogout() {
 </script>
 
 <template>
-  <section class="page">
-    <header class="page__head">
+  <UiPage>
+    <template #title>
       <div class="page__head-main">
         <span class="eyebrow">Compte</span>
         <h1 class="page__title">
           {{ fullName }}
         </h1>
       </div>
-      <div class="page__status">
-        <UiBadge :variant="verificat ? 'success' : 'neutral'">
-          {{ verificat ? 'Verificat' : 'No verificat' }}
-        </UiBadge>
-        <UiButton
-          v-if="!verificat"
-          variant="primary"
-          size="sm"
-          @click="router.push({ name: 'onboarding' })"
-        >
-          Verifica't
-        </UiButton>
-      </div>
-    </header>
+    </template>
+    <template #actions>
+      <UiBadge :variant="verificat ? 'success' : 'neutral'">
+        {{ verificat ? 'Verificat' : 'No verificat' }}
+      </UiBadge>
+      <UiButton
+        v-if="!verificat"
+        variant="primary"
+        size="sm"
+        @click="router.push({ name: 'onboarding' })"
+      >
+        Verifica't
+      </UiButton>
+    </template>
 
     <div class="page__tiles">
       <RouterLink
@@ -276,32 +276,13 @@ async function handleLogout() {
         {{ error }}
       </UiAlert>
     </UiCard>
-  </section>
+  </UiPage>
 </template>
 
 <style scoped>
-.page {
-  display: grid;
-  gap: var(--tub-space-5);
-  width: min(100%, 960px);
-  margin-inline: auto;
-  padding: var(--tub-space-6) var(--tub-space-5);
-}
-.page__head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: var(--tub-space-4);
-}
 .page__head-main {
   display: grid;
   gap: var(--tub-space-1);
-}
-.page__status {
-  display: flex;
-  align-items: center;
-  gap: var(--tub-space-3);
 }
 .page__title {
   font-size: var(--tub-text-xl);
@@ -383,9 +364,6 @@ async function handleLogout() {
 }
 
 @media (max-width: 900px) {
-  .page {
-    padding: var(--tub-space-5) var(--tub-space-4);
-  }
   .page__settings,
   .page__session {
     flex-direction: column;

@@ -92,6 +92,10 @@ onMounted(account.fetchBalance)
   padding-top: var(--tub-space-4);
   border-top: 1px solid var(--tub-border);
 }
+/* Sense el marge esquerre que el navegador posa als <dd>, els imports queden alineats amb la seva etiqueta */
+.balance__split dd {
+  margin: 0;
+}
 .balance__muted {
   color: var(--tub-text-muted);
   font-size: var(--tub-text-sm);
