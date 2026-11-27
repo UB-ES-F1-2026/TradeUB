@@ -113,6 +113,61 @@ describe('AssetSearch', () => {
     expect(apiGet).toHaveBeenCalledWith('/assets?q=app')
   })
 
+  describe('pestanyes per tipus (US5.2)', () => {
+    const BTC = { name: 'Bitcoin', ticker: 'BTC', type: 'cripto', close_price_eur: 80000, daily_change_pct: 1.2, price_date: '2026-11-13' }
+    const tab = (wrapper, label) => wrapper.findAll('[role="tab"]').find((t) => t.text() === label)
+
+    it('mostra Tots, Accions, ETF i Cripto sota el camp, amb Tots triada', async () => {
+      apiGet.mockResolvedValue([APPLE, MSCI])
+      const wrapper = mount(AssetSearch)
+      await flushPromises()
+
+      expect(wrapper.findAll('[role="tab"]').map((t) => t.text())).toEqual(['Tots', 'Accions', 'ETF', 'Cripto'])
+      expect(tab(wrapper, 'Tots').attributes('aria-selected')).toBe('true')
+      expect(results(wrapper)).toHaveLength(2)
+    })
+
+    it('filtra els resultats pel tipus sense tornar a demanar el catàleg', async () => {
+      apiGet.mockResolvedValue([APPLE, MSCI, TEF, BTC])
+      const wrapper = mount(AssetSearch)
+      await flushPromises()
+
+      await tab(wrapper, 'Accions').trigger('click')
+      expect(wrapper.findAll('[data-test="asset-result"]').map((r) => r.text())).toEqual([
+        expect.stringContaining('AAPL'),
+        expect.stringContaining('TEF'),
+      ])
+
+      await tab(wrapper, 'Cripto').trigger('click')
+      expect(results(wrapper)).toEqual([expect.stringContaining('BTC')])
+      expect(apiGet).toHaveBeenCalledTimes(1)
+    })
+
+    it('es combina amb la cerca: el filtre es manté en cercar', async () => {
+      apiGet.mockResolvedValue([APPLE, MSCI, TEF])
+      const wrapper = mount(AssetSearch)
+      await flushPromises()
+      await tab(wrapper, 'ETF').trigger('click')
+      apiGet.mockResolvedValue([MSCI, TEF])
+
+      await typeAndWait(wrapper, 'i')
+      await typeAndWait(wrapper, 'ms')
+
+      expect(results(wrapper)).toEqual([expect.stringContaining('IWDA')])
+    })
+
+    it('si cap actiu compleix la cerca i el filtre, mostra el missatge del criteri', async () => {
+      apiGet.mockResolvedValue([APPLE, TEF])
+      const wrapper = mount(AssetSearch)
+      await flushPromises()
+
+      await tab(wrapper, 'ETF').trigger('click')
+
+      expect(wrapper.find('[data-test="asset-result"]').exists()).toBe(false)
+      expect(wrapper.get('[data-test="no-results"]').text()).toBe("No s'han trobat actius")
+    })
+  })
+
   it('sense resultats mostra el missatge del criteri', async () => {
     apiGet.mockResolvedValue([APPLE])
     const wrapper = mount(AssetSearch)

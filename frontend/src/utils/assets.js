@@ -15,6 +15,21 @@ export function assetTypeLabel(type) {
   return ASSET_TYPE_LABELS[type] ?? type
 }
 
+// Pestanyes per tipus d'actiu (US5.2). "Tots" és la de per defecte i no filtra
+export const ALL_ASSET_TYPES = 'tots'
+export const ASSET_TYPE_TABS = [
+  { value: ALL_ASSET_TYPES, label: 'Tots' },
+  { value: 'accio', label: 'Accions' },
+  { value: 'etf', label: 'ETF' },
+  { value: 'cripto', label: 'Cripto' },
+]
+
+// El filtre per tipus es fa aquí i no al backend: el catàleg és petit, i així es combina amb la cerca (que sí fa el
+// backend) sense tornar a demanar res en canviar de pestanya
+export function filterAssetsByType(assets, type) {
+  return type === ALL_ASSET_TYPES ? assets : assets.filter((asset) => asset.type === type)
+}
+
 // Text literal del criteri de la US5.3 quan falta una dada de la cotització
 export const QUOTE_UNAVAILABLE = 'No disponible'
 

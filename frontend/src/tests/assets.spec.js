@@ -1,10 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import {
+  ALL_ASSET_TYPES,
   assetTypeLabel,
   assetsSearchPath,
   dailyChangeTrend,
   formatClosePrice,
   formatDailyChange,
+  filterAssetsByType,
   formatPriceDate,
 } from '../utils/assets'
 
@@ -79,5 +81,29 @@ describe('dailyChangeTrend', () => {
     expect(dailyChangeTrend(0)).toBe('flat')
     expect(dailyChangeTrend('0.00')).toBe('flat')
     expect(dailyChangeTrend(null)).toBe('flat')
+  })
+})
+
+// US5.2: el filtre per tipus es combina amb la cerca, que ja ha fet el backend
+describe('filterAssetsByType', () => {
+  const ASSETS = [
+    { ticker: 'AAPL', type: 'accio' },
+    { ticker: 'IWDA', type: 'etf' },
+    { ticker: 'BTC', type: 'cripto' },
+    { ticker: 'TEF', type: 'accio' },
+  ]
+
+  it("\"Tots\" no filtra i manté l'ordre", () => {
+    expect(filterAssetsByType(ASSETS, ALL_ASSET_TYPES)).toEqual(ASSETS)
+  })
+
+  it('deixa només els actius del tipus triat, en el mateix ordre', () => {
+    expect(filterAssetsByType(ASSETS, 'accio').map((a) => a.ticker)).toEqual(['AAPL', 'TEF'])
+    expect(filterAssetsByType(ASSETS, 'etf').map((a) => a.ticker)).toEqual(['IWDA'])
+    expect(filterAssetsByType(ASSETS, 'cripto').map((a) => a.ticker)).toEqual(['BTC'])
+  })
+
+  it('sense cap actiu del tipus retorna una llista buida', () => {
+    expect(filterAssetsByType([ASSETS[0]], 'etf')).toEqual([])
   })
 })

@@ -1,13 +1,16 @@
 <script setup>
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue'
 import { apiGet } from '../services/api'
-import { UiAlert, UiBadge, UiButton, UiCard, UiInput } from './ui'
+import { UiAlert, UiBadge, UiButton, UiCard, UiInput, UiTabs } from './ui'
 import {
+  ALL_ASSET_TYPES,
   ASSETS_LOAD_ERROR,
+  ASSET_TYPE_TABS,
   NO_ASSETS_FOUND,
   SEARCH_DELAY_MS,
   assetTypeLabel,
   assetsSearchPath,
+  filterAssetsByType,
   dailyChangeTrend,
   formatClosePrice,
   formatDailyChange,
@@ -29,6 +32,11 @@ const canSell = (asset) => props.selectable && (props.holdings[asset.id] ?? 0) >
 
 const query = ref('')
 const assets = ref([])
+// Pestanya de tipus (US5.2). Filtra els resultats de la cerca al frontend, sense tornar a demanar el catàleg
+const type = ref(ALL_ASSET_TYPES)
+const visibleAssets = computed(() => filterAssetsByType(assets.value, type.value))
+const resultsId = useId()
+const typeLabel = computed(() => ASSET_TYPE_TABS.find((tab) => tab.value === type.value).label)
 const loading = ref(false)
 const error = ref('')
 
@@ -84,7 +92,20 @@ onBeforeUnmount(() => clearTimeout(timer))
       data-test="asset-search"
     />
 
-    <div aria-live="polite">
+    <UiTabs
+      v-model="type"
+      :options="ASSET_TYPE_TABS"
+      label="Tipus d'actiu"
+      :controls="resultsId"
+      data-test="asset-type-tabs"
+    />
+
+    <div
+      :id="resultsId"
+      role="tabpanel"
+      aria-live="polite"
+      :aria-label="typeLabel"
+    >
       <UiAlert
         v-if="error"
         variant="error"
@@ -93,14 +114,14 @@ onBeforeUnmount(() => clearTimeout(timer))
       </UiAlert>
 
       <p
-        v-else-if="!assets.length && loading"
+        v-else-if="!visibleAssets.length && loading"
         class="assets__muted"
       >
         Carregant actius…
       </p>
 
       <p
-        v-else-if="!assets.length"
+        v-else-if="!visibleAssets.length"
         class="assets__muted"
         data-test="no-results"
       >
@@ -113,7 +134,7 @@ onBeforeUnmount(() => clearTimeout(timer))
         :aria-busy="loading"
       >
         <li
-          v-for="asset in assets"
+          v-for="asset in visibleAssets"
           :key="asset.ticker"
           class="assets__item"
           :class="{ 'assets__item--selectable': selectable }"
