@@ -30,8 +30,8 @@ def test_every_catalog_asset_has_volatility_and_drift():
 def test_volatility_and_drift_have_defaults_and_ranges():
     sql = load_sql()
 
-    assert "add column if not exists volatility numeric(6, 4) not null default 0.0080" in sql
-    assert "add column if not exists drift numeric(6, 4) not null default 0.0400" in sql
+    assert "add column if not exists volatility numeric(6, 4) not null default 0.0072" in sql
+    assert "add column if not exists drift numeric(6, 4) not null default 0.0300" in sql
     assert "check (volatility > 0 and volatility <= 0.05)" in sql
     assert "check (drift >= 0 and drift <= 0.2)" in sql
 
@@ -55,12 +55,27 @@ def test_market_clock_only_runs_while_open():
     assert "greatest(least(session_second, 55799), -1)" in sql
 
 
+def test_price_is_deterministic_on_the_market_clock():
+    sql = load_sql()
+
+    # Market clock, so the price freezes while closed and opening continues the close
+    assert "v_m double precision := public.market_seconds(p_at)" in sql
+    # Anchored on the catalog price, never negative or zero
+    assert "return round((v_close * exp(" in sql
+    # Deterministic noise (no random()), same in every Postgres version
+    assert "md5(p_asset_id::text || ':' || v_m::bigint::text)" in sql
+    assert "random()" not in sql
+    # Two decimals: the price shown is the price executed
+    assert ")::numeric, 2)" in sql
+
+
 def test_only_service_role_can_execute():
     sql = load_sql()
 
     for signature in (
         "public.market_is_open(text, timestamptz)",
         "public.market_seconds(timestamptz)",
+        "public.asset_price(bigint, timestamptz)",
     ):
         assert f"revoke all on function {signature} from public, anon, authenticated" in sql
         assert f"grant execute on function {signature} to service_role" in sql
