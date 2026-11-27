@@ -20,7 +20,7 @@ modificar-la.
 |---|---|---|
 | Colors, tipografia, espais, radis, ombres | `frontend/src/styles/tokens.css` | Variables CSS `--tub-*`; únic lloc amb valors hex |
 | Reset i estils globals | `frontend/src/styles/base.css` | Només consumeix tokens |
-| Components base | `frontend/src/components/ui/` | `UiButton`, `UiInput`, `UiSelect`, `UiFileInput`, `UiCheckbox`, `UiCard`, `UiAlert`, `UiBadge`, `UiLogo`, `UiRadioGroup` |
+| Components base | `frontend/src/components/ui/` | `UiButton`, `UiInput`, `UiSelect`, `UiFileInput`, `UiCheckbox`, `UiCard`, `UiAlert`, `UiBadge`, `UiLogo`, `UiRadioGroup`, `UiPage` |
 | Mostra visual | `frontend/src/views/StyleguideView.vue` | Ruta `/ui` |
 
 ## Regles
@@ -36,6 +36,8 @@ modificar-la.
    usen `--tub-green*`; errors i baixades usen `--tub-danger*`.
 6. L'idioma de la UI és el català.
 7. Les vistes han de funcionar a 900 px i menys.
+8. Les pantalles amb la barra de navegació fan servir `UiPage` com a contenidor: no es
+   defineix cap amplada ni marge de pàgina a la vista.
 
 ## API dels components
 
@@ -62,6 +64,20 @@ modificar-la.
 <!-- Resposta tancada (una sola opció). Si va dins d'un <fieldset> amb <legend>, no cal label -->
 <UiRadioGroup v-model="resposta" name="pregunta-1" label="Nom accessible del grup"
               :options="[{ id: 'a', label: 'Opció A' }, { id: 'b', label: 'Opció B' }]" />
+
+<!-- Contenidor de les pantalles amb barra: centrat, 1120 px com a màxim. El títol és el de la barra.
+     Acció opcional a la dreta; si el títol no és un text fix, es passa pel slot "title" -->
+<UiPage title="Actius">
+  <template #actions><UiBadge>Preus simulats</UiBadge></template>
+  ...
+</UiPage>
+
+<!-- Cinta de targetes (components/MarketFeed.vue, no és un Ui*): el contingut va al slot "item".
+     Es desplaça de manera contínua (seconds-per-card); s'atura amb el ratolí, el focus del teclat o "Atura";
+     amb moviment reduït no es mou sola i es desplaça a mà -->
+<MarketFeed :items="[{ id: 1, ... }]" label="Actualitat del mercat" :seconds-per-card="6">
+  <template #item="{ item }">...</template>
+</MarketFeed>
 ```
 
 ## Com canviar l'estil de tota l'app

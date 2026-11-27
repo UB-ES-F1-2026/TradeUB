@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from 'vue'
-import { UiButton, UiInput, UiSelect, UiFileInput, UiCheckbox, UiCard, UiAlert, UiBadge, UiLogo, UiRadioGroup } from '../components/ui'
+import { UiButton, UiInput, UiSelect, UiFileInput, UiCheckbox, UiCard, UiAlert, UiBadge, UiLogo, UiRadioGroup, UiPage } from '../components/ui'
+import MarketFeed from '../components/MarketFeed.vue'
 
 const text = ref('')
 const fileName = ref('')
@@ -16,6 +17,14 @@ const choiceOptions = [
   { id: 'baix', label: 'No sé ben bé què són' },
   { id: 'mitja', label: 'Conec el funcionament bàsic' },
   { id: 'alt', label: 'Entenc bé els riscos' },
+]
+// Targetes d'exemple del carrusel (US17.1): els avisos de debò surten dels preus a Actius (#197)
+const feedItems = [
+  { id: 1, ticker: 'NVDA', title: 'NVIDIA puja un 2,83 %', trend: 'success' },
+  { id: 2, ticker: 'TSLA', title: 'Tesla és el valor que més baixa: −3,67 %', trend: 'danger' },
+  { id: 3, ticker: 'SAN', title: 'Banco Santander és el valor que més puja: +2,95 %', trend: 'success' },
+  { id: 4, ticker: 'ASML', title: 'ASML Holding baixa un 2,14 %', trend: 'danger' },
+  { id: 5, ticker: 'AAPL', title: 'Apple puja un 2,02 %', trend: 'success' },
 ]
 const groups = [
   { name: 'Marca', tokens: ['navy', 'navy-2', 'navy-3', 'green', 'green-dark', 'green-light', 'green-soft'] },
@@ -315,6 +324,51 @@ const groups = [
         </div>
       </div>
     </section>
+
+    <section class="sg__section">
+      <p class="eyebrow">
+        08
+      </p>
+      <h2>Pàgina</h2>
+      <p class="sg__lead">
+        <code>UiPage</code>: contenidor de les pantalles amb la barra de navegació, centrat i de 1120 px com a màxim.
+        La capçalera té el títol, igual que l'etiqueta de la barra, i una acció opcional a la dreta.
+      </p>
+      <div class="sg__frame">
+        <UiPage title="Actius">
+          <template #actions>
+            <UiBadge>Preus simulats</UiBadge>
+          </template>
+          <UiCard padding="md">
+            Contingut de la pàgina
+          </UiCard>
+        </UiPage>
+      </div>
+    </section>
+
+    <section class="sg__section">
+      <p class="eyebrow">
+        09
+      </p>
+      <h2>Carrusel</h2>
+      <p class="sg__lead">
+        <code>MarketFeed</code>: es desplaça de manera contínua (una targeta cada 6 segons) i s'atura amb el
+        ratolí, el focus del teclat o "Atura". Amb moviment reduït no es mou sola: es desplaça a mà.
+      </p>
+      <MarketFeed
+        :items="feedItems"
+        label="Actualitat del mercat"
+      >
+        <template #item="{ item }">
+          <div class="sg__feed-card">
+            <UiBadge :variant="item.trend">
+              {{ item.ticker }}
+            </UiBadge>
+            <strong>{{ item.title }}</strong>
+          </div>
+        </template>
+      </MarketFeed>
+    </section>
   </div>
 </template>
 
@@ -400,11 +454,21 @@ code {
   font-size: var(--tub-text-xl);
   font-weight: 700;
 }
+.sg__feed-card {
+  display: grid;
+  justify-items: start;
+  gap: var(--tub-space-3);
+}
 .sg__row {
   display: flex;
   flex-wrap: wrap;
   gap: var(--tub-space-3);
   align-items: center;
+}
+.sg__frame {
+  border: 1px dashed var(--tub-border);
+  border-radius: var(--tub-radius-lg);
+  background: var(--tub-bg);
 }
 .sg__card {
   max-width: 460px;

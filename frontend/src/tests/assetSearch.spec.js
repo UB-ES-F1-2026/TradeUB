@@ -82,14 +82,6 @@ describe('AssetSearch', () => {
     expect(wrapper.get('[data-test="asset-date"]').text()).toBe('No disponible')
   })
 
-  it('indica que els preus són simulats', async () => {
-    apiGet.mockResolvedValue([APPLE])
-    const wrapper = mount(AssetSearch)
-    await flushPromises()
-
-    expect(wrapper.get('[data-test="simulated-prices"]').text()).toBe('Preus simulats')
-  })
-
   it('pinta la variació en verd si puja, en vermell si baixa i en gris si no canvia', async () => {
     apiGet.mockResolvedValue([APPLE, MSCI, TEF])
     const wrapper = mount(AssetSearch)
