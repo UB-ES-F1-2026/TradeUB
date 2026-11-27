@@ -4,7 +4,7 @@ import BalanceCard from '../components/BalanceCard.vue'
 import DepositForm from '../components/DepositForm.vue'
 import VerificationRequired from '../components/VerificationRequired.vue'
 import WithdrawalForm from '../components/WithdrawalForm.vue'
-import { UiAlert } from '../components/ui'
+import { UiAlert, UiPage } from '../components/ui'
 import { useVerificationStore } from '../stores/verification'
 
 // Els moviments d'efectiu només estan disponibles amb la identitat verificada i els termes acceptats (US2.4).
@@ -21,9 +21,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section class="page">
-    <h1>Compte d'efectiu</h1>
-
+  <UiPage title="Compte d'efectiu">
     <p
       v-if="!checked || verification.loading"
       class="page__muted"
@@ -50,16 +48,10 @@ onMounted(async () => {
       v-else
       message="Verifica la teva identitat i accepta els termes i condicions per ingressar o retirar diners del compte."
     />
-  </section>
+  </UiPage>
 </template>
 
 <style scoped>
-.page {
-  display: grid;
-  gap: var(--tub-space-5);
-  max-width: 960px;
-  padding: var(--tub-space-6) var(--tub-space-5);
-}
 .page__operations {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -71,9 +63,6 @@ onMounted(async () => {
 }
 
 @media (max-width: 900px) {
-  .page {
-    padding: var(--tub-space-5) var(--tub-space-4);
-  }
   .page__operations {
     grid-template-columns: minmax(0, 1fr);
   }
