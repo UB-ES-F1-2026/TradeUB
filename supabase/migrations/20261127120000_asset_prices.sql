@@ -183,3 +183,63 @@ $$;
 
 revoke all on function public.asset_price(bigint, timestamptz) from public, anon, authenticated;
 grant execute on function public.asset_price(bigint, timestamptz) to service_role;
+
+-- --- Cotització actual ---
+--
+-- market_time(m): l'instant que correspon al segon m del rellotge de mercat. És la inversa de market_seconds: el
+-- segon s d'una sessió és a les 7:30 + s, hora de Madrid, del seu dia feiner.
+
+create or replace function public.market_time(p_market_seconds bigint)
+returns timestamptz
+language sql
+stable
+set search_path = ''
+as $$
+    with session as (
+        select
+            floor(p_market_seconds / 55800.0)::bigint as n,
+            p_market_seconds - floor(p_market_seconds / 55800.0)::bigint * 55800 as second
+    )
+    select (
+        date '2026-01-05' + (floor(n / 5.0)::integer * 7 + (n - floor(n / 5.0)::bigint * 5)::integer)
+        + time '07:30' + second * interval '1 second'
+    ) at time zone 'Europe/Madrid'
+    from session
+$$;
+
+-- asset_quotes: la cotització actual de cada actiu, per a la cerca (#192), la Cartera (US8.2) i la fitxa (US10.1).
+-- - price: el preu d'ara (asset_price).
+-- - price_at: l'instant d'aquest preu. Amb el mercat obert, el segon actual; amb el mercat tancat, el del tancament
+--   (22:59:59 de l'última sessió).
+-- - daily_change_pct: la variació respecte al tancament de la sessió anterior. Amb el mercat tancat, la de l'última
+--   sessió respecte a l'anterior. En tots dos casos, la referència és l'últim segon de la sessió abans de la del
+--   rellotge.
+-- - market_open: si ara cotitza.
+-- now() és l'instant de la transacció: totes les columnes i tots els actius fan servir el mateix instant.
+-- security_invoker: es llegeix amb els permisos de qui consulta. Només el backend (service_role) la pot llegir.
+
+create or replace view public.asset_quotes
+with (security_invoker = true)
+as
+select
+    a.id,
+    a.name,
+    a.ticker,
+    a.isin,
+    a.type,
+    q.price,
+    public.market_time(c.m) as price_at,
+    round((q.price / q.previous_close - 1) * 100, 2) as daily_change_pct,
+    public.market_is_open(a.type) as market_open
+from public.assets as a
+cross join lateral (select public.market_seconds() as m) as c
+cross join lateral (
+    select
+        public.asset_price(a.id) as price,
+        public.asset_price(a.id, public.market_time(floor(c.m / 55800.0)::bigint * 55800 - 1)) as previous_close
+) as q;
+
+revoke all on function public.market_time(bigint) from public, anon, authenticated;
+grant execute on function public.market_time(bigint) to service_role;
+revoke all on public.asset_quotes from public, anon, authenticated;
+grant select on public.asset_quotes to service_role;

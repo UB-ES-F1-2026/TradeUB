@@ -69,6 +69,39 @@ def test_price_is_deterministic_on_the_market_clock():
     assert ")::numeric, 2)" in sql
 
 
+def test_quotes_view_has_the_contract_columns():
+    sql = load_sql()
+
+    assert "create or replace view public.asset_quotes with (security_invoker = true)" in sql
+    for column in (
+        "a.id,",
+        "a.name,",
+        "a.ticker,",
+        "a.isin,",
+        "a.type,",
+        "q.price,",
+        "public.market_time(c.m) as price_at",
+        "as daily_change_pct",
+        "public.market_is_open(a.type) as market_open",
+    ):
+        assert column in sql
+
+
+def test_daily_change_is_against_the_previous_session_close():
+    sql = load_sql()
+
+    # Last second of the session before the clock's one
+    assert "public.market_time(floor(c.m / 55800.0)::bigint * 55800 - 1)) as previous_close" in sql
+    assert "round((q.price / q.previous_close - 1) * 100, 2) as daily_change_pct" in sql
+
+
+def test_only_backend_can_read_quotes():
+    sql = load_sql()
+
+    assert "revoke all on public.asset_quotes from public, anon, authenticated" in sql
+    assert "grant select on public.asset_quotes to service_role" in sql
+
+
 def test_only_service_role_can_execute():
     sql = load_sql()
 
@@ -76,6 +109,7 @@ def test_only_service_role_can_execute():
         "public.market_is_open(text, timestamptz)",
         "public.market_seconds(timestamptz)",
         "public.asset_price(bigint, timestamptz)",
+        "public.market_time(bigint)",
     ):
         assert f"revoke all on function {signature} from public, anon, authenticated" in sql
         assert f"grant execute on function {signature} to service_role" in sql
