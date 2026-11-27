@@ -1,9 +1,9 @@
 <script setup>
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ApiError } from '../services/api'
 import { useProfileStore } from '../stores/profile'
-import { UiAlert, UiButton, UiInput } from './ui'
+import { UiAlert, UiButton, UiDialog, UiInput } from './ui'
 import {
   PIN_CHECK_FAILED_ERROR,
   PIN_FORMAT_ERROR,
@@ -27,8 +27,6 @@ const emit = defineEmits(['cancel', 'done', 'error'])
 
 const router = useRouter()
 const profile = useProfileStore()
-const dialog = ref(null)
-const pinInput = ref(null)
 
 const pin = ref('')
 const submitted = ref(false)
@@ -51,20 +49,14 @@ function reset() {
   loading.value = false
 }
 
-// showModal bloqueja la resta de la pàgina, tanca amb Esc i manté el focus dins del diàleg.
-// jsdom (tests) no l'implementa: llavors el contingut es mostra igualment perquè depèn d'`open`
+// El diàleg (UiDialog) bloqueja la resta de la pàgina, manté el focus a dins i, en obrir-se, el posa al camp del PIN,
+// que és el primer element que el rep. Cada cop que s'obre comença net
 watch(
   () => props.open,
   async (open) => {
-    if (open) {
-      reset()
-      await nextTick()
-      if (dialog.value?.showModal && !dialog.value.open) dialog.value.showModal()
-      pinInput.value?.$el.querySelector('input')?.focus()
-      await checkPinConfigured()
-    } else if (dialog.value?.open) {
-      dialog.value.close()
-    }
+    if (!open) return
+    reset()
+    await checkPinConfigured()
   },
 )
 
@@ -75,15 +67,10 @@ async function checkPinConfigured() {
   if (profile.pinConfigured === false) pinMissing.value = true
 }
 
+// Cancel·la i Esc (UiDialog emet close). Mentre s'envia l'operació no es pot tancar
 function cancel() {
   if (loading.value) return
   emit('cancel')
-}
-
-// Esc dispara `cancel` al <dialog>: mentre s'envia l'operació no es pot tancar
-function onNativeCancel(event) {
-  event.preventDefault()
-  cancel()
 }
 
 function clearMessages() {
@@ -126,30 +113,22 @@ function goToProfile() {
 </script>
 
 <template>
-  <dialog
-    ref="dialog"
-    class="pin-dialog"
-    aria-labelledby="pin-dialog-title"
-    @cancel="onNativeCancel"
+  <UiDialog
+    :open="open"
+    :title="title"
+    size="sm"
+    :closable="false"
+    @close="cancel"
   >
     <form
-      v-if="open"
       class="pin-dialog__form"
       novalidate
       data-test="pin-dialog"
       @submit.prevent="submit"
     >
-      <div>
-        <h2
-          id="pin-dialog-title"
-          class="pin-dialog__title"
-        >
-          {{ title }}
-        </h2>
-        <!-- Resum de l'operació que es confirma (import, destinació…) -->
-        <div class="pin-dialog__summary">
-          <slot />
-        </div>
+      <!-- Resum de l'operació que es confirma (import, destinació…) -->
+      <div class="pin-dialog__summary">
+        <slot />
       </div>
 
       <template v-if="pinMissing">
@@ -186,7 +165,6 @@ function goToProfile() {
           {{ alert }}
         </UiAlert>
         <UiInput
-          ref="pinInput"
           v-model="pin"
           label="PIN de seguretat"
           type="password"
@@ -215,32 +193,17 @@ function goToProfile() {
         </div>
       </template>
     </form>
-  </dialog>
+  </UiDialog>
 </template>
 
 <style scoped>
-.pin-dialog {
-  width: min(420px, calc(100vw - 2 * var(--tub-space-4)));
-  padding: var(--tub-space-5);
-  border: 1px solid var(--tub-border);
-  border-radius: var(--tub-radius-lg);
-  background: var(--tub-surface);
-  color: var(--tub-text);
-  box-shadow: var(--tub-shadow-md);
-}
-.pin-dialog::backdrop {
-  background: var(--tub-overlay);
-}
 .pin-dialog__form {
   display: grid;
   gap: var(--tub-space-4);
 }
-.pin-dialog__title {
-  font-size: var(--tub-text-lg);
-  font-weight: 600;
-}
 .pin-dialog__summary {
-  margin-top: var(--tub-space-1);
+  /* Just a sota del títol del diàleg */
+  margin-top: calc(-1 * var(--tub-space-3));
   color: var(--tub-text-muted);
 }
 .pin-dialog__actions {
