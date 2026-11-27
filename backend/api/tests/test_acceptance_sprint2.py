@@ -146,7 +146,9 @@ def test_pin_change_with_wrong_current_pin(client, auth, verified, fake_pins):
     )
 
     assert response.status_code == 403
-    assert response.json()["detail"] == "El PIN actual és incorrecte."
+    assert response.json()["detail"] == (
+        "El PIN actual és incorrecte. Et queden 2 intents."
+    )
     assert pins.upserted is None
 
 
@@ -181,11 +183,21 @@ class FakeWithdrawalAdmin:
         return self
 
     def rpc(self, name, params):
+        if name == "register_pin_attempt":
+            # Comptador d'intents (US1.6): es prova a test_require_pin.py
+            self._table = "pin_attempt"
+            self.pin_success = params["p_success"]
+            return self
         self.rpc_call = (name, params)
         self._table = "rpc"
         return self
 
     def execute(self):
+        if self._table == "pin_attempt":
+            remaining = 3 if self.pin_success else 2
+            return SimpleNamespace(
+                data={"remaining_attempts": remaining, "retry_after_seconds": None}
+            )
         if self._table != "rpc":
             return SimpleNamespace(data=self.rows[self._table])
         if self.rpc_error is not None:
@@ -220,7 +232,13 @@ DB_ERROR = PostgrestAPIError({"message": "boom"})
             422,
             "Saldo insuficient. Et falten 30,00 € per completar l'operació",
         ),
-        ("0000", {}, "10", 403, "El PIN introduït és incorrecte."),
+        (
+            "0000",
+            {},
+            "10",
+            403,
+            "El PIN introduït és incorrecte. Et queden 2 intents.",
+        ),
         (
             "1234",
             {"pin_hash": None},

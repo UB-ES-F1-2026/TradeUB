@@ -167,7 +167,9 @@ def test_save_pin_change_requires_correct_current_pin(
     response = client.post(PIN_ENDPOINT, headers=auth, json=body)
 
     assert response.status_code == 403
-    assert response.json()["detail"] == "El PIN actual és incorrecte."
+    assert response.json()["detail"] == (
+        "El PIN actual és incorrecte. Et queden 2 intents."
+    )
     assert pins.upserted is None
 
 
@@ -202,3 +204,87 @@ def test_save_pin_write_error_returns_500(client, auth, verified, fake_pins):
 
     assert response.status_code == 500
     assert response.json()["detail"] == "No s'ha pogut desar el PIN"
+
+
+# --- US1.6 Bloqueig del PIN actual ---
+
+
+def _in(seconds: int) -> datetime:
+    return datetime.now(UTC) + timedelta(seconds=seconds)
+
+
+def _change(client, auth, current):
+    return client.post(
+        PIN_ENDPOINT, headers=auth, json={"pin": "5678", "pin_actual": current}
+    )
+
+
+def test_save_pin_wrong_current_pin_counts_down_and_locks(
+    client, auth, verified, fake_pins
+):
+    pins = fake_pins(pin_hash=hash_pin("1234"))
+
+    _change(client, auth, "0000")
+    second = _change(client, auth, "0000")
+    third = _change(client, auth, "0000")
+
+    assert second.status_code == 403
+    assert second.json()["detail"] == "El PIN actual és incorrecte. Et queda 1 intent."
+    assert third.status_code == 429
+    assert third.json()["detail"] == (
+        "Has superat el nombre d'intents. Torna-ho a provar d'aquí a 15 minuts."
+    )
+    assert third.headers["Retry-After"] == "900"
+    assert pins.upserted is None
+
+
+def test_save_pin_locked_rejects_correct_current_pin(
+    client, auth, verified, fake_pins
+):
+    """Amb el bloqueig actiu no es pot canviar el PIN, encara que l'actual sigui bo."""
+    pins = fake_pins(
+        pin_hash=hash_pin("1234"), failed_attempts=3, locked_until=_in(300)
+    )
+
+    response = _change(client, auth, "1234")
+
+    assert response.status_code == 429
+    assert response.json()["detail"] == (
+        "Has superat el nombre d'intents. Torna-ho a provar d'aquí a 5 minuts."
+    )
+    assert pins.upserted is None
+    assert pins.attempts == []
+
+
+def test_save_pin_change_resets_counter(client, auth, verified, fake_pins):
+    pins = fake_pins(pin_hash=hash_pin("1234"), failed_attempts=2)
+
+    response = _change(client, auth, "1234")
+
+    assert response.status_code == 200
+    assert pins.failed_attempts == 0
+    assert verify_pin("5678", pins.upserted["pin_hash"]) is True
+
+
+def test_save_pin_create_does_not_count_attempts(client, auth, verified, fake_pins):
+    """El primer PIN no demana l'actual, així que no hi ha cap intent a comptar."""
+    pins = fake_pins(pin_hash=None)
+
+    response = client.post(PIN_ENDPOINT, headers=auth, json={"pin": "1234"})
+
+    assert response.status_code == 200
+    assert pins.attempts == []
+
+
+def test_save_pin_invalid_new_pin_does_not_count_attempt(
+    client, auth, verified, fake_pins
+):
+    """El format del PIN nou es valida abans de mirar l'actual."""
+    pins = fake_pins(pin_hash=hash_pin("1234"))
+
+    response = client.post(
+        PIN_ENDPOINT, headers=auth, json={"pin": "12", "pin_actual": "0000"}
+    )
+
+    assert response.status_code == 422
+    assert pins.attempts == []
