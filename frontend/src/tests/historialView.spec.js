@@ -218,7 +218,7 @@ describe("HistorialView: detall d'una compra o venda (US6.5)", () => {
 
     expect(apiGet).toHaveBeenCalledWith('/orders/ordre-1')
     expect(wrapper.get('[data-test="ui-dialog"] h2').text()).toBe("Detall de l'operació")
-    expect(wrapper.get('[data-test="order-asset"] dd').text()).toBe('Apple Inc. (AAPL)')
+    expect(wrapper.get('[data-test="order-asset"] dd').text()).toBe('Apple Inc. · AAPL')
   })
 
   it("amb el teclat (Retorn i espai) també s'obre", async () => {

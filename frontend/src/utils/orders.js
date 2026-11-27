@@ -1,5 +1,5 @@
 import { formatCurrency } from './currency'
-import { formatMovementDate, formatMovementTime } from './movements'
+import { formatMovementDate, formatMovementTime, formatSignedAmount } from './movements'
 
 // Detall d'una compra o venda (US6.5), tal com el retorna GET /orders/{id}. Tot surt de l'ordre desada en executar-la:
 // no es recalcula res amb el preu actual de l'actiu
@@ -36,30 +36,54 @@ export function formatOrderDateTime(order) {
   return `${formatMovementDate(at)} · ${formatMovementTime(at)}`
 }
 
-// Files del detall en l'ordre en què es mostren. `total` és el que s'ha carregat al saldo en una compra (import +
-// comissió) i el que s'hi ha abonat en una venda (import − comissió)
-export function orderDetailRows(order) {
+// Detall en forma de rebut (variant B dels mocks): a dalt l'import amb signe, el concepte i l'estat; a sota, les
+// caixes "Operació" i "Imports". `total` és el que s'ha carregat al saldo en una compra (import + comissió) i el que
+// s'hi ha abonat en una venda (import − comissió)
+export function orderDetail(order) {
   const money = (value) => formatCurrency(Number(value))
-  return [
-    { key: 'side', label: 'Tipus', value: orderSideLabel(order.side) },
-    { key: 'status', label: 'Estat', value: orderStatusLabel(order.status) },
-    { key: 'asset', label: 'Actiu', value: `${order.asset.name} (${order.asset.ticker})` },
-    { key: 'units', label: 'Unitats', value: formatUnits(order.units), numeric: true },
-    { key: 'price', label: "Preu d'execució", value: formatOrderPrice(order.price), numeric: true },
-    { key: 'amount', label: 'Import', value: money(order.amount), numeric: true },
-    { key: 'commission', label: 'Comissió', value: money(order.commission), numeric: true },
-    {
-      key: 'total',
-      label: order.side === 'venda' ? 'Import net abonat' : 'Total carregat',
-      value: money(order.total),
-      numeric: true,
-    },
-    { key: 'date', label: 'Data i hora', value: formatOrderDateTime(order), numeric: true },
-    {
-      key: 'balance',
-      label: 'Saldo resultant',
-      value: order.balance_after === null || order.balance_after === undefined ? '—' : money(order.balance_after),
-      numeric: true,
-    },
-  ]
+  const isSale = order.side === 'venda'
+  const units = formatUnits(order.units)
+  return {
+    // La compra treu diners del saldo (−) i la venda n'hi posa (+), com a l'historial
+    headline: formatSignedAmount(isSale ? order.total : -Number(order.total)),
+    trend: isSale ? 'up' : 'down',
+    concept: `${orderSideLabel(order.side)} de ${units} ${order.asset.ticker}`,
+    status: orderStatusLabel(order.status),
+    operation: [
+      { key: 'side', label: 'Tipus', value: orderSideLabel(order.side) },
+      { key: 'asset', label: 'Actiu', value: `${order.asset.name} · ${order.asset.ticker}` },
+      { key: 'units', label: 'Unitats', value: units, numeric: true },
+      { key: 'price', label: "Preu d'execució", value: formatOrderPrice(order.price), numeric: true },
+      { key: 'date', label: 'Data i hora', value: formatOrderDateTime(order), numeric: true },
+    ],
+    amounts: [
+      // C2: "Import (unitats × preu)"
+      {
+        key: 'amount',
+        label: `Import (${units} × ${formatOrderPrice(order.price)})`,
+        value: money(order.amount),
+        numeric: true,
+      },
+      // A la venda la comissió es resta de l'import: es mostra en negatiu
+      {
+        key: 'commission',
+        label: 'Comissió',
+        value: isSale ? formatSignedAmount(-Number(order.commission)) : money(order.commission),
+        numeric: true,
+      },
+      {
+        key: 'total',
+        label: isSale ? 'Import net abonat' : 'Total carregat',
+        value: money(order.total),
+        numeric: true,
+        strong: true,
+      },
+      {
+        key: 'balance',
+        label: 'Saldo resultant',
+        value: order.balance_after === null || order.balance_after === undefined ? '—' : money(order.balance_after),
+        numeric: true,
+      },
+    ],
+  }
 }
