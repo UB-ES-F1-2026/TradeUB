@@ -79,11 +79,21 @@ class FakeWithdrawalAdmin:
         return self
 
     def rpc(self, name, params):
+        if name == "register_pin_attempt":
+            # Comptador d'intents (US1.6): es prova a test_require_pin.py
+            self._pending = "pin_attempt"
+            self.pin_success = params["p_success"]
+            return self
         self.rpc_call = (name, params)
         self._pending = "rpc"
         return self
 
     def execute(self):
+        if self._pending == "pin_attempt":
+            remaining = 3 if self.pin_success else 2
+            return SimpleNamespace(
+                data={"remaining_attempts": remaining, "retry_after_seconds": None}
+            )
         if self._pending == "rpc":
             if isinstance(self.rpc_result, Exception):
                 raise self.rpc_result
@@ -161,7 +171,9 @@ def test_withdrawal_with_wrong_pin_returns_403(client, auth, verified, admin, pi
     response = client.post(ENDPOINT, headers=headers, json={"amount": 100})
 
     assert response.status_code == 403
-    assert response.json()["detail"] == "El PIN introduït és incorrecte."
+    assert response.json()["detail"] == (
+        "El PIN introduït és incorrecte. Et queden 2 intents."
+    )
     assert fake.rpc_call is None
 
 

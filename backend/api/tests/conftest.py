@@ -6,6 +6,7 @@ taula profiles per dobles (de lectura amb el client de l'usuari i
 d'escriptura amb el client d'administracio).
 """
 
+import math
 import os
 import socket
 
@@ -227,21 +228,41 @@ def fake_admin():
 class FakePinsClient:
     """Doble de la taula profile_pins amb el client d'administració.
 
-    Imita table().select().eq().execute() i table().upsert().execute(). Guarda
-    el hash de l'usuari (o cap) i hi aplica l'upsert, com faria PostgREST.
+    Imita table().select().eq().execute(), table().upsert().execute() i
+    rpc("register_pin_attempt", params).execute(). Guarda el hash de l'usuari
+    (o cap), el comptador d'intents i el bloqueig, i hi aplica l'upsert i la
+    funció SQL com faria Postgres
+    (supabase/migrations/20261127140000_profile_pins_attempts.sql).
     """
 
-    def __init__(self, pin_hash=None, error=None, upsert_error=None):
+    MAX_ATTEMPTS = 3
+    LOCK_SECONDS = 15 * 60
+
+    def __init__(
+        self,
+        pin_hash=None,
+        error=None,
+        upsert_error=None,
+        failed_attempts=0,
+        locked_until=None,
+        rpc_error=None,
+    ):
         self.pin_hash = pin_hash
         self.error = error
         self.upsert_error = upsert_error
+        self.failed_attempts = failed_attempts
+        self.locked_until = locked_until
+        self.rpc_error = rpc_error
         self.eq_args = []
         self.upserted = None
         self.on_conflict = None
+        self.attempts = []
         self._pending_upsert = None
+        self._pending_rpc = None
 
     def table(self, name):
         assert name == "profile_pins"
+        self._pending_rpc = None
         return self
 
     def select(self, *columns):
@@ -257,7 +278,38 @@ class FakePinsClient:
         self.on_conflict = on_conflict
         return self
 
+    def rpc(self, name, params):
+        assert name == "register_pin_attempt"
+        self._pending_rpc = params
+        return self
+
+    def _register_attempt(self, params):
+        """Mateixa lògica que la funció SQL register_pin_attempt."""
+        self.attempts.append(params)
+        if self.rpc_error is not None:
+            raise self.rpc_error
+        now = datetime.now(UTC)
+        if self.locked_until is not None and self.locked_until > now:
+            seconds = math.ceil((self.locked_until - now).total_seconds())
+            return {"remaining_attempts": 0, "retry_after_seconds": seconds}
+        if self.locked_until is not None:
+            self.failed_attempts = 0
+            self.locked_until = None
+        if params["p_success"]:
+            self.failed_attempts = 0
+        else:
+            self.failed_attempts += 1
+            if self.failed_attempts >= self.MAX_ATTEMPTS:
+                self.locked_until = now + timedelta(seconds=self.LOCK_SECONDS)
+        return {
+            "remaining_attempts": max(self.MAX_ATTEMPTS - self.failed_attempts, 0),
+            "retry_after_seconds": self.LOCK_SECONDS if self.locked_until else None,
+        }
+
     def execute(self):
+        if self._pending_rpc is not None:
+            params, self._pending_rpc = self._pending_rpc, None
+            return SimpleNamespace(data=self._register_attempt(params))
         if self.error is not None:
             raise self.error
         if self._pending_upsert is not None:
@@ -267,8 +319,12 @@ class FakePinsClient:
             self.pin_hash = self.upserted["pin_hash"]
             self._pending_upsert = None
             return SimpleNamespace(data=[self.upserted])
-        rows = [{"pin_hash": self.pin_hash}] if self.pin_hash else []
-        return SimpleNamespace(data=rows)
+        if not self.pin_hash:
+            return SimpleNamespace(data=[])
+        locked_until = self.locked_until.isoformat() if self.locked_until else None
+        return SimpleNamespace(
+            data=[{"pin_hash": self.pin_hash, "locked_until": locked_until}]
+        )
 
 
 @pytest.fixture
@@ -276,12 +332,14 @@ def fake_pins():
     """Substitueix get_admin_client per un doble de profile_pins.
 
     Yields:
-        Funció install(pin_hash=None, error=None, upsert_error=None) que
-        retorna el doble per inspeccionar què s'ha llegit i desat.
+        Funció install(pin_hash=None, error=None, upsert_error=None, ...) que
+        retorna el doble per inspeccionar què s'ha llegit i desat. També
+        accepta ``failed_attempts``, ``locked_until`` (datetime) i
+        ``rpc_error`` per preparar el comptador d'intents.
     """
 
-    def install(pin_hash=None, error=None, upsert_error=None):
-        pins = FakePinsClient(pin_hash, error, upsert_error)
+    def install(pin_hash=None, error=None, upsert_error=None, **attempts):
+        pins = FakePinsClient(pin_hash, error, upsert_error, **attempts)
         main.app.dependency_overrides[deps.get_admin_client] = lambda: pins
         return pins
 

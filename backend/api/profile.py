@@ -11,7 +11,7 @@ from core.iban import IBAN_ERROR, is_valid_iban, mask_iban, normalize_iban
 from core.investor_profile import INVESTOR_QUESTIONS, calculate_investor_profile
 from core.nif_nie import NIF_NIE_ERROR, is_valid_nif_nie, normalize_nif_nie
 from core.onboarding import INVESTOR_PROFILE_COLUMN, is_personal_data_completed
-from core.pin import PIN_FORMAT_ERROR, hash_pin, is_valid_pin, verify_pin
+from core.pin import PIN_FORMAT_ERROR, hash_pin, is_valid_pin
 from core.profile_pins import get_pin_hash, save_pin_hash
 from core.profiles import (
     IBAN_COLUMN,
@@ -25,7 +25,13 @@ from core.verification import (
     is_identity_verified,
 )
 
-from .deps import get_admin_client, get_current_user, require_verified_user
+from .deps import (
+    get_admin_client,
+    get_current_user,
+    read_pin_record,
+    require_verified_user,
+    verify_pin_attempt,
+)
 
 router = APIRouter()
 
@@ -370,6 +376,9 @@ def get_pin_status(
     return {"configurat": _read_pin_hash(admin, user["sub"]) is not None}
 
 
+CURRENT_PIN_ERROR = "El PIN actual és incorrecte."
+
+
 class PinChange(BaseModel):
     """PIN nou i, si l'usuari ja en té, el PIN actual.
 
@@ -393,29 +402,25 @@ def save_pin(
     Només per a usuaris verificats. Per canviar-lo cal el PIN actual; per
     crear-lo, ``pin_actual`` s'ignora. El PIN es desa només com a hash.
 
+    El PIN actual comparteix el comptador d'intents i el bloqueig amb les
+    operacions (US1.6).
+
     Returns:
         ``{"configurat": True}``.
 
     Raises:
         HTTPException: 422 si el PIN nou no té 4 dígits, 403 si l'usuari no
-            està verificat o el PIN actual no és correcte, i 500 si no s'ha
-            pogut llegir o desar el PIN.
+            està verificat o el PIN actual no és correcte, 429 si el PIN està
+            bloquejat, i 500 si no s'ha pogut llegir, comprovar o desar el PIN.
     """
     if not is_valid_pin(data.pin):
         raise HTTPException(status_code=422, detail=PIN_FORMAT_ERROR)
 
-    current_hash = _read_pin_hash(admin, user["sub"])
-    if current_hash is not None:
-        try:
-            matches = verify_pin(data.pin_actual, current_hash)
-        except ValueError as e:
-            raise HTTPException(
-                status_code=500, detail="No s'ha pogut comprovar el PIN"
-            ) from e
-        if not matches:
-            raise HTTPException(
-                status_code=403, detail="El PIN actual és incorrecte."
-            )
+    record = read_pin_record(admin, user["sub"])
+    if record is not None:
+        verify_pin_attempt(
+            admin, user["sub"], data.pin_actual, record, CURRENT_PIN_ERROR
+        )
 
     try:
         save_pin_hash(admin, user["sub"], hash_pin(data.pin))
