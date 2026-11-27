@@ -96,4 +96,76 @@ describe('ActiusView', () => {
     expect(wrapper.findComponent({ name: 'BalanceCard' }).exists()).toBe(false)
     expect(wrapper.find('[data-test="verification-required"]').exists()).toBe(false)
   })
+
+  describe('actualitat del mercat (US17.1)', () => {
+    const NVIDIA = { id: 5, name: 'NVIDIA', ticker: 'NVDA', type: 'accio', daily_change_pct: '2.47' }
+    const TESLA = { id: 6, name: 'Tesla', ticker: 'TSLA', type: 'accio', daily_change_pct: '-3.12' }
+    const APPLE_FLAT = { id: 7, name: 'Apple', ticker: 'AAPL', type: 'accio', daily_change_pct: '0.00' }
+
+    // Catàleg de GET /assets; la resta de crides, com un usuari sense verificar
+    function mockCatalog(...catalogs) {
+      apiGet.mockImplementation(async (path) => {
+        if (path === '/assets') return catalogs.length > 1 ? catalogs.shift() : catalogs[0]
+        return { verificacio: { estat: 'pendent', termes_acceptats: false } }
+      })
+    }
+
+    const noteTexts = (wrapper) => wrapper.findAll('[data-test="market-note"] strong').map((n) => n.text().replace(/\s/g, ' '))
+
+    // C1: la secció surt a dalt d'Actius, entre la capçalera i el cercador, amb els avisos del catàleg sencer
+    it('mostra els avisos del catàleg entre la capçalera i el cercador', async () => {
+      mockCatalog([NVIDIA, TESLA, APPLE_FLAT])
+      const wrapper = await mountActius()
+
+      expect(apiGet).toHaveBeenCalledWith('/assets')
+      expect(wrapper.get('[data-test="market-feed"]').text()).toContain('Actualitat del mercat')
+      expect(noteTexts(wrapper)).toEqual([
+        'NVIDIA és el valor que més puja: +2,47 %',
+        'Tesla és el valor que més baixa: −3,12 %',
+      ])
+      const html = wrapper.html()
+      expect(html.indexOf('market-feed')).toBeLessThan(html.indexOf('asset-search-stub'))
+    })
+
+    // C2: si cap actiu no es mou prou, la secció ho diu
+    it('sense moviments mostra "No hi ha moviments destacats"', async () => {
+      mockCatalog([APPLE_FLAT])
+      const wrapper = await mountActius()
+
+      expect(wrapper.get('[data-test="market-feed"]').text()).toContain('No hi ha moviments destacats')
+      expect(wrapper.findAll('[data-test="market-note"]')).toHaveLength(0)
+    })
+
+    // Si no es pot carregar el catàleg, la secció no surt
+    it('si el catàleg no es pot carregar, no mostra la secció', async () => {
+      apiGet.mockImplementation(async (path) => {
+        if (path === '/assets') throw new Error('xarxa')
+        return { verificacio: { estat: 'pendent', termes_acceptats: false } }
+      })
+      const wrapper = await mountActius()
+
+      expect(wrapper.find('[data-test="market-feed"]').exists()).toBe(false)
+    })
+
+    // C3: els avisos es tornen a calcular quan la cinta comença una volta, amb la variació d'aquell moment
+    it('en començar una volta torna a calcular els avisos', async () => {
+      mockCatalog([NVIDIA, TESLA], [{ ...NVIDIA, daily_change_pct: '1.10' }, TESLA])
+      const wrapper = await mountActius()
+
+      wrapper.findComponent({ name: 'MarketFeed' }).vm.$emit('loop')
+      await flushPromises()
+
+      expect(noteTexts(wrapper)[0]).toBe('NVIDIA és el valor que més puja: +1,10 %')
+    })
+
+    // C6: en prémer un avís, el cercador s'omple amb el ticker
+    it('en prémer un avís omple el cercador amb el ticker', async () => {
+      mockCatalog([NVIDIA, TESLA])
+      const wrapper = await mountActius()
+
+      await wrapper.findAll('[data-test="market-note"]')[1].trigger('click')
+
+      expect(wrapper.findComponent({ name: 'AssetSearch' }).props('query')).toBe('TSLA')
+    })
+  })
 })
