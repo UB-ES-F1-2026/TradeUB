@@ -25,7 +25,11 @@ ENDPOINT = "/api/v1/orders/buy"
 
 SUBJECT = "11111111-2222-3333-4444-555555555555"
 
+ORDER_ID = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
+
 BUY_RESULT = {
+    "order_id": ORDER_ID,
+    "price": "212.400000",
     "balance": "9571.80",
     "units": "2",
     "avg_price": "214.400000",
@@ -80,8 +84,9 @@ def test_buy_returns_result(client, pin_ok, fake_admin):
 
     assert response.status_code == 201
     body = response.json()
+    assert body.pop("order_id") == ORDER_ID
     assert {k: Decimal(str(v)) for k, v in body.items()} == {
-        k: Decimal(v) for k, v in BUY_RESULT.items()
+        k: Decimal(v) for k, v in BUY_RESULT.items() if k != "order_id"
     }
 
 

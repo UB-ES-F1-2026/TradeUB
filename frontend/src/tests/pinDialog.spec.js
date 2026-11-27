@@ -61,7 +61,8 @@ describe('PinDialog', () => {
   it("obert mostra el títol i el resum de l'operació", async () => {
     const { wrapper } = await mountDialog(vi.fn())
 
-    expect(wrapper.get('[data-test="pin-dialog"]').text()).toContain('Confirma la retirada')
+    // El títol és a la capçalera del diàleg (UiDialog), fora del formulari
+    expect(wrapper.get('[data-test="ui-dialog"] h2').text()).toBe('Confirma la retirada')
     expect(wrapper.get('[data-test="pin-dialog"]').text()).toContain('50,00 € a ES•• 1332')
   })
 

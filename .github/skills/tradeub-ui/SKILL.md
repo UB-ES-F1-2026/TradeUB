@@ -20,7 +20,7 @@ modificar-la.
 |---|---|---|
 | Colors, tipografia, espais, radis, ombres | `frontend/src/styles/tokens.css` | Variables CSS `--tub-*`; únic lloc amb valors hex |
 | Reset i estils globals | `frontend/src/styles/base.css` | Només consumeix tokens |
-| Components base | `frontend/src/components/ui/` | `UiButton`, `UiInput`, `UiSelect`, `UiFileInput`, `UiCheckbox`, `UiCard`, `UiAlert`, `UiBadge`, `UiLogo`, `UiRadioGroup`, `UiPage` |
+| Components base | `frontend/src/components/ui/` | `UiButton`, `UiInput`, `UiSelect`, `UiFileInput`, `UiCheckbox`, `UiCard`, `UiAlert`, `UiBadge`, `UiLogo`, `UiRadioGroup`, `UiPage`, `UiDialog` |
 | Mostra visual | `frontend/src/views/StyleguideView.vue` | Ruta `/ui` |
 
 ## Regles
@@ -71,6 +71,13 @@ modificar-la.
   <template #actions><UiBadge>Preus simulats</UiBadge></template>
   ...
 </UiPage>
+
+<!-- Diàleg modal (<dialog> amb showModal). Esc i "×" emeten close: el pare posa open a false.
+     size="sm" (uns 420 px, PIN) | "md" (uns 480 px, detall). Mai dos diàlegs alhora -->
+<UiDialog :open="obert" title="Detall de l'operació" size="md" :closable="true" @close="obert = false">
+  ...
+  <template #footer><UiButton variant="secondary" @click="obert = false">Tanca</UiButton></template>
+</UiDialog>
 ```
 
 ## Com canviar l'estil de tota l'app
